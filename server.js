@@ -44,6 +44,22 @@ const BUILD_MARKER = "dvf-postgres-comparables-robust-v12-dpe03existant-multiful
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 
 app.disable("x-powered-by");
+
+// Durcissement HTTP pour l'espace professionnel et ses données commerciales.
+app.use((req,res,next)=>{
+  res.setHeader("X-Content-Type-Options","nosniff");
+  res.setHeader("X-Frame-Options","SAMEORIGIN");
+  res.setHeader("Referrer-Policy","strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy","camera=(), microphone=(), geolocation=()");
+  if(isSecureRequest(req)){
+    res.setHeader("Strict-Transport-Security","max-age=31536000; includeSubDomains");
+  }
+  if(req.path.startsWith("/api/")){
+    res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma","no-cache");
+  }
+  next();
+});
 app.get("/health", (req, res) => {
   res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
   res.status(200).json({
@@ -119,7 +135,17 @@ const ADMIN_LOGIN_MAX_ATTEMPTS = 8;
 function getCookie(req,name){
   const raw=String(req.headers.cookie||"");
   const part=raw.split(";").map(x=>x.trim()).find(x=>x.startsWith(name+"="));
-  return part ? decodeURIComponent(part.slice(name.length+1)) : "";
+  if(!part) return "";
+  try{return decodeURIComponent(part.slice(name.length+1));}catch{return "";}
+}
+function isSecureRequest(req){
+  const proto=String(req.headers["x-forwarded-proto"]||"").split(",")[0].trim().toLowerCase();
+  return req.secure===true || proto==="https";
+}
+function setAdminSessionCookie(res,req,token,maxAge=Math.floor(ADMIN_SESSION_TTL_MS/1000)){
+  const parts=["jml_admin_session="+encodeURIComponent(token),"Path=/","HttpOnly","SameSite=Strict","Max-Age="+maxAge];
+  if(isSecureRequest(req)) parts.push("Secure");
+  res.setHeader("Set-Cookie",parts.join("; "));
 }
 function createAdminSessionToken(){
   const expiresAt=Date.now()+ADMIN_SESSION_TTL_MS;
@@ -2917,14 +2943,13 @@ app.post("/api/admin/login", async (req,res)=>{
   }
   adminLoginAttempts.delete(clientKey);
   const token=createAdminSessionToken();
-  const secure=req.secure||String(req.headers["x-forwarded-proto"]||"").split(",")[0].trim()==="https";
-  res.setHeader("Set-Cookie","jml_admin_session="+encodeURIComponent(token)+"; Path=/; HttpOnly; SameSite=Lax; Max-Age="+Math.floor(ADMIN_SESSION_TTL_MS/1000)+(secure?"; Secure":""));
+  setAdminSessionCookie(res,req,token);
   res.json({ok:true,expiresIn:ADMIN_SESSION_TTL_MS});
 });
 app.post("/api/admin/logout", async (req,res)=>{
   const token=getCookie(req,"jml_admin_session");
   if(token)adminSessions.delete(token);
-  res.setHeader("Set-Cookie","jml_admin_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+  setAdminSessionCookie(res,req,"",0);
   res.json({ok:true});
 });
 
