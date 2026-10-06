@@ -1,0 +1,170 @@
+"use strict";
+
+const { chromium } = require("playwright");
+
+const ALLOWED_SITES = {
+  meilleursagents: {
+    name: "Meilleurs Agents",
+    host: /(^|\\.)meilleursagents\\.com$/i,
+    url: "https://www.meilleursagents.com/estimation-immobiliere/"
+  },
+  seloger: {
+    name: "SeLoger",
+    host: /(^|\\.)seloger\\.com$/i,
+    url: "https://www.seloger.com/estimation-immobiliere.html"
+  },
+  pap: {
+    name: "PAP",
+    host: /(^|\\.)pap\\.fr$/i,
+    url: "https://www.pap.fr/vendeur/estimation-gratuite"
+  },
+  efficity: {
+    name: "efficity",
+    host: /(^|\\.)efficity\\.com$/i,
+    url: "https://www.efficity.com/estimation-immobiliere/"
+  },
+  orpi: {
+    name: "Orpi",
+    host: /(^|\\.)orpi\\.com$/i,
+    url: "https://www.orpi.com/prix-immobilier/"
+  },
+  bienici: {
+    name: "Bien'ici",
+    host: /(^|\\.)bienici\\.com$/i,
+    url: "https://www.bienici.com/estimation"
+  },
+  century21: {
+    name: "CENTURY 21",
+    host: /(^|\\.)century21\\.fr$/i,
+    url: "https://www.century21.fr/estimation-immobiliere"
+  },
+  laforet: {
+    name: "Laforêt",
+    host: /(^|\\.)laforet\\.com$/i,
+    url: "https://www.laforet.com/estimer"
+  },
+  squarehabitat: {
+    name: "Square Habitat",
+    host: /(^|\\.)squarehabitat\\.fr$/i,
+    url: "https://www.squarehabitat.fr/estimation"
+  }
+};
+
+function moneyValues(text){
+  const out=[];
+  const re=/(\\d{2,3}(?:[ .\\u00a0]\\d{3})+|\\d{5,7})(?:[.,]\\d+)?\\s*€?/g;
+  for(const m of String(text||"").matchAll(re)){
+    const n=Number(String(m[1]).replace(/[ .\\u00a0]/g,"").replace(",","."));
+    if(Number.isFinite(n)&&n>=30000&&n<=5000000) out.push(Math.round(n));
+  }
+  return [...new Set(out)];
+}
+
+async function firstLocator(page, candidates){
+  for(const selector of candidates){
+    const loc=page.locator(selector).first();
+    try{
+      if(await loc.count() && await loc.isVisible({timeout:700})) return loc;
+    }catch(_){}
+  }
+  return null;
+}
+
+async function fillSmart(page, labels, value){
+  if(value===undefined||value===null||String(value).trim()==="") return false;
+  const v=String(value).trim();
+  const selectors=[];
+  for(const label of labels){
+    selectors.push(
+      `input[placeholder*="${label}" i]`,
+      `input[name*="${label}" i]`,
+      `input[id*="${label}" i]`,
+      `textarea[placeholder*="${label}" i]`,
+      `select[name*="${label}" i]`,
+      `select[id*="${label}" i]`
+    );
+  }
+  const loc=await firstLocator(page,selectors);
+  if(!loc) return false;
+  try{
+    const tag=await loc.evaluate(el=>el.tagName.toLowerCase());
+    if(tag==="select") await loc.selectOption({label:v}).catch(()=>loc.selectOption(v));
+    else await loc.fill(v);
+    return true;
+  }catch(_){ return false; }
+}
+
+async function acceptCookies(page){
+  const buttons=page.getByRole("button",{name:/accepter|tout accepter|j'accepte|autoriser/i});
+  try{ if(await buttons.count()) await buttons.first().click({timeout:1200}); }catch(_){}
+}
+
+async function detectCaptcha(page){
+  const body=(await page.locator("body").innerText().catch(()=>"" )).toLowerCase();
+  return /captcha|recaptcha|hcaptcha|je ne suis pas un robot/.test(body);
+}
+
+async function runEstimatorAgent(input={}){
+  const requested=Array.isArray(input.sites)&&input.sites.length
+    ? input.sites
+    : Object.keys(ALLOWED_SITES);
+  const results=[];
+  const browser=await chromium.launch({headless:true});
+  try{
+    for(const id of requested){
+      const site=ALLOWED_SITES[id];
+      if(!site){ results.push({id,status:"unsupported"}); continue; }
+      const started=Date.now();
+      const context=await browser.newContext({
+        locale:"fr-FR",
+        userAgent:"JML-Projet-Vendeur/4.1"
+      });
+      const page=await context.newPage();
+      try{
+        await page.goto(site.url,{waitUntil:"domcontentloaded",timeout:20000});
+        await acceptCookies(page);
+        if(await detectCaptcha(page)){
+          results.push({id,name:site.name,status:"manual_required",reason:"CAPTCHA détecté",url:page.url()});
+          await context.close(); continue;
+        }
+
+        await fillSmart(page,["adresse","address","rue"],input.address);
+        await fillSmart(page,["ville","city","commune"],input.city);
+        await fillSmart(page,["code postal","postal","zip"],input.postalCode);
+        await fillSmart(page,["surface","m²","m2"],input.surface);
+        await fillSmart(page,["pièces","pieces","rooms"],input.rooms);
+
+        const submit=await firstLocator(page,[
+          'button:has-text("Estimer")',
+          'button:has-text("Obtenir")',
+          'button:has-text("Calculer")',
+          'button[type="submit"]',
+          'input[type="submit"]'
+        ]);
+        if(submit) await submit.click({timeout:4000}).catch(()=>{});
+        await page.waitForTimeout(2500);
+
+        if(await detectCaptcha(page)){
+          results.push({id,name:site.name,status:"manual_required",reason:"CAPTCHA après soumission",url:page.url()});
+        }else{
+          const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+          const values=moneyValues(text);
+          results.push({
+            id,name:site.name,status:values.length?"value_found":"no_value",
+            values,url:page.url(),elapsedMs:Date.now()-started,
+            excerpt:text.replace(/\\s+/g," ").slice(0,1200)
+          });
+        }
+      }catch(error){
+        results.push({id,name:site.name,status:"error",error:String(error?.message||error),url:page.url(),elapsedMs:Date.now()-started});
+      }finally{
+        await context.close();
+      }
+    }
+  }finally{
+    await browser.close();
+  }
+  return {ok:true,results};
+}
+
+module.exports={runEstimatorAgent,ALLOWED_SITES};
