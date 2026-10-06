@@ -3630,6 +3630,7 @@ async function startEstimatorAgentForSpace(space){
       surface:Number(space.surface),rooms:Number(space.rooms),
       propertyType:clean(space.propertyType,60),terrain:Number(space.terrain),
       dpe:clean(space.dpe,10).toUpperCase(),
+      conditionData:space.conditionData&&typeof space.conditionData==="object"?space.conditionData:{},
       sites:["pap"]
     });
     const done={status:"completed",results:Array.isArray(result?.results)?result.results:[],completedAt:now(),updatedAt:now()};
