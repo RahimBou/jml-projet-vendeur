@@ -785,6 +785,19 @@ h1 span{color:var(--gold2);display:block}
   <div class="extra-field" id="terrainField"><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div>
   <div class="extra-field" id="piecesField"><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div>
   <div class="extra-field" id="dpeField"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
+  <div class="extra-field"><label for="generalState">État général</label><div class="in"><select id="generalState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></div></div>
+  <div class="extra-field"><label for="works">Travaux à prévoir</label><div class="in"><select id="works"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></div></div>
+  <div class="extra-field"><label for="roof">Toiture</label><div class="in"><select id="roof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></div></div>
+  <div class="extra-field"><label for="renovation">Rénovation récente</label><div class="in"><select id="renovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></div></div>
+  <div class="extra-field"><label for="electricity">Électricité</label><div class="in"><select id="electricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></div></div>
+  <div class="extra-field"><label for="insulation">Isolation</label><div class="in"><select id="insulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></div></div>
+  <div class="extra-field"><label for="heating">Chauffage</label><div class="in"><select id="heating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
+  <div class="extra-field"><label for="windows">Fenêtres</label><div class="in"><select id="windows"><option value="">Non renseigné</option><option>Récentes</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
+  <div class="extra-field"><label for="kitchen">Cuisine</label><div class="in"><select id="kitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
+  <div class="extra-field"><label for="bathrooms">Salle(s) de bains</label><div class="in"><select id="bathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
+  <div class="extra-field"><label for="facade">Façade</label><div class="in"><select id="facade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></div></div>
+  <div class="extra-field"><label for="extras">Terrain / garage / dépendances</label><div class="in"><select id="extras"><option value="">Non renseigné</option><option>Très bon atout</option><option>Bon atout</option><option>Présents</option><option>À améliorer</option><option>Aucun</option></select></div></div>
+  <div class="extra-field full-extra"><label for="conditionNotes">Précisions utiles sur l'état du bien</label><div class="in"><input id="conditionNotes" type="text" maxlength="300" placeholder="Ex. toiture refaite en 2023, électricité à prévoir…"></div></div>
 </div>
     <div class="bottom"><label class="chk"><input type="checkbox" required>J'accepte que JML Immobilier utilise ces informations pour me recontacter au sujet de mon projet immobilier.</label><button class="btn" type="submit">Échanger sur mon projet →</button></div>
     <div class="ok" id="ok">Merci ! Je vous recontacte très prochainement.</div>
@@ -842,6 +855,9 @@ async function loadEditSellerSpace(){
     document.getElementById('pieces').value=d.rooms||"";
     document.getElementById('terrain').value=d.terrain||"";
     document.getElementById('dpe').value=d.dpe||"";
+    var cd=d.conditionData||{};
+    ["generalState","works","roof","renovation","electricity","insulation","heating","windows","kitchen","bathrooms","facade","extras"].forEach(function(id){var el=document.getElementById(id);if(el)el.value=cd[id]||"";});
+    document.getElementById('conditionNotes').value=cd.notes||"";
     document.getElementById('opt').click();
     var button=document.querySelector('#form .btn'); if(button)button.textContent='Enregistrer mes modifications →';
     var ok=document.getElementById('ok'); if(ok){ok.style.display='block';ok.textContent='Vos informations sont chargées. Vous pouvez les corriger puis les enregistrer.';}
@@ -886,6 +902,21 @@ document.getElementById('form').onsubmit=async function(ev){
     dpe:document.getElementById('dpe').value,
     terrain:document.getElementById('terrain').value.trim(),
     landSurface:document.getElementById('terrain').value.trim(),
+    conditionData:{
+      generalState:document.getElementById('generalState').value,
+      works:document.getElementById('works').value,
+      roof:document.getElementById('roof').value,
+      renovation:document.getElementById('renovation').value,
+      electricity:document.getElementById('electricity').value,
+      insulation:document.getElementById('insulation').value,
+      heating:document.getElementById('heating').value,
+      windows:document.getElementById('windows').value,
+      kitchen:document.getElementById('kitchen').value,
+      bathrooms:document.getElementById('bathrooms').value,
+      facade:document.getElementById('facade').value,
+      extras:document.getElementById('extras').value,
+      notes:document.getElementById('conditionNotes').value.trim()
+    },
     source:"Page projet vendeur",
     consent:!!consent.checked
   };
@@ -915,7 +946,7 @@ document.getElementById('form').onsubmit=async function(ev){
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           city:payload.city,address:payload.address,propertyType:payload.propertyType,horizon:payload.horizon,
-          surface:payload.surface,rooms:payload.rooms,dpe:payload.dpe,terrain:payload.terrain
+          surface:payload.surface,rooms:payload.rooms,dpe:payload.dpe,terrain:payload.terrain,conditionData:payload.conditionData
         })
       });
       data=await response.json().catch(function(){return {};});
