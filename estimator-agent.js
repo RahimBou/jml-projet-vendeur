@@ -300,26 +300,112 @@ async function chooseOption(page,names){
   return false;
 }
 
-async function runPAPAdapter(page,input){
+async function papVisibleButtons(page){
+  const buttons=page.locator('button:visible, input[type="submit"]:visible, [role="button"]:visible');
+  const out=[];
+  const count=await buttons.count().catch(()=>0);
+  for(let i=0;i<Math.min(count,30);i++){
+    const b=buttons.nth(i);
+    const txt=((await b.innerText().catch(()=>''))|| (await b.getAttribute('aria-label').catch(()=>'')) || (await b.getAttribute('value').catch(()=>''))).trim();
+    if(txt) out.push({locator:b,text:txt});
+  }
+  return out;
+}
+
+async function fillPapVisibleFields(page,input){
   const full=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
-  const okAddress=await fillLabel(page,["Adresse du bien","Adresse"],full);
+
+  // Adresse : PAP attend une adresse avec numéro et propose ensuite une suggestion.
+  const okAddress=await fillLabel(page,["Adresse du bien","Adresse"],full||input.address);
   if(!okAddress) return {status:"form_not_found",reason:"Champ adresse PAP introuvable"};
-  await page.waitForTimeout(1000);
-  const options=page.locator('[role="option"],li,[class*="autocomplete"],[class*="suggest"]');
+
+  await page.waitForTimeout(1200);
+  const options=page.locator('[role="option"]:visible,li:visible,[class*="autocomplete"]:visible,[class*="suggest"]:visible');
   const count=await options.count().catch(()=>0);
-  for(let i=0;i<Math.min(count,12);i++){
-    const o=options.nth(i), txt=(await o.innerText().catch(()=>"")).trim().toLowerCase();
-    if(txt && ((input.city&&txt.includes(String(input.city).toLowerCase()))||(input.postalCode&&txt.includes(String(input.postalCode))))){
-      await o.click({timeout:2000}).catch(()=>{}); break;
+  let selected=false;
+  for(let i=0;i<Math.min(count,20);i++){
+    const o=options.nth(i);
+    const txt=(await o.innerText().catch(()=>"")).trim().toLowerCase();
+    const matchesCity=input.city && txt.includes(String(input.city).toLowerCase());
+    const matchesPostal=input.postalCode && txt.includes(String(input.postalCode));
+    const matchesStreet=input.address && txt.includes(String(input.address).toLowerCase());
+    if(txt && (matchesStreet || (matchesCity&&matchesPostal))){
+      await o.click({timeout:2500}).catch(()=>{});
+      selected=true;
+      break;
     }
   }
+  if(!selected){
+    await page.keyboard.press("ArrowDown").catch(()=>{});
+    await page.keyboard.press("Enter").catch(()=>{});
+  }
+
+  await page.waitForTimeout(500);
   await chooseOption(page,[/maison/i.test(String(input.propertyType||""))?"Maison":"Appartement"]);
-  await fillLabel(page,["Surface du bien","Surface"],input.surface);
-  await fillLabel(page,["Nombre de pièces","Pièces","pieces"],input.rooms);
-  await fillLabel(page,["Terrain","Surface du terrain"],input.terrain);
+  await fillLabel(page,["Surface du bien","Surface habitable","Surface"],input.surface);
+
   return {status:"form_filled"};
 }
 
+async function runPAPAdapter(page,input){
+  const first=await fillPapVisibleFields(page,input);
+  if(first.status!=="form_filled") return first;
+
+  // Le simulateur PAP est progressif. On avance étape par étape et on
+  // renseigne les champs supplémentaires dès qu'ils apparaissent.
+  const fieldMap=[
+    [["Nombre de pièces","Pièces","pieces"],input.rooms],
+    [["Surface du terrain","Terrain"],input.terrain],
+    [["Année de construction","Année de construction","Année"],input.year],
+    [["DPE","Diagnostic de performance énergétique"],input.dpe],
+    [["État général","Etat général","état du bien"],input.conditionData?.generalState],
+    [["Chauffage","type de chauffage"],input.conditionData?.heating],
+    [["Piscine"],input.conditionData?.pool],
+    [["Terrain"],input.terrain]
+  ];
+
+  for(let step=0;step<10;step++){
+    for(const [labels,value] of fieldMap){
+      if(value!==undefined&&value!==null&&String(value).trim()!==""){
+        await fillLabel(page,labels,value);
+      }
+    }
+
+    if(await detectCaptcha(page)) return {status:"manual_required",reason:"CAPTCHA détecté"};
+
+    const body=(await page.locator("body").innerText().catch(()=>"" )).slice(0,20000);
+    const resultWords=/(estimation|valeur estimée|prix estimé|fourchette de prix|estimation basse|estimation haute)/i.test(body);
+    if(resultWords && moneyValues(body).length) return {status:"result_visible"};
+
+    const btns=await papVisibleButtons(page);
+    let next=null;
+    let submit=null;
+    for(const item of btns){
+      if(/voir (mon|l')? ?estimation|obtenir.*estimation|estimer|calculer|valider.*estimation|terminer/i.test(item.text)) {submit=item;break;}
+      if(/suivant|continuer|poursuivre|étape suivante/i.test(item.text) && !next) next=item;
+    }
+    if(submit){
+      await submit.locator.click({timeout:3500}).catch(()=>{});
+      await page.waitForTimeout(1200);
+      continue;
+    }
+    if(next){
+      await next.locator.click({timeout:3500}).catch(()=>{});
+      await page.waitForTimeout(900);
+      continue;
+    }
+
+    // Dernier recours : un bouton submit natif, uniquement s'il est visible.
+    const native=page.locator('button[type="submit"]:visible,input[type="submit"]:visible').first();
+    if(await native.count().catch(()=>0)){
+      await native.click({timeout:3500}).catch(()=>{});
+      await page.waitForTimeout(1200);
+      continue;
+    }
+    break;
+  }
+  return {status:"form_filled"};
+}
 async function runSeLogerAdapter(page,input){
   const full=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
   const okAddress=await fillLabel(page,["Adresse","Adresse du bien","address"],full);
@@ -381,32 +467,9 @@ async function runEstimatorAgent(input={}){
   }catch(_error){ publicSources=[]; }
   const publicByName=new Map((publicSources||[]).map(x=>[String(x.name||"").toLowerCase(),x]));
 
-  const publicIds=new Set((publicSources||[]).map(x=>String(x.name||"").toLowerCase()));
-  const missingRequested=requested.filter(id=>{
-    const site=ALLOWED_SITES[id];
-    return site && !publicIds.has(String(site.name||"").toLowerCase());
-  });
-
-  // Si les repères publics suffisent, ne lançons même pas Chromium.
-  // Cela rend l'agent rapide et évite les échecs Playwright inutiles.
-  if(!missingRequested.length){
-    return {
-      ok:true,
-      results:requested.map(id=>{
-        const site=ALLOWED_SITES[id];
-        const match=publicSources.find(x=>String(x.name||"").toLowerCase()===String(site?.name||"").toLowerCase());
-        return match ? {
-          id,name:site.name,status:"value_found",
-          value:Math.round(Number(match.value)),
-          low:Number.isFinite(Number(match.low))?Math.round(Number(match.low)):null,
-          high:Number.isFinite(Number(match.high))?Math.round(Number(match.high)):null,
-          source:"public_market",url:match.url||site.url,
-          publicBenchmark:true,level:match.level||"commune",
-          note:match.note||"Repère public indicatif."
-        } : {id,status:"unsupported"};
-      })
-    };
-  }
+  const publicByName=new Map((publicSources||[]).map(x=>[String(x.name||"").toLowerCase(),x]));
+  // Pour PAP, le navigateur doit d'abord exécuter le vrai simulateur personnalisé.
+  // Le prix communal public n'est qu'un filet de sécurité si le formulaire ne répond pas.
 
   ensureChromium();
   const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
@@ -454,12 +517,14 @@ async function runEstimatorAgent(input={}){
         }
 
         const adapter=await runSpecificAdapter(page,id,input);
-        if(adapter.status==="form_not_found"){
+        if(adapter.status==="form_not_found" || adapter.status==="manual_required"){
           return {id,name:site.name,status:adapter.status,reason:adapter.reason,url:page.url(),elapsedMs:Date.now()-started};
         }
-        if(adapter.status==="generic") await prepareSiteForm(page,id,input);
+        if(adapter.status==="result_visible"){
+          // Le résultat est déjà visible : on saute la boucle de navigation.
+        }else if(adapter.status==="generic") await prepareSiteForm(page,id,input);
 
-        for(let step=0;step<4;step++){
+        for(let step=0;step<4 && adapter.status!=="result_visible";step++){
           const next=await firstLocator(page,[
             'button:has-text("Suivant")',
             'button:has-text("Continuer")',
@@ -495,12 +560,34 @@ async function runEstimatorAgent(input={}){
         const domEstimate=extractEstimate(text) || extractEstimateFromCandidates(values,text);
         const networkEstimate=networkEstimates.length ? networkEstimates[networkEstimates.length-1] : null;
         const estimate=networkEstimate || domEstimate;
+        if(estimate){
+          return {
+            id,name:site.name,status:"value_found",
+            value:estimate.value,low:estimate.low||null,high:estimate.high||null,
+            source:estimate.source||"dom",personalized:true,
+            values,url:page.url(),elapsedMs:Date.now()-started,
+            networkHits:networkEstimates.length,
+            excerpt:text.replace(/\\s+/g," ").slice(0,1200)
+          };
+        }
+
+        const publicMatch=publicByName.get(String(site.name||"").toLowerCase());
+        if(publicMatch && Number.isFinite(Number(publicMatch.value)) && Number(publicMatch.value)>0){
+          return {
+            id,name:site.name,status:"value_found",
+            value:Math.round(Number(publicMatch.value)),
+            low:Number.isFinite(Number(publicMatch.low))?Math.round(Number(publicMatch.low)):null,
+            high:Number.isFinite(Number(publicMatch.high))?Math.round(Number(publicMatch.high)):null,
+            source:"public_market_fallback",publicBenchmark:true,personalized:false,
+            url:publicMatch.url||site.url,elapsedMs:Date.now()-started,
+            note:"Le simulateur PAP n'a pas retourné de valeur ; repère public PAP utilisé en secours."
+          };
+        }
+
         return {
-          id,name:site.name,
-          status:estimate?"value_found":values.length?"candidates_found":"no_value",
-          value:estimate?.value||null,low:estimate?.low||null,high:estimate?.high||null,
-          source:estimate?.source||"dom",
-          values,url:page.url(),elapsedMs:Date.now()-started,
+          id,name:site.name,status:values.length?"candidates_found":"no_value",
+          value:null,low:null,high:null,
+          source:"dom",values,url:page.url(),elapsedMs:Date.now()-started,
           networkHits:networkEstimates.length,
           excerpt:text.replace(/\\s+/g," ").slice(0,1200)
         };
