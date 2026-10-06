@@ -2001,7 +2001,7 @@ async function fetchPublicHtml(url){
   return await response.text();
 }
 async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}={}){
-  const key="flatway-v2|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
+  const key="flatway-v3-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
   const cached=flatwayBenchmarkCache.get(key);
   if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
 
