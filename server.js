@@ -1979,12 +1979,22 @@ function flatwayText(html){
 function flatwayFindStreetUrl(html,street){
   const wanted=normalizeSearchCity(street);
   if(!wanted)return null;
-  const re=/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const wantedSlug=flatwaySlug(street);
+  const re=/<a[^>]+href=["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi;
   let m;
+  const candidates=[];
   while((m=re.exec(String(html||"")))){
+    const href=new URL(m[1],"https://flatway.fr").href;
     const label=normalizeSearchCity(m[2].replace(/<[^>]+>/g," "));
+    const pathSlug=normalizeSearchCity(href.split("/").filter(Boolean).pop()||"");
+    candidates.push({href,label,pathSlug});
     if(label===wanted || (label.includes(wanted)&&wanted.length>8) || (wanted.includes(label)&&label.length>8)){
-      return new URL(m[1],"https://flatway.fr").href;
+      return href;
+    }
+    // Certains rendus Flatway exposent l'URL de la rue mais pas son libellé
+    // exploitable. Le suffixe numérique interne reste présent dans le slug.
+    if(wantedSlug && (pathSlug===wantedSlug || pathSlug.startsWith(wantedSlug+"-"))){
+      return href;
     }
   }
   return null;
@@ -2001,7 +2011,7 @@ async function fetchPublicHtml(url){
   return await response.text();
 }
 async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}={}){
-  const key="flatway-v5-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
+  const key="flatway-v6-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
   const cached=flatwayBenchmarkCache.get(key);
   if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
 
