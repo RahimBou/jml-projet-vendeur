@@ -751,6 +751,18 @@ section:has(.method-card){
 @media(max-width:760px){.external-bench-card{grid-template-columns:1fr}}
 
 </style>
+<style id="jml-condition-reading">
+.condition-reading{margin-top:12px;padding:12px;border:1px solid #e4dccd;border-radius:11px;background:#fbf8f0}
+.condition-reading>b{display:block;color:#173b32;font-size:10px;margin-bottom:6px}
+.condition-tags{display:flex;flex-wrap:wrap;gap:6px}
+.condition-tag{padding:6px 8px;border-radius:999px;background:#eef3ef;color:#35564c;font-size:8px;font-weight:800}
+.condition-tag.warn{background:#f8ece7;color:#875448}
+.condition-note{margin-top:7px;color:#66716b;font-size:8.5px;line-height:1.45}
+.works-cta{margin-top:11px;padding:12px;border-radius:11px;background:#173b32;color:#fff;border-left:3px solid #c9a85b}
+.works-cta b{display:block;font-size:10px;color:#f0d68e}
+.works-cta span{display:block;margin-top:3px;font-size:8.5px;line-height:1.45;color:#dbe7e0}
+.works-cta a{display:inline-flex;margin-top:8px;padding:7px 10px;border-radius:999px;background:#f0d68e;color:#173b32;text-decoration:none;font-size:8px;font-weight:900}
+</style>
 </head>
 <body>
 <main class="wrap">
@@ -1111,81 +1123,55 @@ function renderReference(ref){
  loadExternalBenchmarks();
 }
 function renderSellerReading(r){
- const el=$("#sellerReading");
- if(!el)return;
- const d=pageData.space||{};
- const c=pageData.comparables||{};
- const m=pageData.market||{};
- const comparable=!!r.fromComparables;
- const type=d.propertyType||"bien";
- const commune=d.city||"la commune";
- const surface=Number(d.surface);
- const base=Number(r.basePriceM2);
- const baseText=Number.isFinite(base)&&base>0?Math.round(base).toLocaleString("fr-FR")+" €/m²":"un repère de marché";
- const isMaison=/maison/i.test(type);
- const isAppartement=/appartement|studio|duplex|loft/i.test(type);
+ const el=$("#sellerReading"); if(!el)return;
+ const d=pageData.space||{}, c=pageData.comparables||{}, m=pageData.market||{};
+ const cd=d.conditionData&&typeof d.conditionData==="object"?d.conditionData:{};
+ const comparable=!!r.fromComparables, type=d.propertyType||"bien", commune=d.city||"la commune";
+ const surface=Number(d.surface), base=Number(r.basePriceM2);
+ const isMaison=/maison/i.test(type), isAppartement=/appartement|studio|duplex|loft/i.test(type);
  const communalM2=isMaison?Number(m.housePrice||m.communalPrice):isAppartement?Number(m.apartmentPrice||m.communalPrice):Number(m.communalPrice);
  const communalTypeLabel=isMaison?"maisons":isAppartement?"appartements":"biens";
- const communalText=Number.isFinite(communalM2)&&communalM2>0?Math.round(communalM2).toLocaleString("fr-FR")+" €/m²":"non disponible";
- const gapM2=Number.isFinite(base)&&Number.isFinite(communalM2)&&communalM2>0?Math.round(base-communalM2):null;
- const gap=Number.isFinite(base)&&Number.isFinite(communalM2)&&communalM2>0?((base/communalM2-1)*100):null;
- const gapText=gap!=null?(gap>=0?"+":"")+gap.toFixed(1).replace(".",",")+" %":"";
- const gapM2Text=gapM2!=null?(gapM2>=0?"+":"")+gapM2.toLocaleString("fr-FR")+" €/m²":"";
- const count=Number(c.matchCount||0);
- const strict=Number(c.strictCount||0);
- const radius=Number(c.radiusKm||0);
- const temporal=c.temporalRevaluation||null;
- const bullets=[];
- if(comparable){
-   bullets.push("Le moteur commence par rechercher des ventes de maisons autour de votre adresse, puis retient celles qui ressemblent le plus à votre bien.");
-   if(count) bullets.push(count+" vente"+(count>1?"s":"")+" comparable"+(count>1?"s":"")+" analysée"+(count>1?"s":"")+" autour de l'adresse"+(radius?" dans un périmètre allant jusqu'à "+radius.toLocaleString("fr-FR")+" km":"")+"."+(strict?" "+strict+" sont au premier niveau de proximité.":""));
-   bullets.push("Chaque vente est pondérée selon plusieurs critères : type de bien, surface, nombre de pièces, distance et date de vente. Les ventes les plus proches et les plus comparables ont davantage de poids.");
-   if(temporal?.available) bullets.push("Les ventes plus anciennes sont également revalorisées pour tenir compte du niveau de marché local de référence avant le calcul du prix au m².");
-   if(Number.isFinite(base)&&base>0) bullets.push("Le moteur obtient ainsi un repère de "+baseText+" à partir des ventes retenues.");
- }else{
-   bullets.push("Le repère repose sur le marché communal disponible. Il sert de contexte lorsque les ventes comparables ne sont pas suffisamment exploitables.");
- }
+ const baseText=Number.isFinite(base)&&base>0?Math.round(base).toLocaleString("fr-FR")+" €/m²":"un repère de marché";
+ const count=Number(c.matchCount||0), strict=Number(c.strictCount||0), radius=Number(c.radiusKm||0), temporal=c.temporalRevaluation||null;
  const calc=Number.isFinite(surface)&&surface>0&&Number.isFinite(base)&&base>0?Math.round(surface*base):null;
  const calcText=calc!=null?surface.toLocaleString("fr-FR")+" m² × "+Math.round(base).toLocaleString("fr-FR")+" €/m² = "+calc.toLocaleString("fr-FR")+" €":"Le calcul personnalisé sera affiché dès que la surface et le repère au m² seront disponibles.";
- const evolution=[];
- if(Number.isFinite(communalM2)&&communalM2>0&&Number.isFinite(base)&&base>0){
-   evolution.push("Le repère communal des "+communalTypeLabel+" est de "+communalText+". Le repère issu des comparables est de "+baseText+", soit "+gapM2Text+" ("+gapText+") par rapport à cette référence.");
- }
  const valueRange=r.rangeLow!=null&&r.rangeHigh!=null?eur(r.rangeLow)+" à "+eur(r.rangeHigh):"la fourchette observée";
- const floor=r.sellerFloor!=null?Number(r.sellerFloor):(r.rangeLow!=null?Number(r.rangeLow):null);
+ const floor=r.marketMinimumValue!=null?Number(r.marketMinimumValue):(r.sellerFloor!=null?Number(r.sellerFloor):null);
  const floorText=floor!=null?eur(floor):"non disponible";
+ const ceiling=r.marketMaximumValue!=null?Number(r.marketMaximumValue):null;
+ const conditionLabels={
+  generalState:"État général",works:"Travaux",roof:"Toiture",renovation:"Rénovation",electricity:"Électricité",
+  insulation:"Isolation",heating:"Chauffage",windows:"Fenêtres",kitchen:"Cuisine",bathrooms:"Salle(s) de bains",
+  facade:"Façade",extras:"Terrain / garage / dépendances"
+ };
+ const known=Object.entries(conditionLabels).filter(([k])=>cd[k]&&String(cd[k]).trim());
+ const tags=known.map(([k,label])=>{
+   const v=String(cd[k]).trim(), warn=/travaux importants|à rénover|à refaire|à remplacer|à améliorer|à rafraîchir|à surveiller/i.test(v);
+   return '<span class="condition-tag '+(warn?'warn':'')+'">'+esc(label)+' : '+esc(v)+'</span>';
+ }).join("");
+ const conditionBlock=known.length||cd.notes
+   ? '<div class="condition-reading"><b>Les caractéristiques réellement déclarées pour votre bien</b><div class="condition-tags">'+tags+'</div>'+(cd.notes?'<div class="condition-note"><strong>Précision :</strong> '+esc(cd.notes)+'</div>':'')+'</div>'
+   : '<div class="condition-reading"><b>État du bien : informations à compléter</b><div class="condition-note">Le logiciel ne suppose pas l’état de la toiture, des installations ou des travaux. Ces éléments doivent être renseignés pour affiner la lecture du prix.</div></div>';
+ const evolution=Number.isFinite(communalM2)&&communalM2>0&&Number.isFinite(base)&&base>0
+   ?"Le repère communal des "+communalTypeLabel+" est de "+Math.round(communalM2).toLocaleString("fr-FR")+" €/m². Le repère issu des comparables est de "+baseText+" ("+((base/communalM2-1)*100).toFixed(1).replace(".",",")+" %)."
+   :"Le repère communal sert de benchmark général et ne remplace pas les ventes comparables.";
+ const externalText=ceiling!=null?"Le plafond externe disponible atteint "+eur(ceiling)+". Il s’agit d’un repère de contre-vérification, pas d’une promesse de vente.":"Aucun estimateur externe supérieur à 300 000 € n’a été récupéré automatiquement pour cette adresse.";
  el.querySelector(".seller-reading-grid").innerHTML=
-   '<div class="reading-panel reading-panel-how">'+
-     '<div class="reading-number">1</div>'+
-     '<p class="reading-title">COMMENT LE REPÈRE DE '+esc(eur(r.referenceValue))+' EST CONSTRUIT</p>'+
-     '<h3>Une analyse basée sur des ventes réelles</h3>'+
-     '<p>Le moteur analyse les ventes autour de votre adresse et recherche celles qui sont les plus comparables à votre bien.</p>'+
-     '<div class="reading-steps">'+
-       '<div class="reading-step"><b>1</b><span><strong>Recherche des ventes comparables</strong><small>'+(count?esc(count+" ventes analysées"):"Ventes disponibles")+" autour de votre bien."+'</small></span></div>'+
-       '<div class="reading-step"><b>2</b><span><strong>Sélection selon plusieurs critères</strong><small>Type, surface, pièces, distance et date de vente.</small></span></div>'+
-       '<div class="reading-step"><b>3</b><span><strong>Pondération des ventes</strong><small>Les ventes les plus proches et les plus similaires pèsent davantage dans le calcul.</small></span></div>'+
-       (temporal?.available?'<div class="reading-step"><b>4</b><span><strong>Actualisation dans le temps</strong><small>Les ventes anciennes sont revalorisées selon le niveau de marché local de référence.</small></span></div>': '')+
-       '<div class="reading-step"><b>'+(temporal?.available?"5":"4")+'</b><span><strong>Repère au m²</strong><small>Le moteur obtient <b>'+esc(baseText)+'</b> à partir des ventes retenues.</small></span></div>'+
-       '<div class="reading-result"><span>Application à votre surface</span><strong>'+esc(calcText)+'</strong><em>Valeur centrale : '+esc(eur(r.referenceValue))+'</em></div>'+
-     '</div>'+
-   '</div>'+
-   '<div class="reading-panel reading-panel-why">'+
-     '<div class="reading-number gold">2</div>'+
-     '<p class="reading-title">CE QUI PEUT FAIRE ÉVOLUER LA VALEUR DE VOTRE BIEN</p>'+
-     '<h3>Chaque bien est unique</h3>'+
-     '<p>Les ventes comparables permettent de construire un repère de marché. Elles ne remplacent pas l’analyse concrète du bien.</p>'+
-     '<div class="reading-range"><strong>Fourchette observée : '+esc(valueRange)+'</strong><span>Elle permet de situer la zone de marché autour du repère.</span></div>'+
-     '<div class="reading-range seller-floor-reading"><strong>🔴 Repère bas conseillé : '+esc(floorText)+'</strong><span>Ce niveau sert de garde-fou pour la négociation. Il ne constitue pas une garantie de prix et doit être réévalué selon l’état réel du bien, les travaux et l’urgence de vente.</span></div>'+
-     '<ul class="reading-factors">'+
-       '<li><strong>État général du bien</strong><span>Entretien, travaux à prévoir, rénovation récente…</span></li>'+
-       '<li><strong>Qualité des prestations</strong><span>Cuisine, salles de bains, isolation, matériaux, équipements…</span></li>'+
-       '<li><strong>Terrain et dépendances</strong><span>Surface, orientation, jardin, garage, dépendances…</span></li>'+
-       '<li><strong>Situation exacte</strong><span>Rue, environnement, nuisances, proximité des services, commerces et transports.</span></li>'+
-       '<li><strong>Caractéristiques particulières</strong><span>Vue, piscine, stationnement, agencement ou éléments qui ne peuvent pas être déduits des seules données DVF.</span></li>'+
-     '</ul>'+
-     '<div class="reading-communal">'+(evolution.length?esc(evolution[0]):"Le repère communal sert de benchmark général et ne remplace pas les ventes comparables.")+'</div>'+
-     '<p class="seller-reading-foot">Le DPE reste une information énergétique distincte ; il n’est pas appliqué mécaniquement au prix des ventes comparables.</p>'+
-   '</div>';
+ '<div class="reading-panel reading-panel-how"><div class="reading-number">1</div><p class="reading-title">COMMENT LE REPÈRE DE '+esc(eur(r.referenceValue))+' EST CONSTRUIT</p><h3>Une analyse basée sur des ventes réelles</h3><p>Le moteur JML part des ventes DVF comparables. Les caractéristiques déclarées du bien servent ensuite à expliquer ce qui peut soutenir ou limiter son positionnement.</p><div class="reading-steps">'+
+ '<div class="reading-step"><b>1</b><span><strong>Recherche des ventes comparables</strong><small>'+(count?esc(count+" ventes analysées"):"Ventes disponibles")+" autour de votre bien."+'</small></span></div>'+
+ '<div class="reading-step"><b>2</b><span><strong>Sélection selon plusieurs critères</strong><small>Type, surface, pièces, distance et date de vente.</small></span></div>'+
+ '<div class="reading-step"><b>3</b><span><strong>Pondération des ventes</strong><small>Les ventes les plus proches et les plus similaires pèsent davantage.</small></span></div>'+
+ (temporal?.available?'<div class="reading-step"><b>4</b><span><strong>Actualisation dans le temps</strong><small>Les ventes anciennes sont revalorisées selon le marché local de référence.</small></span></div>': '')+
+ '<div class="reading-step"><b>'+(temporal?.available?"5":"4")+'</b><span><strong>Repère au m²</strong><small>Le moteur obtient <b>'+esc(baseText)+'</b> à partir des ventes retenues.</small></span></div>'+
+ '<div class="reading-result"><span>Application à votre surface</span><strong>'+esc(calcText)+'</strong><em>Valeur centrale : '+esc(eur(r.referenceValue))+'</em></div></div></div>'+
+ '<div class="reading-panel reading-panel-why"><div class="reading-number gold">2</div><p class="reading-title">POURQUOI CE PRIX PEUT ÊTRE PLUS HAUT OU PLUS BAS</p><h3>Le marché + la réalité du bien</h3><p>Les ventes DVF donnent le socle. L’état réel du bien permet ensuite de comprendre son positionnement commercial.</p>'+
+ '<div class="reading-range"><strong>🔴 Prix minimum conseillé : '+esc(floorText)+'</strong><span>Le repère JML sert de garde-fou commercial. Il ne garantit pas le prix final et doit être confronté à l’état réel du bien et au projet de vente.</span></div>'+
+ '<div class="reading-range"><strong>🟢 Prix maximum externe : '+esc(ceiling!=null?eur(ceiling):"non disponible")+'</strong><span>'+esc(externalText)+'</span></div>'+
+ conditionBlock+
+ '<ul class="reading-factors"><li><strong>État et travaux</strong><span>Un bien rénové et entretenu peut être mieux positionné qu’un bien nécessitant des travaux importants.</span></li><li><strong>Technique du bâtiment</strong><span>Toiture, électricité, isolation, chauffage et fenêtres peuvent influencer la perception d’un acquéreur.</span></li><li><strong>Prestations</strong><span>Cuisine, salles de bains, façade, agencement et qualité des finitions peuvent différencier deux maisons pourtant proches.</span></li><li><strong>Terrain et dépendances</strong><span>Garage, jardin, dépendances et configuration complètent la lecture du bien.</span></li><li><strong>Localisation</strong><span>Rue, environnement, nuisances, services et accessibilité complètent les données de transaction.</span></li></ul>'+
+ '<div class="reading-communal">'+esc(evolution)+'</div>'+
+ '<div class="works-cta"><b>🛠️ Vous envisagez des travaux avant de vendre ?</b><span>Nous pouvons vous aider à identifier les postes à chiffrer avant de prendre une décision. Le logiciel ne suppose jamais le montant des travaux ni la plus-value qu’ils produiront.</span><a href="/projet-vendeur?motif=travaux">Parler de mon projet travaux →</a></div>'+
+ '<p class="seller-reading-foot">Le DPE reste une information énergétique distincte ; il n’est pas appliqué mécaniquement au prix des ventes comparables.</p></div>';
 }
 function renderComps(c){
  c=c||{};
