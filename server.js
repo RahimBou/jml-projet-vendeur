@@ -2001,7 +2001,7 @@ async function fetchPublicHtml(url){
   return await response.text();
 }
 async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}={}){
-  const key="flatway-v3-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
+  const key="flatway-v5-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
   const cached=flatwayBenchmarkCache.get(key);
   if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
 
@@ -2021,34 +2021,30 @@ async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}=
     const typeBlock=flatwayExtractTypeBlock(flatwayText(cityHtml),propertyType);
     let best=typeBlock?{...typeBlock,level:"commune",sourceUrl:cityUrl}:null;
 
-    // Flatway expose aussi une page publique déterministe par adresse.
-    // On la construit directement avant la recherche de la page rue afin de
-    // ne pas dépendre du libellé HTML de la commune.
+    // Flatway publie les adresses exactes sous la page de rue.
+    // On récupère d'abord l'URL canonique de la rue depuis la page commune,
+    // puis on ajoute le numéro. Cela évite de deviner le suffixe interne de rue.
     const street=flatwayStreetFromAddress(address);
-    const streetSlug=flatwaySlug(street);
-    const numberMatch=String(address||"").match(/^\s*(\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)/);
-    const houseNumber=numberMatch?.[1]?.replace(/\s+/g,"")||"";
-    if(streetSlug&&houseNumber){
-      const exactUrl="https://flatway.fr/estimation/"+dep+"/"+flatwaySlug(city)+"-"+postal+"-"+communeCode+"/"+streetSlug+"-"+postal.slice(2)+"/"+encodeURIComponent(houseNumber);
-      const exactHtml=await fetchPublicHtml(exactUrl);
-      if(exactHtml){
-        const exactText=flatwayText(exactHtml);
-        const exactIsHouse=/\bMaison\b/i.test(exactText.slice(0,900));
-        const exactIsApartment=/\bAppartement\b|\bAppart\.\b/i.test(exactText.slice(0,900));
-        const wantedApartment=/appartement|studio|duplex|loft/i.test(propertyType||"");
-        const typeMatches=wantedApartment?exactIsApartment:exactIsHouse;
-        const exactBlock=typeMatches?flatwayExtractTypeBlock(exactText,propertyType):null;
-        if(exactBlock) best={...exactBlock,level:"adresse",sourceUrl:exactUrl};
-      }
-    }
-
     const streetUrl=flatwayFindStreetUrl(cityHtml,street);
     if(streetUrl){
       const streetHtml=await fetchPublicHtml(streetUrl);
       if(streetHtml){
         const streetBlock=flatwayExtractTypeBlock(flatwayText(streetHtml),propertyType);
         if(streetBlock) best={...streetBlock,level:"rue",sourceUrl:streetUrl};
-        // La page exacte est déjà testée directement ci-dessus.\n        // On ne dépend plus du lien HTML de la page rue pour l'adresse exacte.
+
+        const numberMatch=String(address||"").match(/^\s*(\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)/);
+        const houseNumber=numberMatch?.[1]?.replace(/\s+/g,"")||"";
+        if(houseNumber){
+          const exactUrl=streetUrl.replace(/\/$/,"")+"/"+encodeURIComponent(houseNumber);
+          const exactHtml=await fetchPublicHtml(exactUrl);
+          if(exactHtml){
+            const exactBlock=flatwayExtractTypeBlock(flatwayText(exactHtml),propertyType);
+            if(exactBlock){
+              console.log("JML Flatway adresse exacte:",exactUrl,exactBlock.priceM2+" €/m²");
+              best={...exactBlock,level:"adresse",sourceUrl:exactUrl};
+            }
+          }
+        }
       }
     }
     const data=best?{
