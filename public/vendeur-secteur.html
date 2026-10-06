@@ -719,7 +719,31 @@ section:has(.method-card){
   .card{padding:13px}
   #sellerReading{padding:13px}
 }
-.jml-follow-block{position:relative;width:100%;max-width:none;margin:17px auto 10px;padding:16px 20px 13px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:9px;row-gap:9px;box-sizing:border-box;border:1px solid rgba(184,148,78,.32);border-radius:17px;background:var(--g);box-shadow:0 8px 20px rgba(23,59,50,.10);overflow:hidden}.jml-follow-block:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#d7b45b 22%,#f0d68e 50%,#d7b45b 78%,transparent)}.jml-follow-block:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% -35%,rgba(255,255,255,.09),transparent 46%)}.jml-follow-name{position:relative;z-index:1;flex-basis:100%;line-height:1.2;text-align:center;font-size:13px;letter-spacing:.015em;color:#fff;font-weight:900}.jml-follow-name small{display:inline-block;margin-top:4px;font-size:8px;letter-spacing:.12em;color:#ead28f;font-weight:800}.jml-follow-block>a{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;min-width:94px;padding:8px 12px;border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.11);color:#fff;text-decoration:none;font-size:8.5px;font-weight:900;letter-spacing:.01em}.jml-agency-link{position:relative;z-index:1;flex-basis:100%;display:flex;justify-content:center;align-items:center;gap:8px;margin:1px 0 0;padding-top:9px;border-top:1px solid rgba(255,255,255,.16)}.jml-agency-link span{font-size:8px;color:#d3ded9}.jml-agency-link a{font-weight:900;color:#173b32;text-decoration:none;font-size:9px;padding:7px 13px;border-radius:999px;background:#f0d68e;box-shadow:0 3px 8px rgba(0,0,0,.10)}@media(max-width:520px){ .jml-follow-block{width:100%;margin-top:18px;padding:16px 12px 13px;column-gap:6px}.jml-follow-name{font-size:11px}.jml-follow-block>a{min-width:82px;padding:8px;font-size:7.5px}.jml-agency-link{padding-top:9px}}</style>
+.jml-follow-block{position:relative;width:100%;max-width:none;margin:17px auto 10px;padding:16px 20px 13px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:9px;row-gap:9px;box-sizing:border-box;border:1px solid rgba(184,148,78,.32);border-radius:17px;background:var(--g);box-shadow:0 8px 20px rgba(23,59,50,.10);overflow:hidden}.jml-follow-block:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#d7b45b 22%,#f0d68e 50%,#d7b45b 78%,transparent)}.jml-follow-block:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% -35%,rgba(255,255,255,.09),transparent 46%)}.jml-follow-name{position:relative;z-index:1;flex-basis:100%;line-height:1.2;text-align:center;font-size:13px;letter-spacing:.015em;color:#fff;font-weight:900}.jml-follow-name small{display:inline-block;margin-top:4px;font-size:8px;letter-spacing:.12em;color:#ead28f;font-weight:800}.jml-follow-block>a{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;min-width:94px;padding:8px 12px;border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.11);color:#fff;text-decoration:none;font-size:8.5px;font-weight:900;letter-spacing:.01em}.jml-agency-link{position:relative;z-index:1;flex-basis:100%;display:flex;justify-content:center;align-items:center;gap:8px;margin:1px 0 0;padding-top:9px;border-top:1px solid rgba(255,255,255,.16)}.jml-agency-link span{font-size:8px;color:#d3ded9}.jml-agency-link a{font-weight:900;color:#173b32;text-decoration:none;font-size:9px;padding:7px 13px;border-radius:999px;background:#f0d68e;box-shadow:0 3px 8px rgba(0,0,0,.10)}@media(max-width:520px){ .jml-follow-block{width:100%;margin-top:18px;padding:16px 12px 13px;column-gap:6px}.jml-follow-name{font-size:11px}.jml-follow-block>a{min-width:82px;padding:8px;font-size:7.5px}.jml-agency-link{padding-top:9px}}
+/* COMPARATEUR D'ESTIMATEURS EXTERNES */
+.external-bench-card{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}
+.external-summary{background:var(--g);color:#fff;border-radius:15px;padding:18px;border-left:4px solid var(--gold)}
+.external-summary .kicker{font-size:8px;font-weight:900;letter-spacing:.12em;color:var(--gold)}
+.external-summary h3{font:700 25px Georgia,serif;margin:6px 0}
+.external-summary .big{font:700 34px Georgia,serif;color:var(--gold);margin:8px 0}
+.external-summary p{font-size:9px;line-height:1.5;color:#dbe7e0;margin:0}
+.external-sources{display:grid;gap:8px}
+.external-source{background:#faf6ee;border:1px solid var(--line);border-radius:12px;padding:10px}
+.external-source-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.external-source b{font-size:10px;color:var(--g)}
+.external-source small{display:block;color:var(--muted);font-size:7.5px;margin-top:3px;line-height:1.3}
+.external-source-actions{display:flex;gap:6px;align-items:center;margin-top:8px}
+.external-source input{width:120px;padding:7px 8px;border:1px solid #d8cfbf;border-radius:8px;background:#fff;font-size:10px}
+.external-source button,.external-copy{border:0;border-radius:999px;padding:7px 9px;background:var(--g);color:#fff;font-size:8px;font-weight:900;cursor:pointer}
+.external-source a{font-size:8px;font-weight:900;color:var(--g);text-decoration:none}
+.external-note{margin-top:8px;padding:9px 10px;border-radius:9px;background:#f4f0e7;color:#66716b;font-size:8px;line-height:1.45}
+.external-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.external-stat{background:#fff;border:1px solid #e7dfd1;border-radius:10px;padding:9px}
+.external-stat span{display:block;color:#7a827d;font-size:7px;text-transform:uppercase;font-weight:900}
+.external-stat strong{display:block;color:var(--g);font-size:13px;margin-top:4px}
+@media(max-width:760px){.external-bench-card{grid-template-columns:1fr}.external-source input{flex:1}}
+
+</style>
 </head>
 <body>
 <main class="wrap">
@@ -787,6 +811,30 @@ section:has(.method-card){
     <p>Ce repère permet de situer le bien dans le marché. La valeur finale doit ensuite tenir compte de l'état réel du logement, de ses prestations, de ses éventuels travaux et de la stratégie de mise en vente.</p>
    </div>
   </div>
+ </div>
+</section>
+
+
+<section class="section" id="externalBenchmarks">
+ <div class="head"><div><div class="eyebrow">04 · CONTRE-ESTIMATION</div><h2>Comparer avec les estimateurs du marché</h2></div><div class="source">Sources publiques</div></div>
+ <div class="card external-bench-card">
+  <div>
+   <div class="external-summary">
+    <div class="kicker">SYNTHÈSE JML + MARCHÉ</div>
+    <h3>Repère de comparaison</h3>
+    <div class="big" id="externalConsensus">—</div>
+    <p id="externalConsensusText">Saisis les résultats obtenus sur les estimateurs externes pour calculer automatiquement une valeur de synthèse et l'écart avec notre moteur JML.</p>
+    <div class="external-stats">
+      <div class="external-stat"><span>Notre moteur JML</span><strong id="externalJmlValue">—</strong></div>
+      <div class="external-stat"><span>Sources renseignées</span><strong id="externalCount">0 / 5</strong></div>
+      <div class="external-stat"><span>Médiane externe</span><strong id="externalMedian">—</strong></div>
+      <div class="external-stat"><span>Écart JML / médiane</span><strong id="externalGap">—</strong></div>
+    </div>
+   </div>
+   <div class="external-note">Les estimateurs externes restent indépendants. Le logiciel ne prétend pas contourner leurs formulaires : il te permet d'ouvrir rapidement chaque estimateur avec les informations du bien, puis de saisir le résultat. La synthèse est calculée par médiane pour limiter l'effet d'une estimation atypique.</div>
+   <button class="external-copy" id="copyPropertyForEstimates" type="button">Copier les caractéristiques du bien</button>
+  </div>
+  <div class="external-sources" id="externalSources"></div>
  </div>
 </section>
 
@@ -948,6 +996,69 @@ function renderSales(rows){
  ).join("");
 }
 
+
+const EXTERNAL_ESTIMATORS=[
+ {id:"meilleursagents",name:"Meilleurs Agents",url:"https://www.meilleursagents.com/estimation-immobiliere/",note:"Données DVF, ventes partenaires et caractéristiques du bien."},
+ {id:"seloger",name:"SeLoger",url:"https://www.seloger.com/estimation-immobiliere.html",note:"Transactions, annonces et données de marché, estimation en ligne."},
+ {id:"pap",name:"PAP",url:"https://www.pap.fr/vendeur/estimation-gratuite",note:"Transactions récentes et données officielles."},
+ {id:"flatway",name:"Flatway",url:"https://flatway.fr/estimation",note:"Estimation à l'adresse fondée notamment sur les transactions DVF."},
+ {id:"efficity",name:"efficity",url:"https://www.efficity.com/estimation-immobiliere/",note:"Estimation en ligne gratuite et données de marché mises à jour."}
+];
+function externalStorageKey(){
+ const d=pageData.space||{};
+ return "jml-external-estimates-v1:"+String(d.address||"")+"|"+String(d.city||"");
+}
+function readExternalEstimates(){
+ try{return JSON.parse(localStorage.getItem(externalStorageKey())||"{}")||{};}catch(_){return {};}
+}
+function fmtEuroInput(v){return Number.isFinite(Number(v))?Math.round(Number(v)).toLocaleString("fr-FR")+" €":"—";}
+function renderExternalBenchmarks(){
+ const el=$("#externalSources"); if(!el)return;
+ const saved=readExternalEstimates();
+ el.innerHTML=EXTERNAL_ESTIMATORS.map(src=>{
+   const val=saved[src.id]??"";
+   return '<div class="external-source">'+
+     '<div class="external-source-top"><div><b>'+esc(src.name)+'</b><small>'+esc(src.note)+'</small></div>'+
+     '<a href="'+src.url+'" target="_blank" rel="noopener noreferrer">Ouvrir ↗</a></div>'+
+     '<div class="external-source-actions"><input inputmode="numeric" type="number" min="0" step="1000" placeholder="Estimation €" value="'+esc(val)+'" data-estimator="'+src.id+'"><button type="button" data-save-estimator="'+src.id+'">Enregistrer</button></div>'+
+   '</div>';
+ }).join("");
+ el.querySelectorAll("[data-save-estimator]").forEach(btn=>{
+   btn.addEventListener("click",()=>{
+     const id=btn.getAttribute("data-save-estimator");
+     const input=el.querySelector('[data-estimator="'+id+'"]');
+     const v=Number(input?.value);
+     const saved=readExternalEstimates();
+     if(Number.isFinite(v)&&v>0)saved[id]=Math.round(v);else delete saved[id];
+     try{localStorage.setItem(externalStorageKey(),JSON.stringify(saved));}catch(_){}
+     renderExternalBenchmarks();
+     updateExternalConsensus();
+   });
+ });
+ updateExternalConsensus();
+}
+function updateExternalConsensus(){
+ const saved=readExternalEstimates();
+ const vals=Object.values(saved).map(Number).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b);
+ const jml=Number(pageData.reference?.referenceValue);
+ $("#externalJmlValue").textContent=Number.isFinite(jml)&&jml>0?fmtEuroInput(jml):"—";
+ $("#externalCount").textContent=vals.length+" / "+EXTERNAL_ESTIMATORS.length;
+ const median=vals.length?(vals.length%2?vals[(vals.length-1)/2]:(vals[vals.length/2-1]+vals[vals.length/2])/2):null;
+ $("#externalMedian").textContent=median!=null?fmtEuroInput(median):"—";
+ const gap=median!=null&&Number.isFinite(jml)&&jml>0?((jml/median)-1)*100:null;
+ $("#externalGap").textContent=gap!=null?((gap>=0?"+":"")+gap.toFixed(1).replace(".",",")+" %"):"—";
+ const all=vals.concat(Number.isFinite(jml)&&jml>0?[jml]:[]).sort((a,b)=>a-b);
+ const consensus=all.length?(all.length%2?all[(all.length-1)/2]:(all[all.length/2-1]+all[all.length/2])/2):null;
+ $("#externalConsensus").textContent=consensus!=null?fmtEuroInput(consensus):"—";
+ if(consensus!=null){
+   $("#externalConsensusText").textContent=vals.length>=2
+    ?"Valeur de synthèse = médiane de notre moteur JML et des estimations externes renseignées. Elle sert de repère de comparaison, pas d'avis de valeur certifié."
+    :"Ajoute au moins 2 estimations externes pour obtenir une comparaison réellement exploitable.";
+ }else{
+   $("#externalConsensusText").textContent="Saisis les résultats obtenus sur les estimateurs externes pour calculer automatiquement une valeur de synthèse et l'écart avec notre moteur JML.";
+ }
+}
+
 function renderReference(ref){
  const r=ref||{};
  const value=r.referenceValue;
@@ -980,6 +1091,7 @@ function renderReference(ref){
    '<div class="ref-row"><b>Nature du repère</b><span>'+esc(nature)+'</span></div>'+
  '</div>';
  renderSellerReading(r);
+ renderExternalBenchmarks();
 }
 function renderSellerReading(r){
  const el=$("#sellerReading");
