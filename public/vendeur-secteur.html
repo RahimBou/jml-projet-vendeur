@@ -1063,7 +1063,7 @@ async function loadExternalBenchmarks(){
      condition:(d.conditionData&&d.conditionData.general)||"",
      jmlValue:Number.isFinite(jml)?String(jml):""
    });
-   const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),12000,"Repères externes");
+   const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),45000,"Repères externes");
    pageData.externalBenchmarks=data;
    let sources=Array.isArray(data.sources)?data.sources:[];
    // Si les récupérations publiques classiques sont trop pauvres, l'agent
@@ -1072,7 +1072,7 @@ async function loadExternalBenchmarks(){
    if(sellerToken){
      try{
        const statusEl=document.getElementById("estimatorAgentStatus");
-       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>Ouverture des formulaires et récupération des valeurs…";}
+       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>🔎 Analyse des sources publiques puis des formulaires officiels…";}
        $("#externalNote").textContent="Agent estimateur : récupération des valeurs personnalisées en cours…";
        const controller=new AbortController(); const agentTimer=setTimeout(()=>controller.abort(),600000); let ar; try{ ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal}); } finally { clearTimeout(agentTimer); }
        const aj=await ar.json().catch(()=>({}));
