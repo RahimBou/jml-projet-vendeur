@@ -1803,6 +1803,17 @@ async function run(){
 
   // Le repère bas est une information séparée : minimum DVF des ventes comparables.
   // Il ne doit JAMAIS devenir la valeur centrale.
+  // Nouvelle lecture vendeur : le repère JML devient le PRIX MINIMUM.
+  // Le plafond est constitué uniquement par les estimateurs externes > 300 000 €.
+  // Le prix de la vente DVF la moins chère reste une information technique,
+  // mais ne sert plus de plancher commercial.
+  const marketMinimumValue=referenceValue;
+  const externalHighValues=extSources
+    .map(x=>n(x.value))
+    .filter(v=>v!=null&&v>300000);
+  const marketMaximumValue=externalHighValues.length
+    ?Math.max(...externalHighValues)
+    :null;
   const dvfFloorM2=n(comps.minPriceM2);
   const dvfFloorValue=dvfFloorM2!=null&&dvfFloorM2>0&&surf?Math.round(dvfFloorM2*surf):null;
   const confidence=compM2!=null&&compM2>0
@@ -1815,8 +1826,10 @@ async function run(){
     basePriceM2:referenceM2,
     surface:surf,
     referenceValue:referenceValue,
-    rangeLow:referenceValue!=null?Math.round(referenceValue*(confidence==="Bonne"?0.88:0.85)):null,
-    rangeHigh:referenceValue!=null?Math.round(referenceValue*(confidence==="Bonne"?1.12:1.15)):null,
+    rangeLow:marketMinimumValue,
+    rangeHigh:marketMaximumValue,
+    marketMinimumValue,
+    marketMaximumValue,
     confidence,
     transactions:comps.matchCount||0,
     type:d.propertyType||"Bien",
@@ -1826,8 +1839,13 @@ async function run(){
       method:"Méthode JML historique : ventes DVF comparables pondérées. Les estimateurs externes servent de contre-vérification.",
       components:compM2!=null&&compM2>0?[{label:"DVF comparables",weight:1,m2:compM2}]:[]
     },
-    sellerFloor:dvfFloorValue,
+    // Le prix minimum commercial est la valeur centrale JML.
+    sellerFloor:marketMinimumValue,
+    marketMinimumValue,
+    marketMaximumValue,
+    // Conservé uniquement pour information technique interne.
     dvfFloorM2:dvfFloorM2,
+    dvfFloorValue:dvfFloorValue,
     microMarketPriceM2:microM2,
     externalMedianPriceM2:extMedianM2,
     externalSources:extSources,
