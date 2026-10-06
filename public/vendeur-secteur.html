@@ -1063,7 +1063,7 @@ async function loadExternalBenchmarks(){
      condition:(d.conditionData&&d.conditionData.general)||"",
      jmlValue:Number.isFinite(jml)?String(jml):""
    });
-   const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),45000,"Repères externes");
+   const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),12000,"Repères externes");
    pageData.externalBenchmarks=data;
    let sources=Array.isArray(data.sources)?data.sources:[];
    // Si les récupérations publiques classiques sont trop pauvres, l'agent
@@ -1072,7 +1072,7 @@ async function loadExternalBenchmarks(){
    if(sellerToken){
      try{
        const statusEl=document.getElementById("estimatorAgentStatus");
-       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>🔎 Analyse des sources publiques puis des formulaires officiels…";}
+       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>Ouverture des formulaires et récupération des valeurs…";}
        $("#externalNote").textContent="Agent estimateur : récupération des valeurs personnalisées en cours…";
        const controller=new AbortController(); const agentTimer=setTimeout(()=>controller.abort(),600000); let ar; try{ ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal}); } finally { clearTimeout(agentTimer); }
        const aj=await ar.json().catch(()=>({}));
@@ -1080,29 +1080,17 @@ async function loadExternalBenchmarks(){
        if(aj.status==="running"){
          const statusEl=document.getElementById("estimatorAgentStatus");
          if(statusEl) statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Les formulaires sont traités en arrière-plan. Les résultats seront enregistrés automatiquement.";
-         const pollEstimator=async()=>{
+         setTimeout(async()=>{
            try{
              const poll=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store"});
              const pj=await poll.json().catch(()=>({}));
-             if(pj.status==="completed"){
-               location.reload();
-               return;
-             }
-             if(pj.status==="error" || !poll.ok){
+             if(pj.status==="completed") location.reload();
+             else if(pj.status==="error"){
                const se=document.getElementById("estimatorAgentStatus");
                if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>❌ "+esc(pj.error||"Erreur de traitement.");
-               return;
-             }
-             const se=document.getElementById("estimatorAgentStatus");
-             if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Traitement en cours… les sources sont analysées en arrière-plan.";
-             setTimeout(pollEstimator,8000);
-           }catch(_pollError){
-             const se=document.getElementById("estimatorAgentStatus");
-             if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Traitement toujours en cours…";
-             setTimeout(pollEstimator,10000);
-           }
-         };
-         setTimeout(pollEstimator,8000);
+             } else location.reload();
+           }catch(_pollError){ location.reload(); }
+         },8000);
          return;
        }
        const agentRows=Array.isArray(aj.results)?aj.results:[];
@@ -1111,7 +1099,7 @@ async function loadExternalBenchmarks(){
        agentRows.forEach(x=>{statusNames[x.name||x.id]=x.status;});
        if(statusEl){
          statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>"+agentRows.map(x=>{
-           const label=x.status==="value_found"?(x.source==="pap_city_benchmark"||x.source==="meilleursagents_city_benchmark"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)+" · prix moyen de la ville":"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
+           const label=x.status==="value_found"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
            return label;
          }).join("<br>")||"Aucun résultat retourné.";
        }
@@ -1123,8 +1111,8 @@ async function loadExternalBenchmarks(){
            value:Math.round(Number(x.value)),low:x.low||null,high:x.high||null,
            lowM2:x.low&&Number(d.surface)>0?Math.round(Number(x.low)/Number(d.surface)):null,
            highM2:x.high&&Number(d.surface)>0?Math.round(Number(x.high)/Number(d.surface)):null,
-           url:x.url||"#",quality:x.source==="pap_city_benchmark"?"pap_city_benchmark":"browser_estimate",personalized:x.personalized!==false,automatic:true,
-           note:x.note||"Valeur récupérée par l'agent JML depuis le formulaire public de l'estimateur."
+           url:x.url||"#",quality:"browser_estimate",personalized:true,automatic:true,
+           note:"Valeur récupérée par l'agent JML depuis le formulaire public de l'estimateur."
          });
        });
        const extVals=sources.map(x=>Number(x.value)).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b);
