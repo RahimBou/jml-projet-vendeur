@@ -3630,7 +3630,7 @@ async function startEstimatorAgentForSpace(space){
       surface:Number(space.surface),rooms:Number(space.rooms),
       propertyType:clean(space.propertyType,60),terrain:Number(space.terrain),
       dpe:clean(space.dpe,10).toUpperCase(),
-      sites:["pap","seloger","meilleursagents","century21","orpi","laforet"]
+      sites:["pap"]
     });
     const done={status:"completed",results:Array.isArray(result?.results)?result.results:[],completedAt:now(),updatedAt:now()};
     if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
