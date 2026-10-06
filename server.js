@@ -1903,6 +1903,8 @@ async function buildComparableSales(market,property){
     median:median!=null?Math.round(median):null,
     weightedPriceM2:centralPriceM2!=null?Math.round(centralPriceM2):null,
     weightedMedianPriceM2:weightedMedianPriceM2!=null?Math.round(weightedMedianPriceM2):null,
+    minPriceM2:minPriceM2!=null?Math.round(minPriceM2):null,
+    maxPriceM2:maxPriceM2!=null?Math.round(maxPriceM2):null,
     temporalRevaluation:{
       available:Boolean(temporalIndex?.available),
       referenceYear:temporalIndex?.referenceYear||null,
