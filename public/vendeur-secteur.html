@@ -1802,6 +1802,11 @@ async function run(){
     ?components.reduce((s,x)=>s+x.m2*x.weight,0)
     :(isHouse?houseM2:isApt?apartmentM2:n(pageData.market?.communalPrice));
   const hybridValue=hybridM2!=null&&surf?Math.round(hybridM2*surf):null;
+  // Le plancher vendeur doit provenir uniquement du DVF, jamais du marché communal
+  // ni d'un estimateur externe. Le moteur DVF expose minPriceM2 = vente DVF la moins chère
+  // parmi les comparables retenus ; c'est ce repère qui sert de garde-fou à la négociation.
+  const dvfFloorM2=n(comps.minPriceM2);
+  const dvfFloorValue=dvfFloorM2!=null&&dvfFloorM2>0&&surf?Math.round(dvfFloorM2*surf):null;
   const confidence=components.length>=3&&comps.matchCount>=5?"Bonne":components.length>=2?"Intermédiaire":comps.confidence||"Faible";
   const blendLabel=components.length>=3
     ?"DVF + micro-marché + estimateurs externes"
@@ -1818,7 +1823,8 @@ async function run(){
     fromComparables:compM2!=null,
     referenceSource:blendLabel,
     valuationBlend:{method:"DVF 50 % + micro-marché 30 % + estimateurs externes 20 %",components},
-    sellerFloor:hybridValue!=null&&surf?Math.round((hybridValue*(confidence==="Bonne"?0.88:0.85))/500)*500:null,
+    sellerFloor:dvfFloorValue,
+    dvfFloorM2:dvfFloorM2,
     microMarketPriceM2:microM2,
     externalMedianPriceM2:extMedianM2,
     externalSources:extSources,
@@ -1844,6 +1850,8 @@ async function run(){
   const isHouse=/maison/i.test(d.propertyType||"");
   const isApt=/appartement|studio|duplex|loft/i.test(d.propertyType||"");
   const fallbackM2=isHouse?n(pageData.market?.housePrice):isApt?n(pageData.market?.apartmentPrice):n(pageData.market?.communalPrice);
+  // En cas de timeout DVF, ne jamais fabriquer un plancher à partir du prix communal.
+  // Le repère bas reste donc vide jusqu'au retour d'un minimum DVF fiable.
   renderReference({
     basePriceM2:fallbackM2,
     surface:surf,
