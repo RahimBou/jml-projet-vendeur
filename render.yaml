@@ -30,5 +30,7 @@ services:
         sync: false
       - key: GOOGLE_CALENDAR_ID
         value: "primary"
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
       - key: JML_CALENDAR_TOKEN_SECRET
         sync: false
