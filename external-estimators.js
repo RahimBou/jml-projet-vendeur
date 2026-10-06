@@ -103,7 +103,7 @@ function selogerUrl(city,communeCode){
   const dep=code.slice(0,2);
   const region=selogerRegionForDepartment(dep), department=selogerDepartmentName(dep);
   if(!region||!department) return null;
-  const internalCode=String(Number(code.slice(2))).padStart(3,"0");
+  const internalCode=String(Number(code.slice(2))).padStart(4,"0");
   return "https://www.seloger.com/prix-de-l-immo/vente/"+region+"/"+department+"/"+slugify(city)+"/"+dep.replace(/^0/,"")+internalCode+".htm";
 }
 
