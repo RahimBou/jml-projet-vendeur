@@ -3,6 +3,7 @@
 process.env.PLAYWRIGHT_BROWSERS_PATH=process.env.PLAYWRIGHT_BROWSERS_PATH||"0";
 const { chromium } = require("playwright");
 const { execFileSync } = require("child_process");
+const { getPublicMarketBenchmarks } = require("./external-estimators");
 
 let chromiumReady=false;
 function ensureChromium(){
@@ -364,6 +365,24 @@ async function runEstimatorAgent(input={}){
   const requested=Array.isArray(input.sites)&&input.sites.length
     ? input.sites
     : Object.keys(ALLOWED_SITES);
+
+  // Priorité aux repères publics réellement accessibles : cela évite de dépendre
+  // du rendu navigateur quand une page communale publique donne déjà un prix/m².
+  let publicSources=[];
+  try{
+    publicSources=await getPublicMarketBenchmarks({
+      city:input.city,
+      address:input.address,
+      propertyType:input.propertyType,
+      surface:input.surface,
+      postalCode:input.postalCode,
+      rooms:input.rooms,
+      dpe:input.dpe,
+      terrain:input.terrain
+    });
+  }catch(_error){ publicSources=[]; }
+  const publicByName=new Map((publicSources||[]).map(x=>[String(x.name||"").toLowerCase(),x]));
+
   ensureChromium();
   const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
   try{
@@ -371,6 +390,22 @@ async function runEstimatorAgent(input={}){
       const site=ALLOWED_SITES[id];
       if(!site) return {id,status:"unsupported"};
       const started=Date.now();
+
+      const publicMatch=publicByName.get(String(site.name||"").toLowerCase());
+      if(publicMatch && Number.isFinite(Number(publicMatch.value)) && Number(publicMatch.value)>0){
+        return {
+          id,name:site.name,status:"value_found",
+          value:Math.round(Number(publicMatch.value)),
+          low:Number.isFinite(Number(publicMatch.low))?Math.round(Number(publicMatch.low)):null,
+          high:Number.isFinite(Number(publicMatch.high))?Math.round(Number(publicMatch.high)):null,
+          source:"public_market",
+          url:publicMatch.url||site.url,
+          elapsedMs:Date.now()-started,
+          publicBenchmark:true,
+          level:publicMatch.level||"commune",
+          note:publicMatch.note||"Repère public indicatif."
+        };
+      }
       const context=await browser.newContext({locale:"fr-FR",userAgent:"JML-Projet-Vendeur/4.1"});
       const page=await context.newPage();
       const networkEstimates=[];
