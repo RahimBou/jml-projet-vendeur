@@ -1980,7 +1980,7 @@ function flatwayFindStreetUrl(html,street){
   const wanted=normalizeSearchCity(street);
   if(!wanted)return null;
   const wantedSlug=flatwaySlug(street);
-  const re=/<a[^>]+href=["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi;
+  const re=/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m;
   const candidates=[];
   while((m=re.exec(String(html||"")))){
