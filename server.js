@@ -849,7 +849,7 @@ async function getCommuneMarketData(city,code){
   return {...result,cache:false};
 }
 
-async function getLocalDvfComparables(origin,maxKm=3,communeCode=""){
+async function getLocalDvfComparables(origin,maxKm=3,communeCode="",propertyType=""){
   if(!pool||!origin)return [];
   const lat=Number(origin.lat),lon=Number(origin.lon); if(!Number.isFinite(lat)||!Number.isFinite(lon))return [];
   const dLat=maxKm/111,dLon=maxKm/(111*Math.max(0.2,Math.cos(lat*Math.PI/180)));
@@ -857,15 +857,24 @@ async function getLocalDvfComparables(origin,maxKm=3,communeCode=""){
   // en plus de la fenêtre géographique. La distance exacte est ensuite
   // recalculée dans le moteur : cela évite de perdre des ventes valides
   // à cause d'un géocodage ou d'une limite SQL trop restrictive.
+  // Important : ne plus charger toute la commune. La recherche des comparables
+  // doit rester géographique et limitée au type du bien ; l'ancien OR commune_code
+  // pouvait ramener plusieurs milliers de lignes et faire expirer la requête.
+  const wantedType=classifyDvfType(propertyType,"");
+  const params=[lat-dLat,lat+dLat,lon-dLon,lon+dLon];
+  let typeClause="";
+  if(wantedType){
+    params.push(wantedType);
+    typeClause=" AND property_type=$5";
+  }
   const result=await db(`SELECT mutation_id AS id,TO_CHAR(sale_date,'YYYY-MM-DD') AS date,property_type AS type,price::float8 AS price,surface::float8 AS surface,rooms::float8 AS rooms,land_surface::float8 AS land,latitude AS lat,longitude AS lon,address,street,postal_code AS postal,commune_code AS code,commune_name AS city,price_per_m2::float8 AS "pricePerM2",source
     FROM jml_dvf_sales
     WHERE sale_date>=CURRENT_DATE-INTERVAL '48 months'
-      AND property_type IN ('Maison','Appartement','Terrain')
-      AND (
-        (latitude BETWEEN $1 AND $2 AND longitude BETWEEN $3 AND $4)
-        OR ($5<>'' AND commune_code=$5)
-      )
-    ORDER BY sale_date DESC LIMIT 10000`,[lat-dLat,lat+dLat,lon-dLon,lon+dLon,String(communeCode||"")]);
+      AND latitude BETWEEN $1 AND $2
+      AND longitude BETWEEN $3 AND $4
+      ${typeClause}
+    ORDER BY sale_date DESC
+    LIMIT 3000`,params);
   return result.rows;
 }
 
@@ -1704,7 +1713,7 @@ async function buildComparableSales(market,property){
   let subjectDpe=normalizeDpeLabel(property?.dpe)||null;
   let subjectDpeSource=subjectDpe?"Saisi dans le dossier":null;
   const [localResult,freshResult]=await Promise.all([
-    getLocalDvfComparables(origin,MAX_RADIUS_KM,commune?.code||"").catch(error=>{
+    getLocalDvfComparables(origin,MAX_RADIUS_KM,commune?.code||"",typeWanted).catch(error=>{
       console.warn("JML comparables DVF local:",error.message); return [];
     }),
     getFreshDvfPlusComparables(origin,property,commune?.code||"").catch(error=>{
@@ -1793,17 +1802,10 @@ async function buildComparableSales(market,property){
   let externalRows=0;
   // Secours DVF externe uniquement si les sources principales n'ont pas fourni
   // suffisamment de candidats. Ce secours est borné pour ne jamais bloquer le moteur.
-  if(candidates.length<5){
-    try{
-      const communeForFallback=commune||await resolveTerritoryCommune(city,"");
-      const external=await Promise.race([
-        getExternalDvfByCommune(communeForFallback?.code,city),
-        new Promise(resolve=>setTimeout(()=>resolve([]),5000))
-      ]);
-      externalRows=Array.isArray(external)?external.length:0;
-      evaluateRows(Array.isArray(external)?external:[]);
-    }catch(error){console.warn("JML comparables DVF externe secours:",error.message);}
-  }
+  // Le secours externe est volontairement désactivé dans le chemin critique :
+  // les ventes locales DVF doivent répondre d'abord. Il pourra être utilisé séparément
+  // par le contrôle marché, sans retarder l'affichage des comparables.
+  externalRows=0;
 
   if(!candidates.length) return {sales:[],valuationSales:[],sameStreet:[],median:null,weightedPriceM2:null,weightedMedianPriceM2:null,matchCount:0,totalCandidates:0,radiusKm:null,searchScope:"Aucune transaction comparable",origin,originSource,source:"DVF local JML / PostgreSQL",engineVersion:"8.4.0-PG-DVF-VALUATION-COMPARE"};
 
@@ -1812,16 +1814,10 @@ async function buildComparableSales(market,property){
   // +/-15 % pour éviter qu'une petite série locale déforme brutalement la valeur.
   const temporal=applyTemporalRevaluation(candidates);
   const temporalIndex=temporal.index;
-  const temporalControl=await Promise.race([
-    buildIndependentTemporalControl(
-      {propertyType:property?.propertyType,surface:surface,rooms:rooms},
-      commune?.code||""
-    ),
-    new Promise(resolve=>setTimeout(()=>resolve({
-      available:false,
-      method:"Contrôle temporel indépendant différé pour préserver la rapidité du repère DVF."
-    }),3000))
-  ]);
+  const temporalControl={
+    available:false,
+    method:"Contrôle temporel indépendant différé : le moteur priorise les ventes comparables DVF."
+  };
   const rawValues=candidates.map(x=>x.pricePerM2).filter(Number.isFinite).sort((a,b)=>a-b);
   const medianRaw=rawValues.length%2?rawValues[(rawValues.length-1)/2]:(rawValues[rawValues.length/2-1]+rawValues[rawValues.length/2])/2;
   const q1Raw=rawValues[Math.floor((rawValues.length-1)*0.25)]??medianRaw;
@@ -3007,6 +3003,9 @@ async function initDb() {
       UNIQUE(year,commune_code,type_code,name,latitude,longitude)
     );
     CREATE INDEX IF NOT EXISTS idx_jml_bpe_commune ON jml_bpe_assets(commune_code);
+    CREATE INDEX IF NOT EXISTS idx_jml_dvf_geo_date ON jml_dvf_sales(latitude,longitude,sale_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_jml_dvf_type_geo_date ON jml_dvf_sales(property_type,latitude,longitude,sale_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_type_date ON jml_dvf_sales(commune_code,property_type,sale_date DESC);
     CREATE INDEX IF NOT EXISTS idx_jml_bpe_geo ON jml_bpe_assets(latitude,longitude);
 
     CREATE TABLE IF NOT EXISTS jml_dvf_sales (
