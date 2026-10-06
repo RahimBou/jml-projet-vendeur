@@ -60,6 +60,23 @@ function moneyValues(text){
   return [...new Set(out)];
 }
 
+
+function extractEstimate(text){
+  const t=String(text||"").replace(/\\s+/g," ");
+  const patterns=[
+    /(?:estimation|valeur estimée|prix estimé|valeur du bien|prix de votre bien)[^€]{0,180}?([\\d .\\u00a0]{5,12})\\s*€/i,
+    /(?:entre|de)[^€]{0,40}?([\\d .\\u00a0]{5,12})\\s*€[^€]{0,80}?(?:et|à)[^€]{0,30}?([\\d .\\u00a0]{5,12})\\s*€/i,
+    /([\\d .\\u00a0]{5,12})\\s*€[^€]{0,80}?(?:estimation|valeur estimée|prix estimé)/i
+  ];
+  for(const re of patterns){
+    const m=t.match(re); if(!m) continue;
+    const nums=m.slice(1).map(x=>Number(String(x).replace(/[ .\\u00a0]/g,""))).filter(n=>Number.isFinite(n)&&n>=30000&&n<=5000000);
+    if(nums.length===1) return {value:Math.round(nums[0]),low:null,high:null};
+    if(nums.length>=2) return {value:Math.round((nums[0]+nums[1])/2),low:Math.min(...nums),high:Math.max(...nums)};
+  }
+  return null;
+}
+
 async function firstLocator(page, candidates){
   for(const selector of candidates){
     const loc=page.locator(selector).first();
@@ -149,11 +166,14 @@ async function runEstimatorAgent(input={}){
         }else{
           const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
           const values=moneyValues(text);
+          const estimate=extractEstimate(text);
           results.push({
-            id,name:site.name,status:values.length?"value_found":"no_value",
+            id,name:site.name,status:estimate?"value_found":values.length?"candidates_found":"no_value",
+            value:estimate?.value||null,low:estimate?.low||null,high:estimate?.high||null,
             values,url:page.url(),elapsedMs:Date.now()-started,
             excerpt:text.replace(/\\s+/g," ").slice(0,1200)
           });
+        });
         }
       }catch(error){
         results.push({id,name:site.name,status:"error",error:String(error?.message||error),url:page.url(),elapsedMs:Date.now()-started});
