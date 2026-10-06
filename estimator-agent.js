@@ -1,6 +1,22 @@
 "use strict";
 
 const { chromium } = require("playwright");
+const { execFileSync } = require("child_process");
+
+let chromiumReady=false;
+function ensureChromium(){
+  if(chromiumReady) return;
+  try{
+    const exe=chromium.executablePath();
+    const fs=require("fs");
+    if(!exe || !fs.existsSync(exe)){
+      execFileSync(process.platform==="win32"?"npx.cmd":"npx",["playwright","install","chromium"],{stdio:"inherit",timeout:120000,env:{...process.env,PLAYWRIGHT_BROWSERS_PATH:process.env.PLAYWRIGHT_BROWSERS_PATH||"0"}});
+    }
+    chromiumReady=true;
+  }catch(error){
+    throw new Error("Chromium Playwright indisponible: "+String(error?.message||error));
+  }
+}
 
 const ALLOWED_SITES = {
   meilleursagents: {
@@ -125,6 +141,7 @@ async function runEstimatorAgent(input={}){
   const requested=Array.isArray(input.sites)&&input.sites.length
     ? input.sites
     : Object.keys(ALLOWED_SITES);
+  ensureChromium();
   const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
   try{
     const runOne=async(id)=>{
