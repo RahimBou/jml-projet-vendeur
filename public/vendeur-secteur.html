@@ -1074,8 +1074,8 @@ async function loadExternalBenchmarks(){
    const el=$("#externalSources");
    el.innerHTML=sources.length?sources.map(src=>
      '<div class="external-source">'+
-       '<div class="external-source-top"><div><b>'+esc(src.name)+'</b><small>'+esc(src.level==="adresse"?"Repère public à l'adresse":"Repère public de rue ou de commune")+'</small></div>'+
-       '<a href="'+esc(src.url||"https://flatway.fr/estimation")+'" target="_blank" rel="noopener noreferrer">Voir la source ↗</a></div>'+
+       '<div class="external-source-top"><div><b>'+esc(src.name)+'</b><small>'+esc(src.automatic===true ? ((src.level==="address"||src.level==="adresse"||src.level==="exact_address")?"Valeur récupérée automatiquement à l'adresse":"Valeur récupérée automatiquement") : "Vérification externe")+'</small></div>'+
+       '<a href="'+esc(src.url||"#")+'" target="_blank" rel="noopener noreferrer">Voir la source ↗</a></div>'+
        '<div class="external-source-status">'+esc(src.priceM2.toLocaleString("fr-FR"))+' €/m²'+
        (src.value?' · soit environ <strong>'+esc(fmtEuroInput(src.value))+'</strong> pour ce bien':'')+
        '</div>'+
