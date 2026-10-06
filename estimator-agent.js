@@ -150,6 +150,9 @@ async function runEstimatorAgent(input={}){
         await fillSmart(page,["code postal","postal","zip"],input.postalCode);
         await fillSmart(page,["surface","m²","m2"],input.surface);
         await fillSmart(page,["pièces","pieces","rooms"],input.rooms);
+        await fillSmart(page,["type de bien","type","property type"],input.propertyType);
+        await fillSmart(page,["terrain","surface du terrain"],input.terrain);
+        await fillSmart(page,["dpe","diagnostic"],input.dpe);
 
         const submit=await firstLocator(page,[
           'button:has-text("Estimer")',
