@@ -1150,6 +1150,7 @@ function renderSellerReading(r){
    evolution.push("Le repère communal des "+communalTypeLabel+" est de "+communalText+". Le repère issu des comparables est de "+baseText+", soit "+gapM2Text+" ("+gapText+") par rapport à cette référence.");
  }
  const valueRange=r.rangeLow!=null&&r.rangeHigh!=null?eur(r.rangeLow)+" à "+eur(r.rangeHigh):"la fourchette observée";
+ const floor=r.sellerFloor!=null?Number(r.sellerFloor):(r.rangeLow!=null?Number(r.rangeLow):null);
  const floorText=floor!=null?eur(floor):"non disponible";
  el.querySelector(".seller-reading-grid").innerHTML=
    '<div class="reading-panel reading-panel-how">'+
