@@ -1074,7 +1074,7 @@ async function loadExternalBenchmarks(){
        const statusEl=document.getElementById("estimatorAgentStatus");
        if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>Ouverture des formulaires et récupération des valeurs…";}
        $("#externalNote").textContent="Agent estimateur : récupération des valeurs personnalisées en cours…";
-       const controller=new AbortController(); const agentTimer=setTimeout(()=>controller.abort(),180000); let ar; try{ ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal}); } finally { clearTimeout(agentTimer); }
+       const controller=new AbortController(); const agentTimer=setTimeout(()=>controller.abort(),600000); let ar; try{ ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal}); } finally { clearTimeout(agentTimer); }
        const aj=await ar.json().catch(()=>({}));
        if(!ar.ok) throw new Error(aj.detail?((aj.error||"Erreur agent")+" — "+aj.detail):(aj.error||("HTTP "+ar.status)));
        if(aj.status==="running"){
