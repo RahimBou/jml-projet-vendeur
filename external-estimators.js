@@ -87,6 +87,48 @@ function efficityUrl(city,postal){
 function orpiUrl(city){
   return "https://www.orpi.com/prix-immobilier/"+slugify(city);
 }
+function flatwayExactAddressUrl(city,postal,communeCode,address){
+  const raw=normalizeText(address);
+  const num=(raw.match(/^\s*(\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)/)||[])[1]||"";
+  if(!num||!/^[0-9]{5}$/.test(String(postal||""))||!/^[0-9]{5}$/.test(String(communeCode||""))) return null;
+  let street=raw
+    .replace(/^\s*\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?\s*/,"")
+    .replace(/\b\d{5}\b/g," ")
+    .replace(new RegExp("\\b"+slugify(city).replace(/-/g,"[ -]")+"\\b","i")," ")
+    .replace(/\s+/g," ").trim();
+  street=street.replace(/^,\s*|,\s*$/g,"");
+  if(!street)return null;
+  const dep=String(communeCode).slice(0,2);
+  const citySlug=slugify(city);
+  const streetSlug=slugify(street);
+  return "https://flatway.fr/estimation/"+dep+"/"+citySlug+"-"+postal+"-"+communeCode+"/"+streetSlug+"-"+postal.slice(2)+"/"+encodeURIComponent(num.replace(/\s+/g,""));
+}
+async function readFlatwayExactAddress(city,postal,communeCode,address,propertyType,surface){
+  const url=flatwayExactAddressUrl(city,postal,communeCode,address);
+  if(!url)return null;
+  const page=await fetchHtml(url,10000);
+  if(!page)return null;
+  const parsed=pairForType(htmlText(page.html),propertyType);
+  if(!parsed)return null;
+  const value=Number.isFinite(Number(surface))&&Number(surface)>0 ? Math.round(parsed.priceM2*Number(surface)) : null;
+  return {
+    id:"flatway-exact-address",
+    name:"Flatway",
+    level:"adresse",
+    priceM2:parsed.priceM2,
+    lowM2:parsed.lowM2||null,
+    highM2:parsed.highM2||null,
+    value,
+    low:Number.isFinite(Number(surface))&&Number(surface)>0&&parsed.lowM2?Math.round(parsed.lowM2*Number(surface)):null,
+    high:Number.isFinite(Number(surface))&&Number(surface)>0&&parsed.highM2?Math.round(parsed.highM2*Number(surface)):null,
+    url:page.url||url,
+    note:"Repère public à l'adresse exacte ; il s'agit d'un benchmark public Flatway, pas d'une saisie personnalisée dans un formulaire.",
+    quality:"address_exact",
+    personalized:false,
+    automatic:true
+  };
+}
+
 function selogerRegionForDepartment(departmentCode){
   const code=String(departmentCode||"").padStart(2,"0");
   const map={
@@ -184,6 +226,10 @@ async function getPublicMarketBenchmarks({city,propertyType,surface,postalCode,c
           return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])}:null;
         })
       : Promise.resolve(null),
+    (async()=>{
+      if(!address||!communeCode) return null;
+      return await readFlatwayExactAddress(cleanCity,postal,communeCode,address,propertyType,surface);
+    })(),
     readSource("Orpi",orpiUrl(cleanCity),propertyType,surface,(text,type)=>{
       const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
       const re=wanted==="appartement"
