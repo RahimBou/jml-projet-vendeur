@@ -3618,7 +3618,13 @@ async function startEstimatorAgentForSpace(space){
     }else if(memory.sellerSpaces.has(space.accessToken)){
       memory.sellerSpaces.get(space.accessToken).estimatorAgent=running;
     }
-    const postalCode=String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
+    let postalCode=String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
+    if(!postalCode && space.address && space.city){
+      try{
+        const geo=await geocodeAddress(clean(space.address,180),clean(space.city,100));
+        postalCode=String(geo?.label||"").match(/\b\d{5}\b/)?.[0]||"";
+      }catch(_geoError){}
+    }
     const result=await runEstimatorAgent({
       address:clean(space.address,180),city:clean(space.city,100),postalCode,
       surface:Number(space.surface),rooms:Number(space.rooms),
