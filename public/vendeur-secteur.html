@@ -1773,6 +1773,7 @@ async function run(){
   }
 
   const extSources=Array.isArray(externalData?.sources)?externalData.sources:[];
+  const benchmarkSources=extSources.filter(x=>x && x.level==="commune");
   const microSource=extSources.find(x=>String(x.name||"").toLowerCase()==="flatway"&&x.level==="adresse");
   const publicM2=extSources
     .filter(x=>String(x.name||"").toLowerCase()!=="flatway")
@@ -1797,6 +1798,7 @@ async function run(){
   // mais ne sert plus de plancher commercial.
   const marketMinimumValue=referenceValue;
   const externalHighValues=extSources
+    .filter(x=>x && (x.personalized===true || x.level==="address" || x.level==="exact_address"))
     .map(x=>n(x.value))
     .filter(v=>v!=null&&v>300000);
   const marketMaximumValue=externalHighValues.length
