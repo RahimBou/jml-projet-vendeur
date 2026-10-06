@@ -84,6 +84,9 @@ function papDepartmentUrl(communeCode){
 function efficityUrl(city,postal){
   return "https://www.efficity.com/prix-immobilier-m2/v_"+slugify(city)+"_"+postal+"/";
 }
+function orpiUrl(city){
+  return "https://www.orpi.com/prix-immobilier/"+slugify(city);
+}
 function selogerRegionForDepartment(departmentCode){
   const code=String(departmentCode||"").padStart(2,"0");
   const map={
@@ -126,6 +129,9 @@ async function readSource(name,url,propertyType,surface,parser){
     high:Number.isFinite(Number(surface))&&Number(surface)>0&&parsed.highM2?Math.round(parsed.highM2*Number(surface)):null,
     url:page.url||url,
     note:"Repère public au m² de la commune ; ce n'est pas une saisie personnalisée dans le formulaire d'estimation.",
+    level:"commune",
+    quality:"benchmark",
+    personalized:false,
     automatic:true
   };
 }
@@ -177,7 +183,15 @@ async function getPublicMarketBenchmarks({city,propertyType,surface,postalCode,c
           const m=text.match(re);
           return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])}:null;
         })
-      : Promise.resolve(null)
+      : Promise.resolve(null),
+    readSource("Orpi",orpiUrl(cleanCity),propertyType,surface,(text,type)=>{
+      const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
+      const re=wanted==="appartement"
+        ?/Appartement[\s\S]{0,120}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i
+        :/Maison[\s\S]{0,120}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i;
+      const m=text.match(re);
+      return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1]),lowM2:numberFrom(m[2]),highM2:numberFrom(m[3])}:null;
+    })
   ];
   const results=await Promise.allSettled(tasks);
   return results.map(x=>x.status==="fulfilled"?x.value:null).filter(Boolean);
