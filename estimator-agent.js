@@ -478,20 +478,6 @@ async function runEstimatorAgent(input={}){
       const started=Date.now();
 
       const publicMatch=publicByName.get(String(site.name||"").toLowerCase());
-      if(publicMatch && Number.isFinite(Number(publicMatch.value)) && Number(publicMatch.value)>0){
-        return {
-          id,name:site.name,status:"value_found",
-          value:Math.round(Number(publicMatch.value)),
-          low:Number.isFinite(Number(publicMatch.low))?Math.round(Number(publicMatch.low)):null,
-          high:Number.isFinite(Number(publicMatch.high))?Math.round(Number(publicMatch.high)):null,
-          source:"public_market",
-          url:publicMatch.url||site.url,
-          elapsedMs:Date.now()-started,
-          publicBenchmark:true,
-          level:publicMatch.level||"commune",
-          note:publicMatch.note||"Repère public indicatif."
-        };
-      }
       const context=await browser.newContext({locale:"fr-FR",userAgent:"JML-Projet-Vendeur/4.1"});
       const page=await context.newPage();
       const networkEstimates=[];
