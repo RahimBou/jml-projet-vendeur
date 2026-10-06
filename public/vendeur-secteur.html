@@ -1077,6 +1077,22 @@ async function loadExternalBenchmarks(){
        const controller=new AbortController(); const agentTimer=setTimeout(()=>controller.abort(),180000); let ar; try{ ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal}); } finally { clearTimeout(agentTimer); }
        const aj=await ar.json().catch(()=>({}));
        if(!ar.ok) throw new Error(aj.detail?((aj.error||"Erreur agent")+" — "+aj.detail):(aj.error||("HTTP "+ar.status)));
+       if(aj.status==="running"){
+         const statusEl=document.getElementById("estimatorAgentStatus");
+         if(statusEl) statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Les formulaires sont traités en arrière-plan. Les résultats seront enregistrés automatiquement.";
+         setTimeout(async()=>{
+           try{
+             const poll=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store"});
+             const pj=await poll.json().catch(()=>({}));
+             if(pj.status==="completed") location.reload();
+             else if(pj.status==="error"){
+               const se=document.getElementById("estimatorAgentStatus");
+               if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>❌ "+esc(pj.error||"Erreur de traitement.");
+             } else location.reload();
+           }catch(_pollError){ location.reload(); }
+         },8000);
+         return;
+       }
        const agentRows=Array.isArray(aj.results)?aj.results:[];
        const existing=new Set(sources.map(x=>String(x.id||"").toLowerCase()));
        const statusNames={};
