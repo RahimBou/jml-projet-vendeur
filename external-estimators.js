@@ -238,7 +238,7 @@ function findPapCityUrl(html,city,postal){
   const wantedPostal=String(postal||"").trim();
   if(!wantedSlug||!/^[0-9]{5}$/.test(wantedPostal)) return null;
   const source=String(html||"");
-  const re=/<a[^>]+href=["']([^"']*\\/vendeur\\/prix-m2\\/[^"']+)["'][^>]*>/gi;
+  const re=/<a[^>]+href=["']([^"']*\/vendeur\/prix-m2\/[^"']+)["'][^>]*>/gi;
   for(const m of source.matchAll(re)){
     let href=String(m[1]||"").replace(/&amp;/g,"&");
     try{
