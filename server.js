@@ -1999,6 +1999,32 @@ function flatwayFindStreetUrl(html,street){
   }
   return null;
 }
+async function flatwayFindStreetUrlBySearch(city,street){
+  const query=encodeURIComponent('site:flatway.fr/estimation "'+String(street||"").trim()+'" "'+String(city||"").trim()+'"');
+  try{
+    const response=await fetch("https://www.google.com/search?q="+query,{
+      headers:{
+        "Accept":"text/html,application/xhtml+xml",
+        "User-Agent":"Mozilla/5.0 (compatible; JML-Projet-Vendeur/1.0)"
+      },
+      signal:AbortSignal.timeout(7000)
+    });
+    if(!response.ok)return null;
+    const html=await response.text();
+    const re=/<a[^>]+href=["'](https?:\/\/flatway\.fr\/estimation\/[^"'?#]+)["'][^>]*>/gi;
+    let m;
+    while((m=re.exec(html))){
+      const href=m[1];
+      const parts=new URL(href).pathname.split("/").filter(Boolean);
+      if(parts.length>=4 && /\/estimation\/\d{2}\//.test(new URL(href).pathname) && !/\/\d+[A-Za-z]?\/?$/.test(new URL(href).pathname)){
+        return href.replace(/\/$/,"")+"/";
+      }
+    }
+  }catch(error){
+    console.warn("JML Flatway recherche rue:",error.message);
+  }
+  return null;
+}
 async function fetchPublicHtml(url){
   const response=await fetch(url,{
     headers:{
@@ -2011,7 +2037,7 @@ async function fetchPublicHtml(url){
   return await response.text();
 }
 async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}={}){
-  const key="flatway-v6-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
+  const key="flatway-v7-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
   const cached=flatwayBenchmarkCache.get(key);
   if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
 
@@ -2035,7 +2061,10 @@ async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}=
     // On récupère d'abord l'URL canonique de la rue depuis la page commune,
     // puis on ajoute le numéro. Cela évite de deviner le suffixe interne de rue.
     const street=flatwayStreetFromAddress(address);
-    const streetUrl=flatwayFindStreetUrl(cityHtml,street);
+    let streetUrl=flatwayFindStreetUrl(cityHtml,street);
+    if(!streetUrl && street){
+      streetUrl=await flatwayFindStreetUrlBySearch(city,street);
+    }
     if(streetUrl){
       const streetHtml=await fetchPublicHtml(streetUrl);
       if(streetHtml){
