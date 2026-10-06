@@ -1040,7 +1040,8 @@ async function loadExternalBenchmarks(){
      surface:d.surface||"",
      jmlValue:Number.isFinite(jml)?String(jml):""
    });
-   const data=await getData("/api/external-market-benchmarks?"+qs.toString(),12000,"Repères externes");
+   const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),12000,"Repères externes");
+   pageData.externalBenchmarks=data;
    const sources=Array.isArray(data.sources)?data.sources:[];
    $("#externalCount").textContent=sources.length+" source"+(sources.length>1?"s":"")+" analysée"+(sources.length>1?"s":"");
    $("#externalMedian").textContent=Number.isFinite(Number(data.externalMedian))?fmtEuroInput(data.externalMedian):"—";
@@ -1758,29 +1759,66 @@ async function run(){
   }
   renderComps(comps);
 
-  // Le repère vendeur est recalculé après les comparables :
-  // les ventes proches et de même type sont plus directement utiles
-  // que le seul prix médian communal.
+  // Repère vendeur hybride : DVF 50 % + micro-marché 30 % + estimateurs externes 20 %.
+  // L'appel externe est réutilisé par le bloc de contre-vérification plus bas.
   const surf=n(d.surface);
   const isHouse=/maison/i.test(d.propertyType||"");
   const isApt=/appartement|studio|duplex|loft/i.test(d.propertyType||"");
   const compM2=n(comps.weightedPriceM2);
   const houseM2=n(pageData.market?.housePrice);
   const apartmentM2=n(pageData.market?.apartmentPrice);
-  const selectedM2=compM2!=null?compM2:(isHouse?houseM2:isApt?apartmentM2:n(pageData.market?.communalPrice));
+  let externalData=null;
+  try{
+    externalData=await getData("/api/external-market-benchmarks?"+new URLSearchParams({
+      city:d.city||"",address:d.address||"",propertyType:d.propertyType||"",
+      surface:d.surface||"",jmlValue:compM2!=null&&surf?String(Math.round(compM2*surf)):""
+    }).toString(),12000,"Contrôle estimateurs");
+    pageData.externalBenchmarks=externalData;
+  }catch(e){
+    addDiag("Contrôle estimateurs",e.code||"JML-EXT-CLIENT",e.message||"Repères externes indisponibles");
+  }
+
+  const extSources=Array.isArray(externalData?.sources)?externalData.sources:[];
+  const microSource=extSources.find(x=>String(x.name||"").toLowerCase()==="flatway"&&x.level==="adresse");
+  const publicM2=extSources
+    .filter(x=>String(x.name||"").toLowerCase()!=="flatway")
+    .map(x=>n(x.priceM2)).filter(v=>v!=null&&v>0).sort((a,b)=>a-b);
+  const extMedianM2=publicM2.length
+    ?(publicM2.length%2?publicM2[(publicM2.length-1)/2]:(publicM2[publicM2.length/2-1]+publicM2[publicM2.length/2])/2)
+    :n(microSource?.priceM2);
+  const microM2=n(microSource?.priceM2);
+  const components=[];
+  if(compM2!=null&&compM2>0)components.push({label:"DVF comparables",weight:.50,m2:compM2});
+  if(microM2!=null&&microM2>0)components.push({label:"Micro-marché / adresse",weight:.30,m2:microM2});
+  if(extMedianM2!=null&&extMedianM2>0)components.push({label:"Estimateurs externes",weight:.20,m2:extMedianM2});
+  const totalW=components.reduce((s,x)=>s+x.weight,0);
+  components.forEach(x=>x.weight=x.weight/Math.max(totalW,1));
+  const hybridM2=components.length
+    ?components.reduce((s,x)=>s+x.m2*x.weight,0)
+    :(isHouse?houseM2:isApt?apartmentM2:n(pageData.market?.communalPrice));
+  const hybridValue=hybridM2!=null&&surf?Math.round(hybridM2*surf):null;
+  const confidence=components.length>=3&&comps.matchCount>=5?"Bonne":components.length>=2?"Intermédiaire":comps.confidence||"Faible";
+  const blendLabel=components.length>=3
+    ?"DVF + micro-marché + estimateurs externes"
+    :components.map(x=>x.label).join(" + ")||"Référence communale";
   renderReference({
-    basePriceM2:selectedM2,
+    basePriceM2:hybridM2,
     surface:surf,
-    referenceValue:selectedM2!=null&&surf?Math.round(selectedM2*surf):null,
-    rangeLow:comps.rangeLow!=null&&surf?Math.round(Number(comps.rangeLow)*surf):null,
-    rangeHigh:comps.rangeHigh!=null&&surf?Math.round(Number(comps.rangeHigh)*surf):null,
-    confidence:comps.confidence||"Faible",
+    referenceValue:hybridValue,
+    rangeLow:hybridValue!=null?Math.round(hybridValue*(confidence==="Bonne"?.88:.85)):null,
+    rangeHigh:hybridValue!=null?Math.round(hybridValue*(confidence==="Bonne"?1.12:1.15)):null,
+    confidence,
     transactions:comps.matchCount||0,
     type:d.propertyType||"Bien",
     fromComparables:compM2!=null,
-    explanation:compM2!=null
-      ?"Valeur centrale construite à partir des transactions DVF réellement comparables retenues autour de l'adresse. La médiane pondérée limite l'influence d'une vente atypique."
-      :"Aucun repère comparable suffisamment exploitable : le prix communal du même type de bien reste utilisé comme contexte de secours."
+    referenceSource:blendLabel,
+    valuationBlend:{method:"DVF 50 % + micro-marché 30 % + estimateurs externes 20 %",components},
+    microMarketPriceM2:microM2,
+    externalMedianPriceM2:extMedianM2,
+    externalSources:extSources,
+    explanation:components.length
+      ?"Valeur hybride : les ventes DVF restent la base principale, le micro-marché et les estimateurs publics servent de contrôle et d'ajustement."
+      :"Aucun contrôle externe exploitable : le moteur DVF/communal reste utilisé."
   });
   if(territory.ok!==false) $("#status").textContent="Données marché + comparables chargés";
   else $("#status").textContent="Marché communal chargé · comparables en mode dégradé";
