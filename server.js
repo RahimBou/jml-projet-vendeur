@@ -1820,25 +1820,28 @@ async function buildComparableSales(market,property){
 
   candidates.sort((a,b)=>b.weight-a.weight||b.score-a.score);
   const top40=candidates.slice(0,40);
-  // Enrichissement ADEME limité aux meilleurs comparables : le DPE est un signal
-  // secondaire et ne remplace jamais les critères DVF de prix, surface, pièces et distance.
-  const dpeRows=top40.slice(0,20);
-  for(let i=0;i<dpeRows.length;i+=4){
-    const batch=dpeRows.slice(i,i+4);
-    const enriched=await Promise.all(batch.map(async sale=>{
+  // Le DPE est un enrichissement secondaire : il ne doit jamais bloquer le calcul DVF.
+  // On limite donc la vérification aux 4 meilleurs comparables et on la lance en une seule vague.
+  // Le prix, le minimum DVF et la valeur centrale sont déjà calculés à partir des données DVF.
+  const dpeRows=top40.slice(0,4);
+  const enriched=await Promise.all(dpeRows.map(async sale=>{
+    try{
       const dpeAddress=[sale.address,sale.postal].filter(Boolean).join(" ").trim();
       const found=await getAdemeDpeByAddress(dpeAddress||sale.address,sale.city||city,sale.postal||"");
       sale.dpeChecked=true;
       return {sale,found};
-    }));
-    for(const item of enriched){
-      if(item.found?.dpe){
-        item.sale.dpe=item.found.dpe;
-        item.sale.dpeSource=item.found.source;
-        if(subjectDpe){
-          const diff=Math.abs(subjectDpe.charCodeAt(0)-item.sale.dpe.charCodeAt(0));
-          item.sale.dpeMatch=diff===0?"Identique":diff===1?"Très proche":diff===2?"Proche":"Écarté";
-        }
+    }catch(_e){
+      sale.dpeChecked=true;
+      return {sale,found:null};
+    }
+  }));
+  for(const item of enriched){
+    if(item.found?.dpe){
+      item.sale.dpe=item.found.dpe;
+      item.sale.dpeSource=item.found.source;
+      if(subjectDpe){
+        const diff=Math.abs(subjectDpe.charCodeAt(0)-item.sale.dpe.charCodeAt(0));
+        item.sale.dpeMatch=diff===0?"Identique":diff===1?"Très proche":diff===2?"Proche":"Écarté";
       }
     }
   }
