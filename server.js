@@ -3608,6 +3608,35 @@ async function createSellerSpace(data, prospectId, transactionClient = null){
   return space;
 }
 
+async function startEstimatorAgentForSpace(space){
+  if(!space?.accessToken) return;
+  const startedAt=now();
+  const running={status:"running",results:[],startedAt,updatedAt:startedAt};
+  try{
+    if(pool){
+      await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(running)]);
+    }else if(memory.sellerSpaces.has(space.accessToken)){
+      memory.sellerSpaces.get(space.accessToken).estimatorAgent=running;
+    }
+    const postalCode=String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
+    const result=await runEstimatorAgent({
+      address:clean(space.address,180),city:clean(space.city,100),postalCode,
+      surface:Number(space.surface),rooms:Number(space.rooms),
+      propertyType:clean(space.propertyType,60),terrain:Number(space.terrain),
+      dpe:clean(space.dpe,10).toUpperCase(),
+      sites:["pap","seloger","meilleursagents","century21","laforet"]
+    });
+    const done={status:"completed",results:Array.isArray(result?.results)?result.results:[],completedAt:now(),updatedAt:now()};
+    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
+    else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent=done;
+  }catch(error){
+    const failed={status:"error",results:[],error:String(error?.message||error),updatedAt:now()};
+    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(failed)]).catch(()=>{});
+    else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent=failed;
+    console.error("JML background estimator agent:",error);
+  }
+}
+
 function normalizeSellerCondition(data){
   const d=data&&typeof data==="object"?data:{};
   const cleanChoice=v=>clean(v,80);
