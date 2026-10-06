@@ -1944,162 +1944,6 @@ async function buildComparableSales(market,property){
     }
   };
 }
-const flatwayBenchmarkCache=new Map();
-
-function flatwayNumber(value){
-  const raw=String(value??"").replace(/[\u00a0\u202f\s]/g,"").replace(",",".");
-  const n=Number(raw.replace(/[^\d.-]/g,""));
-  return Number.isFinite(n)&&n>0?n:null;
-}
-function flatwaySlug(value){
-  return normalizeSearchCity(value).replace(/\s+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"");
-}
-function flatwayStreetFromAddress(address){
-  const normalized=normalizeAddress(address).replace(/^\s+/,"").trim();
-  // Flatway indexes the street without the house number. Keep the number
-  // separately so the caller can then open the exact-address page.
-  return normalized.replace(/^\s*\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?\s+/,"").trim();
-}
-function flatwayExtractTypeBlock(text,type){
-  const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"Appartement":"Maison";
-  const re=new RegExp(wanted+"\\s+Prix moyen au m²\\s+([0-9\\u00a0\\u202f ]+)\\s+€?\\s+de\\s+([0-9\\u00a0\\u202f ]+)\\s+€?\\s+à\\s+([0-9\\u00a0\\u202f ]+)\\s+€?","i");
-  const m=String(text||"").match(re);
-  if(!m)return null;
-  const avg=flatwayNumber(m[1]),low=flatwayNumber(m[2]),high=flatwayNumber(m[3]);
-  return avg?{type:wanted,priceM2:avg,lowM2:low,highM2:high}:null;
-}
-function flatwayText(html){
-  return decodeBasicEntities(String(html||""))
-    .replace(/<script[\s\S]*?<\/script>/gi," ")
-    .replace(/<style[\s\S]*?<\/style>/gi," ")
-    .replace(/<[^>]+>/g," ")
-    .replace(/\s+/g," ")
-    .trim();
-}
-function flatwayFindStreetUrl(html,street){
-  const wanted=normalizeSearchCity(street);
-  if(!wanted)return null;
-  const wantedSlug=flatwaySlug(street);
-  const re=/<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-  let m;
-  const candidates=[];
-  while((m=re.exec(String(html||"")))){
-    const href=new URL(m[1],"https://flatway.fr").href;
-    const label=normalizeSearchCity(m[2].replace(/<[^>]+>/g," "));
-    const pathSlug=normalizeSearchCity(href.split("/").filter(Boolean).pop()||"");
-    candidates.push({href,label,pathSlug});
-    if(label===wanted || (label.includes(wanted)&&wanted.length>8) || (wanted.includes(label)&&label.length>8)){
-      return href;
-    }
-    // Certains rendus Flatway exposent l'URL de la rue mais pas son libellé
-    // exploitable. Le suffixe numérique interne reste présent dans le slug.
-    if(wantedSlug && (pathSlug===wantedSlug || pathSlug.startsWith(wantedSlug+"-"))){
-      return href;
-    }
-  }
-  return null;
-}
-async function flatwayFindStreetUrlBySearch(city,street){
-  const query=encodeURIComponent('site:flatway.fr/estimation "'+String(street||"").trim()+'" "'+String(city||"").trim()+'"');
-  try{
-    const response=await fetch("https://www.google.com/search?q="+query,{
-      headers:{
-        "Accept":"text/html,application/xhtml+xml",
-        "User-Agent":"Mozilla/5.0 (compatible; JML-Projet-Vendeur/1.0)"
-      },
-      signal:AbortSignal.timeout(7000)
-    });
-    if(!response.ok)return null;
-    const html=await response.text();
-    const re=/<a[^>]+href=["'](https?:\/\/flatway\.fr\/estimation\/[^"'?#]+)["'][^>]*>/gi;
-    let m;
-    while((m=re.exec(html))){
-      const href=m[1];
-      const parts=new URL(href).pathname.split("/").filter(Boolean);
-      if(parts.length>=4 && /\/estimation\/\d{2}\//.test(new URL(href).pathname) && !/\/\d+[A-Za-z]?\/?$/.test(new URL(href).pathname)){
-        return href.replace(/\/$/,"")+"/";
-      }
-    }
-  }catch(error){
-    console.warn("JML Flatway recherche rue:",error.message);
-  }
-  return null;
-}
-async function fetchPublicHtml(url){
-  const response=await fetch(url,{
-    headers:{
-      "Accept":"text/html,application/xhtml+xml",
-      "User-Agent":"JML-Projet-Vendeur/3.5 (public-market-benchmark)"
-    },
-    signal:AbortSignal.timeout(9000)
-  });
-  if(!response.ok) return null;
-  return await response.text();
-}
-async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}={}){
-  const key="flatway-v7-exact-address|"+normalizeSearchCity(city)+"|"+normalizeSearchCity(address)+"|"+normalizeSearchCity(propertyType);
-  const cached=flatwayBenchmarkCache.get(key);
-  if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
-
-  const fallback={available:false,source:"Flatway",sourceUrl:"https://flatway.fr/estimation",level:null,priceM2:null,lowM2:null,highM2:null};
-  try{
-    let postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
-    let geo=null;
-    if(!postal && address && city) geo=await geocodeAddress(address,city);
-    postal=postal || String(geo?.label||"").match(/\b\d{5}\b/)?.[0] || "";
-    const communeCode=String((await resolveTerritoryCommune(city,address))?.code||"").trim();
-    if(!postal || !/^\d{5}$/.test(communeCode)) return fallback;
-    const dep=communeCode.slice(0,2);
-    const cityUrl="https://flatway.fr/estimation/"+dep+"/"+flatwaySlug(city)+"-"+postal+"-"+communeCode;
-    const cityHtml=await fetchPublicHtml(cityUrl);
-    if(!cityHtml)return fallback;
-
-    const typeBlock=flatwayExtractTypeBlock(flatwayText(cityHtml),propertyType);
-    let best=typeBlock?{...typeBlock,level:"commune",sourceUrl:cityUrl}:null;
-
-    // Flatway publie les adresses exactes sous la page de rue.
-    // On récupère d'abord l'URL canonique de la rue depuis la page commune,
-    // puis on ajoute le numéro. Cela évite de deviner le suffixe interne de rue.
-    const street=flatwayStreetFromAddress(address);
-    let streetUrl=flatwayFindStreetUrl(cityHtml,street);
-    if(!streetUrl && street){
-      streetUrl=await flatwayFindStreetUrlBySearch(city,street);
-    }
-    if(streetUrl){
-      const streetHtml=await fetchPublicHtml(streetUrl);
-      if(streetHtml){
-        const streetBlock=flatwayExtractTypeBlock(flatwayText(streetHtml),propertyType);
-        if(streetBlock) best={...streetBlock,level:"rue",sourceUrl:streetUrl};
-
-        const numberMatch=String(address||"").match(/^\s*(\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)/);
-        const houseNumber=numberMatch?.[1]?.replace(/\s+/g,"")||"";
-        if(houseNumber){
-          const exactUrl=streetUrl.replace(/\/$/,"")+"/"+encodeURIComponent(houseNumber);
-          const exactHtml=await fetchPublicHtml(exactUrl);
-          if(exactHtml){
-            const exactBlock=flatwayExtractTypeBlock(flatwayText(exactHtml),propertyType);
-            if(exactBlock){
-              console.log("JML Flatway adresse exacte:",exactUrl,exactBlock.priceM2+" €/m²");
-              best={...exactBlock,level:"adresse",sourceUrl:exactUrl};
-            }
-          }
-        }
-      }
-    }
-    const data=best?{
-      available:true,source:"Flatway",sourceUrl:best.sourceUrl,level:best.level,
-      priceM2:best.priceM2,lowM2:best.lowM2,highM2:best.highM2,
-      note:best.level==="adresse"?"Repère public à l'adresse":"Repère public de rue/commune ; pas une estimation personnalisée saisie dans un formulaire."
-    }:fallback;
-    flatwayBenchmarkCache.set(key,{expiresAt:Date.now()+6*60*60*1000,data});
-    return data;
-  }catch(error){
-    console.warn("JML Flatway benchmark:",error.message);
-    flatwayBenchmarkCache.set(key,{expiresAt:Date.now()+30*60*1000,data:fallback});
-    return fallback;
-  }
-}
-
 app.get("/api/external-market-benchmarks", async (req,res) => {
   const city=clean(req.query.city,100);
   const address=clean(req.query.address,180);
@@ -2124,21 +1968,7 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
       city,address,propertyType,surface,postalCode,communeCode
     });
 
-    const flatway=await getFlatwayMarketBenchmark({city,address,propertyType,postalCode});
     const sources=[...publicSources];
-    if(flatway.available&&Number.isFinite(flatway.priceM2)&&flatway.priceM2>0){
-      const value=Number.isFinite(surface)&&surface>0?Math.round(flatway.priceM2*surface):null;
-      const low=Number.isFinite(surface)&&surface>0&&flatway.lowM2?Math.round(flatway.lowM2*surface):null;
-      const high=Number.isFinite(surface)&&surface>0&&flatway.highM2?Math.round(flatway.highM2*surface):null;
-      sources.push({
-        id:"flatway",name:"Flatway",level:flatway.level,priceM2:flatway.priceM2,
-        value,low,high,lowM2:flatway.lowM2,highM2:flatway.highM2,
-        url:flatway.sourceUrl,note:flatway.note,
-        quality:flatway.level==="adresse"?"address_exact":"benchmark",
-        personalized:false,
-        automatic:true
-      });
-    }
 
     const externalValues=sources.map(x=>Number(x.value)).filter(v=>Number.isFinite(v)&&v>0);
     const vals=externalValues.concat(Number.isFinite(jmlValue)&&jmlValue>0?[jmlValue]:[]).sort((a,b)=>a-b);
@@ -2159,8 +1989,8 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
       availableSources:sources.map(x=>x.name),
       confidence:sources.length>=3?"Bonne":sources.length===2?"Modérée":sources.length===1?(sources[0].level==="adresse"?"Modérée":"Indicative"):"Indisponible",
       note:sources.length
-        ?"Les repères sont récupérés automatiquement depuis les pages publiques accessibles des estimateurs. Ils restent indicatifs. Les liens de vérification manuelle des 5 estimateurs sont conservés ci-dessous."
-        :"Aucun repère externe public exploitable n'a pu être récupéré automatiquement pour cette adresse. Les 5 liens de vérification manuelle restent disponibles."
+        ?"Les repères sont récupérés automatiquement depuis les pages publiques accessibles des estimateurs. Ils restent indicatifs. Les liens de vérification manuelle des 6 estimateurs sont conservés ci-dessous."
+        :"Aucun repère externe public exploitable n'a pu être récupéré automatiquement pour cette adresse. Les 6 liens de vérification manuelle restent disponibles."
     });
   }catch(error){
     console.error("JML external-market-benchmarks:",error.message);
