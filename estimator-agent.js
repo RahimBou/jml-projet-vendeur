@@ -78,6 +78,22 @@ function moneyValues(text){
 }
 
 
+function extractEstimateFromCandidates(values,text){
+  const t=String(text||"").replace(/\s+/g," ");
+  if(!values.length) return null;
+  const keywords=/(estimation|estimé|estimée|valeur|prix de votre bien|prix du bien|votre bien vaut|fourchette|fourchette de prix)/i;
+  const nearby=[];
+  for(const v of values){
+    const s=String(v);
+    const pos=t.indexOf(s.replace(/\B(?=(\d{3})+(?!\d))/g," "));
+    if(pos>=0 && keywords.test(t.slice(Math.max(0,pos-220),Math.min(t.length,pos+220)))) nearby.push(v);
+  }
+  const nums=[...new Set(nearby)].filter(n=>n>=30000&&n<=5000000);
+  if(nums.length===1) return {value:nums[0],low:null,high:null};
+  if(nums.length>=2) return {value:Math.round((Math.min(...nums)+Math.max(...nums))/2),low:Math.min(...nums),high:Math.max(...nums)};
+  return null;
+}
+
 function extractEstimate(text){
   const t=String(text||"").replace(/\\s+/g," ");
   const patterns=[
@@ -152,7 +168,7 @@ async function runEstimatorAgent(input={}){
       const context=await browser.newContext({locale:"fr-FR",userAgent:"JML-Projet-Vendeur/4.1"});
       const page=await context.newPage();
       try{
-        await page.goto(site.url,{waitUntil:"domcontentloaded",timeout:15000});
+        await page.goto(site.url,{waitUntil:"domcontentloaded",timeout:60000});
         await acceptCookies(page);
         if(await detectCaptcha(page)){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA détecté",url:page.url(),elapsedMs:Date.now()-started};
@@ -194,14 +210,14 @@ async function runEstimatorAgent(input={}){
           if(await detectCaptcha(page)) break;
         }
 
-        await page.waitForTimeout(2500);
+        await page.waitForTimeout(4000);
         if(await detectCaptcha(page)){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA après soumission",url:page.url(),elapsedMs:Date.now()-started};
         }
 
         const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
         const values=moneyValues(text);
-        const estimate=extractEstimate(text);
+        const estimate=extractEstimate(text) || extractEstimateFromCandidates(values,text);
         return {
           id,name:site.name,
           status:estimate?"value_found":values.length?"candidates_found":"no_value",
@@ -215,7 +231,7 @@ async function runEstimatorAgent(input={}){
         await context.close().catch(()=>{});
       }
     };
-    const results=await Promise.all(requested.map(runOne));
+    const results=[];\n    for(const id of requested){ results.push(await runOne(id)); }
     return {ok:true,results};
   }finally{
     await browser.close().catch(()=>{});
