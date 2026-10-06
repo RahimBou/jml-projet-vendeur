@@ -383,6 +383,33 @@ async function runEstimatorAgent(input={}){
   }catch(_error){ publicSources=[]; }
   const publicByName=new Map((publicSources||[]).map(x=>[String(x.name||"").toLowerCase(),x]));
 
+  const publicIds=new Set((publicSources||[]).map(x=>String(x.name||"").toLowerCase()));
+  const missingRequested=requested.filter(id=>{
+    const site=ALLOWED_SITES[id];
+    return site && !publicIds.has(String(site.name||"").toLowerCase());
+  });
+
+  // Si les repères publics suffisent, ne lançons même pas Chromium.
+  // Cela rend l'agent rapide et évite les échecs Playwright inutiles.
+  if(!missingRequested.length){
+    return {
+      ok:true,
+      results:requested.map(id=>{
+        const site=ALLOWED_SITES[id];
+        const match=publicSources.find(x=>String(x.name||"").toLowerCase()===String(site?.name||"").toLowerCase());
+        return match ? {
+          id,name:site.name,status:"value_found",
+          value:Math.round(Number(match.value)),
+          low:Number.isFinite(Number(match.low))?Math.round(Number(match.low)):null,
+          high:Number.isFinite(Number(match.high))?Math.round(Number(match.high)):null,
+          source:"public_market",url:match.url||site.url,
+          publicBenchmark:true,level:match.level||"commune",
+          note:match.note||"Repère public indicatif."
+        } : {id,status:"unsupported"};
+      })
+    };
+  }
+
   ensureChromium();
   const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
   try{
@@ -485,8 +512,7 @@ async function runEstimatorAgent(input={}){
         await context.close().catch(()=>{});
       }
     };
-    const results=[];
-    for(const id of requested){ results.push(await runOne(id)); }
+    const results=await Promise.all(requested.map(id=>runOne(id)));
     return {ok:true,results};
   }finally{
     await browser.close().catch(()=>{});
