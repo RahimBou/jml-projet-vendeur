@@ -466,8 +466,6 @@ async function runEstimatorAgent(input={}){
     });
   }catch(_error){ publicSources=[]; }
   const publicByName=new Map((publicSources||[]).map(x=>[String(x.name||"").toLowerCase(),x]));
-
-  const publicByName=new Map((publicSources||[]).map(x=>[String(x.name||"").toLowerCase(),x]));
   // Pour PAP, le navigateur doit d'abord exécuter le vrai simulateur personnalisé.
   // Le prix communal public n'est qu'un filet de sécurité si le formulaire ne répond pas.
 
