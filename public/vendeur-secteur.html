@@ -1805,7 +1805,7 @@ async function run(){
     basePriceM2:hybridM2,
     surface:surf,
     referenceValue:hybridValue,
-    rangeLow:hybridValue!=null?Math.round(hybridValue*(confidence==="Bonne"?.88:.85)):null,
+    rangeLow:hybridValue!=null?Math.round(hybridValue*(confidence==="Bonne"?0.88:0.85)):null,
     rangeHigh:hybridValue!=null?Math.round(hybridValue*(confidence==="Bonne"?1.12:1.15)):null,
     confidence,
     transactions:comps.matchCount||0,
