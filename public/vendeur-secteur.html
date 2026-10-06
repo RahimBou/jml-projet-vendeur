@@ -854,6 +854,7 @@ section:has(.method-card){
   </div>
   <div>
    <div class="external-sources" id="externalSources"></div>
+   <div id="estimatorAgentStatus" style="margin:12px 0;padding:12px 14px;border:1px solid #dfe8e5;border-radius:12px;background:#f7faf9;font-size:13px;line-height:1.45;display:none"></div>
    <div class="external-self-check">
     <b>Vous souhaitez vérifier vous-même ?</b>
     <span>Ces liens restent disponibles en option. Ils ne sont pas nécessaires pour obtenir le repère automatique.</span>
@@ -1070,11 +1071,21 @@ async function loadExternalBenchmarks(){
    const sellerToken=new URLSearchParams(location.search).get("token");
    if(sellerToken && sources.length<2){
      try{
-       $("#externalNote").textContent="Agent estimateur : remplissage automatique des formulaires en cours…";
+       const statusEl=document.getElementById("estimatorAgentStatus");
+       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>Ouverture des formulaires et récupération des valeurs…";}
+       $("#externalNote").textContent="Agent estimateur : récupération des valeurs personnalisées en cours…";
        const ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"}});
        const aj=await ar.json().catch(()=>({}));
        const agentRows=Array.isArray(aj.results)?aj.results:[];
        const existing=new Set(sources.map(x=>String(x.id||"").toLowerCase()));
+       const statusNames={};
+       agentRows.forEach(x=>{statusNames[x.name||x.id]=x.status;});
+       if(statusEl){
+         statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>"+agentRows.map(x=>{
+           const label=x.status==="value_found"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
+           return label;
+         }).join("<br>")||"Aucun résultat retourné.";
+       }
        agentRows.filter(x=>x.status==="value_found"&&Number.isFinite(Number(x.value))).forEach(x=>{
          const id="agent_"+String(x.id||"").toLowerCase();
          if(existing.has(id)) return;
@@ -1087,7 +1098,6 @@ async function loadExternalBenchmarks(){
            note:"Valeur récupérée par l'agent JML depuis le formulaire public de l'estimateur."
          });
        });
-       if(sources.length) data.externalMedian=sources.map(x=>Number(x.value)).filter(Number.isFinite).sort((a,b)=>a-b)[Math.floor((sources.length-1)/2)]||data.externalMedian;
        const extVals=sources.map(x=>Number(x.value)).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b);
        if(extVals.length){
          data.externalMedian=extVals.length%2?extVals[(extVals.length-1)/2]:(extVals[extVals.length/2-1]+extVals[extVals.length/2])/2;
@@ -1095,7 +1105,11 @@ async function loadExternalBenchmarks(){
          data.jmlGapPct=jml>0?((jml/data.externalMedian)-1)*100:null;
        }
        data.externalCount=sources.length;
-     }catch(_agentError){}
+     }catch(agentError){
+       const statusEl=document.getElementById("estimatorAgentStatus");
+       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>❌ Erreur : "+esc(agentError?.message||"agent indisponible")+".";}
+       $("#externalNote").textContent="L'agent estimateur n'a pas pu terminer. Les repères publics déjà récupérés restent affichés.";
+     }
    }
    $("#externalCount").textContent=sources.length+" source"+(sources.length>1?"s":"")+" analysée"+(sources.length>1?"s":"");
    $("#externalMedian").textContent=Number.isFinite(Number(data.externalMedian))?fmtEuroInput(data.externalMedian):"—";
