@@ -3630,8 +3630,7 @@ async function startEstimatorAgentForSpace(space){
       surface:Number(space.surface),rooms:Number(space.rooms),
       propertyType:clean(space.propertyType,60),terrain:Number(space.terrain),
       dpe:clean(space.dpe,10).toUpperCase(),
-      conditionData:space.conditionData&&typeof space.conditionData==="object"?space.conditionData:{},
-      sites:["pap"]
+      sites:["pap","seloger","meilleursagents","century21","laforet"]
     });
     const done={status:"completed",results:Array.isArray(result?.results)?result.results:[],completedAt:now(),updatedAt:now()};
     if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
@@ -3740,28 +3739,26 @@ app.post("/api/seller-space/:token/estimator-agent", async (req,res)=>{
       if(!space) return apiError(res,404,"JML-A002","Espace vendeur introuvable.");
     }
     const cached=space.estimatorAgent;
-    if(cached && (cached.status==="running" || cached.status==="completed")){
-      return res.json({ok:true,status:cached.status,results:Array.isArray(cached.results)?cached.results:[],error:cached.error||null});
+    if(cached && (cached.status==="running" || cached.status==="completed" || cached.status==="error")){
+      return res.json({ok:cached.status!=="error",status:cached.status,results:Array.isArray(cached.results)?cached.results:[],error:cached.error||null});
     }
-
-    // Ne jamais maintenir la requête HTTP ouverte pendant que Playwright travaille.
-    // Render peut fermer une requête longue avec un 502 avant que les sites externes
-    // aient fini. On lance donc le traitement en arrière-plan et le navigateur
-    // interroge ensuite le même endpoint pour récupérer le résultat.
-    const startedAt=now();
-    const running={status:"running",results:[],startedAt,updatedAt:startedAt};
-    if(pool){
-      await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",
-        [token,JSON.stringify(running)]);
-    }else if(memory.sellerSpaces.has(token)){
-      memory.sellerSpaces.get(token).estimatorAgent=running;
+    let agentPostal=String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
+    if(!agentPostal && space.address && space.city){
+      const geo=await geocodeAddress(clean(space.address,180),clean(space.city,100));
+      agentPostal=String(geo?.label||"").match(/\b\d{5}\b/)?.[0]||"";
     }
-
-    startEstimatorAgentForSpace(space).catch(error=>{
-      console.error("JML estimator background launch:",error);
+    const result=await runEstimatorAgent({
+      address:clean(space.address,180),
+      city:clean(space.city,100),
+      postalCode:agentPostal,
+      surface:Number(space.surface),
+      rooms:Number(space.rooms),
+      propertyType:clean(space.propertyType,60),
+      terrain:Number(space.terrain),
+      dpe:clean(space.dpe,10).toUpperCase(),
+      sites:["pap","seloger","meilleursagents","century21","laforet"]
     });
-
-    return res.status(202).json({ok:true,status:"running",results:[],message:"Agent lancé en arrière-plan."});
+    return res.json({ok:true,...result});
   }catch(error){
     console.error("Seller estimator agent:",error);
     return res.status(502).json({ok:false,error:"Agent d'estimation indisponible.",detail:String(error?.message||error)});
