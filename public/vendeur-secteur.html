@@ -1793,45 +1793,47 @@ async function run(){
     ?(publicM2.length%2?publicM2[(publicM2.length-1)/2]:(publicM2[publicM2.length/2-1]+publicM2[publicM2.length/2])/2)
     :n(microSource?.priceM2);
   const microM2=n(microSource?.priceM2);
-  const components=[];
-  if(compM2!=null&&compM2>0)components.push({label:"DVF comparables",weight:.50,m2:compM2});
-  if(microM2!=null&&microM2>0)components.push({label:"Micro-marché / adresse",weight:.30,m2:microM2});
-  if(extMedianM2!=null&&extMedianM2>0)components.push({label:"Estimateurs externes",weight:.20,m2:extMedianM2});
-  const totalW=components.reduce((s,x)=>s+x.weight,0);
-  components.forEach(x=>x.weight=x.weight/Math.max(totalW,1));
-  const hybridM2=components.length
-    ?components.reduce((s,x)=>s+x.m2*x.weight,0)
+  // IMPORTANT : la valeur centrale reste calculée par le moteur JML comme avant.
+  // Les estimateurs externes et Flatway servent de contre-vérification, pas à remplacer
+  // la méthode historique des comparables DVF.
+  const referenceM2=compM2!=null&&compM2>0
+    ?compM2
     :(isHouse?houseM2:isApt?apartmentM2:n(pageData.market?.communalPrice));
-  const hybridValue=hybridM2!=null&&surf?Math.round(hybridM2*surf):null;
-  // Le plancher vendeur doit provenir uniquement du DVF, jamais du marché communal
-  // ni d'un estimateur externe. Le moteur DVF expose minPriceM2 = vente DVF la moins chère
-  // parmi les comparables retenus ; c'est ce repère qui sert de garde-fou à la négociation.
+  const referenceValue=referenceM2!=null&&surf?Math.round(referenceM2*surf):null;
+
+  // Le repère bas est une information séparée : minimum DVF des ventes comparables.
+  // Il ne doit JAMAIS devenir la valeur centrale.
   const dvfFloorM2=n(comps.minPriceM2);
   const dvfFloorValue=dvfFloorM2!=null&&dvfFloorM2>0&&surf?Math.round(dvfFloorM2*surf):null;
-  const confidence=components.length>=3&&comps.matchCount>=5?"Bonne":components.length>=2?"Intermédiaire":comps.confidence||"Faible";
-  const blendLabel=components.length>=3
-    ?"DVF + micro-marché + estimateurs externes"
-    :components.map(x=>x.label).join(" + ")||"Référence communale";
+  const confidence=compM2!=null&&compM2>0
+    ?(comps.matchCount>=10?"Bonne":comps.matchCount>=5?"Intermédiaire":"Faible")
+    :"Faible";
+  const referenceSource=compM2!=null&&compM2>0
+    ?"Ventes DVF comparables"
+    :"Référence communale de secours";
   renderReference({
-    basePriceM2:hybridM2,
+    basePriceM2:referenceM2,
     surface:surf,
-    referenceValue:hybridValue,
-    rangeLow:hybridValue!=null?Math.round(hybridValue*(confidence==="Bonne"?0.88:0.85)):null,
-    rangeHigh:hybridValue!=null?Math.round(hybridValue*(confidence==="Bonne"?1.12:1.15)):null,
+    referenceValue:referenceValue,
+    rangeLow:referenceValue!=null?Math.round(referenceValue*(confidence==="Bonne"?0.88:0.85)):null,
+    rangeHigh:referenceValue!=null?Math.round(referenceValue*(confidence==="Bonne"?1.12:1.15)):null,
     confidence,
     transactions:comps.matchCount||0,
     type:d.propertyType||"Bien",
-    fromComparables:compM2!=null,
-    referenceSource:blendLabel,
-    valuationBlend:{method:"DVF 50 % + micro-marché 30 % + estimateurs externes 20 %",components},
+    fromComparables:compM2!=null&&compM2>0,
+    referenceSource,
+    valuationBlend:{
+      method:"Méthode JML historique : ventes DVF comparables pondérées. Les estimateurs externes servent de contre-vérification.",
+      components:compM2!=null&&compM2>0?[{label:"DVF comparables",weight:1,m2:compM2}]:[]
+    },
     sellerFloor:dvfFloorValue,
     dvfFloorM2:dvfFloorM2,
     microMarketPriceM2:microM2,
     externalMedianPriceM2:extMedianM2,
     externalSources:extSources,
-    explanation:components.length
-      ?"Valeur hybride : les ventes DVF restent la base principale, le micro-marché et les estimateurs publics servent de contrôle et d'ajustement."
-      :"Aucun contrôle externe exploitable : le moteur DVF/communal reste utilisé."
+    explanation:compM2!=null&&compM2>0
+      ?"La valeur centrale reste calculée par le moteur JML à partir des ventes DVF comparables pondérées. Le repère bas DVF est affiché séparément comme garde-fou de négociation."
+      :"Le moteur de comparables n'étant pas disponible, le prix communal est utilisé uniquement comme secours."
   });
   if(territory.ok!==false) $("#status").textContent="Données marché + comparables chargés";
   else $("#status").textContent="Marché communal chargé · comparables en mode dégradé";
