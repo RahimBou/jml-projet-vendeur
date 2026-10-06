@@ -305,74 +305,43 @@ async function readSource(name,url,propertyType,surface,parser){
 async function getPublicMarketBenchmarks({city,address,propertyType,surface,postalCode,communeCode,rooms,dpe,condition,terrain}={}){
   const cleanCity=normalizeText(city);
   const postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
-  if(!cleanCity||!/^\d{5}$/.test(postal)) return [];
+  const area=Number(surface);
+  if(!cleanCity||!/^[0-9]{5}$/.test(postal)) return [];
   const resolvedCommuneCode=String(communeCode||"").match(/^\d{5}$/)?.[0] || await resolveCommuneCode(cleanCity,postal);
-  const tasks=[
-    (async()=>{
-      if(!address) return null;
-      return await getGeoRegistryEstimate({address,city:cleanCity,postalCode,propertyType,surface,rooms,dpe,condition,terrain});
-    })(),
-    readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
-      const direct=pairForType(text,type);
-      if(direct) return direct;
-      const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
-      const label=new RegExp(wanted+"s?[^0-9]{0,220}([\\d\\s\\u00a0\\u202f.,]+)\\s*€\\s*\\/\\s*m²","i");
-      const lm=text.match(label);
-      if(lm) return {type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(lm[1])};
-      const app=text.match(/Appartement[\s\S]{0,250}?Prix m2 moyen[\s:]*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,100}?de[\s:]*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,100}?à[\s:]*([\d\s\u00a0\u202f.,]+)\s*€/i);
-      return app?{type:"Appartement",priceM2:numberFrom(app[1]),lowM2:numberFrom(app[2]),highM2:numberFrom(app[3])}:null;
-    }),
-    (async()=>{
-      const urls=[papUrl(cleanCity,postal),papSaleUrl(cleanCity,postal)];
-      const depUrl=papDepartmentUrl(resolvedCommuneCode);
-      if(depUrl) urls.push(depUrl);
-      for(const url of urls){
-        const result=await readSource("PAP",url,propertyType,surface,(text,type)=>{
-          const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
-          const re=wanted==="appartement"
-            ?/(?:prix\s*\/\s*m²\s*des\s*appartements|prix moyen[^0-9]{0,40}appartements?|appartements?)[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i
-            :/(?:prix\s*\/\s*m²\s*des\s*maisons|prix moyen[^0-9]{0,40}maisons?|maisons?)[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i;
-          const m=text.match(re);
-          if(m) return {type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])};
-          const broad=new RegExp(wanted+"s?[^0-9]{0,220}([\\d\\s\\u00a0\\u202f.,]+)\\s*€\\s*\\/\\s*m²","i").exec(text);
-          return broad?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(broad[1])}:null;
-        });
-        if(result) return result;
-      }
-      return null;
-    })(),    readSource("efficity",efficityUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
-      const direct=pairForType(text,type);
-      if(direct) return direct;
-      const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
-      const re=wanted==="appartement"
-        ?/(?:appartements?)[\s\S]{0,120}?prix\s*m2\s*moyen[\s:]*([\d\s\u00a0\u202f.,]+)\s*€/i
-        :/(?:maisons?)[\s\S]{0,120}?prix\s*m2\s*moyen[\s:]*([\d\s\u00a0\u202f.,]+)\s*€/i;
-      const m=text.match(re);
-      return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])}:null;
-    }),
-    selogerUrl(cleanCity,resolvedCommuneCode)
-      ? readSource("SeLoger",selogerUrl(cleanCity,communeCode),propertyType,surface,(text,type)=>{
-          const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
-          const re=wanted==="appartement"
-            ?/prix moyen des appartements au m2[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i
-            :/prix moyen des maisons au m2[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i;
-          const m=text.match(re);
-          if(m) return {type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])};
-          const broad=new RegExp(wanted+"s?[^0-9]{0,220}([\\d\\s\\u00a0\\u202f.,]+)\\s*€\\s*\\/\\s*m²","i").exec(text);
-          return broad?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(broad[1])}:null;
-        })
-      : Promise.resolve(null),
-    readSource("Orpi",orpiUrl(cleanCity),propertyType,surface,(text,type)=>{
-      const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
-      const re=wanted==="appartement"
-        ?/Appartement[\s\S]{0,120}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i
-        :/Maison[\s\S]{0,120}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i;
-      const m=text.match(re);
-      return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1]),lowM2:numberFrom(m[2]),highM2:numberFrom(m[3])}:null;
-    })
-  ];
-  const results=await Promise.allSettled(tasks);
-  return results.map(x=>x.status==="fulfilled"?x.value:null).filter(Boolean);
+  const wantedHouse=!/appartement|studio|duplex|loft/i.test(propertyType||"");
+  function parsePap(text){
+    const t=htmlText(text);
+    const exactHouse=t.match(/prix\s*\/\s*m²\s*des\s*maisons\s*([\d\s\u00a0\u202f.,]+)\s*€/i);
+    if(wantedHouse && exactHouse){ const priceM2=numberFrom(exactHouse[1]); if(priceM2) return {type:"Maison",priceM2}; }
+    const exactApartment=t.match(/prix\s*\/\s*m²\s*des\s*appartements\s*([\d\s\u00a0\u202f.,]+)\s*€/i);
+    if(!wantedHouse && exactApartment){ const priceM2=numberFrom(exactApartment[1]); if(priceM2) return {type:"Appartement",priceM2}; }
+    const faq=wantedHouse
+      ? t.match(/prix\s+(?:au|du)\s*m[²2]\s+[^.]{0,220}?maison[^\d]{0,100}([\d\s\u00a0\u202f.,]+)\s*euros?/i)
+      : t.match(/prix\s+(?:au|du)\s*m[²2]\s+[^.]{0,220}?appartement[^\d]{0,100}([\d\s\u00a0\u202f.,]+)\s*euros?/i);
+    if(faq){ const priceM2=numberFrom(faq[1]); if(priceM2) return {type:wantedHouse?"Maison":"Appartement",priceM2}; }
+    const cityPos=t.toLowerCase().indexOf(cleanCity.toLowerCase());
+    if(cityPos>=0){
+      const row=t.slice(cityPos,cityPos+500);
+      const nums=[...row.matchAll(/([\d\s\u00a0\u202f.,]+)\s*€/g)].map(m=>numberFrom(m[1])).filter(Boolean);
+      const priceM2=wantedHouse?nums[1]:nums[0];
+      if(priceM2) return {type:wantedHouse?"Maison":"Appartement",priceM2};
+    }
+    return null;
+  }
+  const urls=[papUrl(cleanCity,postal)];
+  const depUrl=papDepartmentUrl(resolvedCommuneCode);
+  if(depUrl) urls.push(depUrl);
+  for(const url of urls){
+    const page=await fetchHtml(url,10000);
+    if(!page) continue;
+    const parsed=parsePap(page.html);
+    if(!parsed) continue;
+    return [{id:"pap",name:"PAP",level:"commune",priceM2:parsed.priceM2,
+      value:Number.isFinite(area)&&area>0?Math.round(parsed.priceM2*area):null,
+      lowM2:null,highM2:null,low:null,high:null,url:page.url||url,
+      note:"Prix public PAP au m² de la commune, utilisé comme repère de marché.",
+      quality:"pap_public",personalized:false,automatic:true}];
+  }
+  return [];
 }
-
 module.exports={getPublicMarketBenchmarks,meilleursAgentsUrl,papUrl,efficityUrl,selogerUrl};
