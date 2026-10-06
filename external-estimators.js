@@ -27,9 +27,9 @@ function numberFrom(value){
 
 const geoRegistryEstimateCache=new Map();
 
-async function getGeoRegistryEstimate({address,city,postalCode,propertyType,surface}={}) {
+async function getGeoRegistryEstimate({address,city,postalCode,propertyType,surface,rooms,dpe,condition,terrain}={}) {
   const area=Number(surface);
-  const cacheKey=normalizeText(address)+"|"+normalizeText(propertyType)+"|"+Math.round(area);
+  const cacheKey=[address,city,postalCode,propertyType,surface,rooms,dpe,condition,terrain].map(normalizeText).join("|");
   const cached=geoRegistryEstimateCache.get(cacheKey);
   if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
   if(!address || !Number.isFinite(area) || area<=0) return null;
@@ -196,14 +196,14 @@ async function readSource(name,url,propertyType,surface,parser){
   };
 }
 
-async function getPublicMarketBenchmarks({city,address,propertyType,surface,postalCode,communeCode}={}){
+async function getPublicMarketBenchmarks({city,address,propertyType,surface,postalCode,communeCode,rooms,dpe,condition,terrain}={}){
   const cleanCity=normalizeText(city);
   const postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
   if(!cleanCity||!/^\d{5}$/.test(postal)) return [];
   const tasks=[
     (async()=>{
       if(!address) return null;
-      return await getGeoRegistryEstimate({address,city:cleanCity,postalCode,propertyType,surface});
+      return await getGeoRegistryEstimate({address,city:cleanCity,postalCode,propertyType,surface,rooms,dpe,condition,terrain});
     })(),
     readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
       const direct=pairForType(text,type);
