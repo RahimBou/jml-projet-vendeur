@@ -466,9 +466,35 @@ async function runEstimatorAgent(input={}){
     });
   }catch(_error){ publicSources=[]; }
   const publicByName=new Map((publicSources||[]).map(x=>[String(x.name||"").toLowerCase(),x]));
-  // Pour PAP, le navigateur doit d'abord exécuter le vrai simulateur personnalisé.
-  // Le prix communal public n'est qu'un filet de sécurité si le formulaire ne répond pas.
+  // PAP : pour le repère automatique JML, on privilégie désormais
+  // le prix communal public PAP (maison/appartement) multiplié par
+  // la surface du bien. C'est volontairement un repère approximatif,
+  // pas une estimation personnalisée du formulaire PAP.
+  const papCity=publicByName.get("pap");
+  if(papCity && Number.isFinite(Number(papCity.value)) && Number(papCity.value)>0){
+    return {
+      ok:true,
+      results:[{
+        id:"pap",
+        name:"PAP",
+        status:"value_found",
+        value:Math.round(Number(papCity.value)),
+        low:Number.isFinite(Number(papCity.low))?Math.round(Number(papCity.low)):null,
+        high:Number.isFinite(Number(papCity.high))?Math.round(Number(papCity.high)):null,
+        priceM2:Number.isFinite(Number(papCity.priceM2))?Math.round(Number(papCity.priceM2)):null,
+        source:"pap_city_benchmark",
+        publicBenchmark:true,
+        personalized:false,
+        automatic:true,
+        level:"commune",
+        url:papCity.url||ALLOWED_SITES.pap.url,
+        note:"Repère PAP basé sur le prix moyen au m² de la commune et la surface renseignée. Il sert à vérifier rapidement si le bien est dans les prix du secteur."
+      }]
+    };
+  }
 
+  // Si PAP ne publie aucun repère communal exploitable, on conserve
+  // le simulateur personnalisé comme solution de secours.
   ensureChromium();
   const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
   try{
