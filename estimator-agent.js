@@ -1,5 +1,6 @@
 "use strict";
 
+process.env.PLAYWRIGHT_BROWSERS_PATH=process.env.PLAYWRIGHT_BROWSERS_PATH||"0";
 const { chromium } = require("playwright");
 const { execFileSync } = require("child_process");
 
@@ -10,7 +11,7 @@ function ensureChromium(){
     const exe=chromium.executablePath();
     const fs=require("fs");
     if(!exe || !fs.existsSync(exe)){
-      execFileSync(process.platform==="win32"?"npx.cmd":"npx",["playwright","install","chromium"],{stdio:"inherit",timeout:120000,env:{...process.env,PLAYWRIGHT_BROWSERS_PATH:process.env.PLAYWRIGHT_BROWSERS_PATH||"0"}});
+      execFileSync(process.platform==="win32"?"npx.cmd":"npx",["playwright","install","chromium"],{stdio:"inherit",timeout:600000,env:{...process.env,PLAYWRIGHT_BROWSERS_PATH:process.env.PLAYWRIGHT_BROWSERS_PATH||"0"}});
     }
     chromiumReady=true;
   }catch(error){
