@@ -3848,6 +3848,7 @@ app.post("/api/leads", async (req,res) => {
               client
             );
         await client.query("COMMIT");
+        if(!existingSpaceResult.rowCount) setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
 
         const sellerSpaceUrl=(process.env.PUBLIC_APP_URL||((req.secure||String(req.headers["x-forwarded-proto"]||"").split(",")[0].trim()==="https")?"https":"http")+"://"+req.get("host"))+"/espace-vendeur/"+sellerSpace.accessToken;
         let emailConfirmation = { sent: false, reason: "no-email" };
@@ -3891,6 +3892,7 @@ app.post("/api/leads", async (req,res) => {
     if(!sellerSpace){
       sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData},prospectId);
     }
+    if(!sellerSpace.estimatorAgent || sellerSpace.estimatorAgent.status==="pending") setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
     const sellerSpaceUrl=req.protocol+"://"+req.get("host")+"/espace-vendeur/"+sellerSpace.accessToken;
     let emailConfirmation = { sent: false, reason: "no-email" };
     try {
