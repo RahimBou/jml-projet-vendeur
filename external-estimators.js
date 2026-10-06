@@ -27,13 +27,14 @@ function numberFrom(value){
 
 const geoRegistryEstimateCache=new Map();
 
-async function getGeoRegistryEstimate({address,propertyType,surface}={}) {
+async function getGeoRegistryEstimate({address,city,postalCode,propertyType,surface}={}) {
   const area=Number(surface);
   const cacheKey=normalizeText(address)+"|"+normalizeText(propertyType)+"|"+Math.round(area);
   const cached=geoRegistryEstimateCache.get(cacheKey);
   if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
   if(!address || !Number.isFinite(area) || area<=0) return null;
   const type_local=/appartement|studio|duplex|loft/i.test(propertyType||"") ? 2 : 1;
+  const fullAddress=[String(address||"").trim(),String(postalCode||"").trim(),String(city||"").trim()].filter(Boolean).join(", ");
   try{
     const response=await fetch("https://georegistry.fr/api/v1/dvf/estimate",{
       method:"POST",
@@ -45,7 +46,7 @@ async function getGeoRegistryEstimate({address,propertyType,surface}={}) {
       body:JSON.stringify({
         type_local,
         surface_bati:Math.round(area),
-        adresse:String(address).trim()
+        adresse:fullAddress
       }),
       signal:AbortSignal.timeout(9000)
     });
@@ -202,7 +203,7 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
   const tasks=[
     (async()=>{
       if(!address) return null;
-      return await getGeoRegistryEstimate({address,propertyType,surface});
+      return await getGeoRegistryEstimate({address,city:cleanCity,postalCode,propertyType,surface});
     })(),
     readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
       const direct=pairForType(text,type);
