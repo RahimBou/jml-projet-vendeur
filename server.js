@@ -10,6 +10,7 @@ const registerPublicEventsRoute = require("./events");
 const { registerGoogleCalendarRoutes, getGoogleCalendarBusy } = require("./google-calendar");
 const { getPublicMarketBenchmarks } = require("./external-estimators");
 const { runEstimatorAgent } = require("./estimator-agent");
+const { collectComparableListings } = require("./listing-agent");
 
 
 const app = express();
@@ -3608,6 +3609,49 @@ async function createSellerSpace(data, prospectId, transactionClient = null){
   return space;
 }
 
+async function startListingResearchForSpace(space){
+  if(!space?.accessToken) return;
+  const startedAt=now();
+  const running={status:"running",listings:[],startedAt,updatedAt:startedAt};
+  try{
+    if(pool){
+      await db("UPDATE jml_seller_spaces SET estimator_agent_data=jsonb_set(COALESCE(estimator_agent_data,'{}'::jsonb),'{listingResearch}',$2::jsonb,true),updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(running)]);
+    }else if(memory.sellerSpaces.has(space.accessToken)){
+      const current=memory.sellerSpaces.get(space.accessToken);
+      current.listingResearch=running;
+    }
+    let postalCode=String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
+    if(!postalCode && space.address && space.city){
+      try{
+        const geo=await geocodeAddress(clean(space.address,180),clean(space.city,100));
+        postalCode=String(geo?.label||"").match(/\b\d{5}\b/)?.[0]||"";
+      }catch(_geoError){}
+    }
+    const result=await collectComparableListings({
+      city:clean(space.city,100),
+      address:clean(space.address,180),
+      postalCode,
+      surface:Number(space.surface),
+      rooms:Number(space.rooms),
+      propertyType:clean(space.propertyType,60),
+      terrain:Number(space.terrain),
+      dpe:clean(space.dpe,10).toUpperCase(),
+      conditionData:space.conditionData&&typeof space.conditionData==="object"?space.conditionData:{}
+    });
+    const done={...result,status:"completed",completedAt:now(),updatedAt:now()};
+    if(pool){
+      await db("UPDATE jml_seller_spaces SET estimator_agent_data=jsonb_set(COALESCE(estimator_agent_data,'{}'::jsonb),'{listingResearch}',$2::jsonb,true),updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
+    }else if(memory.sellerSpaces.has(space.accessToken)){
+      memory.sellerSpaces.get(space.accessToken).listingResearch=done;
+    }
+  }catch(error){
+    const failed={status:"error",listings:[],error:String(error?.message||error),updatedAt:now()};
+    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=jsonb_set(COALESCE(estimator_agent_data,'{}'::jsonb),'{listingResearch}',$2::jsonb,true),updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(failed)]).catch(()=>{});
+    else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).listingResearch=failed;
+    console.error("JML listing research agent:",error);
+  }
+}
+
 async function startEstimatorAgentForSpace(space){
   if(!space?.accessToken) return;
   const startedAt=now();
@@ -3673,6 +3717,7 @@ function sellerSpacePublic(row){
     horizon:row.horizon||"unknown", surface:row.surface||"", rooms:row.rooms||"", dpe:row.dpe||"", terrain:row.terrain||"", ownerData:Array.isArray(row.owner_data)?row.owner_data:[], expectedPrice:row.expected_price||"", saleReason:row.sale_reason||"", alreadyEstimated:row.already_estimated, alreadyProfessional:row.already_professional,
     conditionData:normalizeSellerCondition(row.condition_data||row.conditionData),
     estimatorAgent:row.estimator_agent_data||row.estimatorAgent||null,
+    listingResearch:(row.estimator_agent_data&&row.estimator_agent_data.listingResearch)||row.listingResearch||null,
     checklist:Array.isArray(row.checklist)?row.checklist:[], createdAt:row.created_at||row.createdAt, updatedAt:row.updated_at||row.updatedAt
   };
 }
@@ -3858,7 +3903,7 @@ app.post("/api/leads", async (req,res) => {
               client
             );
         await client.query("COMMIT");
-        if(!existingSpaceResult.rowCount) setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
+        if(!existingSpaceResult.rowCount){ setImmediate(()=>startEstimatorAgentForSpace(sellerSpace)); setImmediate(()=>startListingResearchForSpace(sellerSpace)); }
 
         const sellerSpaceUrl=(process.env.PUBLIC_APP_URL||((req.secure||String(req.headers["x-forwarded-proto"]||"").split(",")[0].trim()==="https")?"https":"http")+"://"+req.get("host"))+"/espace-vendeur/"+sellerSpace.accessToken;
         let emailConfirmation = { sent: false, reason: "no-email" };
@@ -3903,6 +3948,7 @@ app.post("/api/leads", async (req,res) => {
       sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData},prospectId);
     }
     if(!sellerSpace.estimatorAgent || sellerSpace.estimatorAgent.status==="pending") setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
+    if(!sellerSpace.listingResearch || sellerSpace.listingResearch.status==="pending") setImmediate(()=>startListingResearchForSpace(sellerSpace));
     const sellerSpaceUrl=req.protocol+"://"+req.get("host")+"/espace-vendeur/"+sellerSpace.accessToken;
     let emailConfirmation = { sent: false, reason: "no-email" };
     try {
