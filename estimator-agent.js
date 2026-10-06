@@ -364,7 +364,7 @@ async function runPAPAdapter(page,input){
     [["Terrain"],input.terrain]
   ];
 
-  for(let step=0;step<10;step++){
+  for(let step=0;step<12;step++){
     for(const [labels,value] of fieldMap){
       if(value!==undefined&&value!==null&&String(value).trim()!==""){
         await fillLabel(page,labels,value);
@@ -381,8 +381,8 @@ async function runPAPAdapter(page,input){
     let next=null;
     let submit=null;
     for(const item of btns){
-      if(/voir (mon|l')? ?estimation|obtenir.*estimation|estimer|calculer|valider.*estimation|terminer/i.test(item.text)) {submit=item;break;}
-      if(/suivant|continuer|poursuivre|étape suivante/i.test(item.text) && !next) next=item;
+      if(/voir (mon|l')? ?estimation|obtenir.*estimation|obtenir.*prix|estimation|estimer|calculer|valider.*estimation|valider.*prix|terminer|afficher.*estimation/i.test(item.text)) {submit=item;break;}
+      if(/suivant|continuer|poursuivre|étape suivante|étape suivante|valider et continuer|passer à l'étape suivante/i.test(item.text) && !next) next=item;
     }
     if(submit){
       await submit.locator.click({timeout:3500}).catch(()=>{});
@@ -486,7 +486,7 @@ async function runEstimatorAgent(input={}){
           const ct=(response.headers()["content-type"]||"").toLowerCase();
           if(!ct.includes("json")) return;
           const url=response.url();
-          if(!/(estimate|estimat|valuation|price|prix|property|bien|market)/i.test(url)) return;
+          if(!/(estimate|estimat|valuation|price|prix|property|bien|market|simulate|simulation|valuation|api)/i.test(url)) return;
           const data=await response.json().catch(()=>null);
           const est=extractEstimateFromJson(data);
           if(est) networkEstimates.push({...est,url});
@@ -533,13 +533,26 @@ async function runEstimatorAgent(input={}){
           if(await detectCaptcha(page)) break;
         }
 
-        await waitForResult(page,8000);
-        await page.waitForTimeout(1200);
+        await waitForResult(page,20000);
+        await page.waitForTimeout(1800);
         if(await detectCaptcha(page)){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA après soumission",url:page.url(),elapsedMs:Date.now()-started};
         }
 
-        const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+        let text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+
+        // PAP peut afficher le résultat dans une vue/frame après une requête AJAX.
+        // On inspecte aussi les frames sans inventer de valeur.
+        if(!/(estimation|estimé|estimée|valeur|prix de votre bien|fourchette)/i.test(text)){
+          for(const frame of page.frames()){
+            if(frame===page.mainFrame()) continue;
+            const ft=(await frame.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+            if(ft && /(estimation|estimé|estimée|valeur|prix de votre bien|fourchette)/i.test(ft)){
+              text += " " + ft;
+            }
+          }
+        }
+
         const values=moneyValues(text);
         const domEstimate=extractEstimate(text) || extractEstimateFromCandidates(values,text);
         const networkEstimate=networkEstimates.length ? networkEstimates[networkEstimates.length-1] : null;
