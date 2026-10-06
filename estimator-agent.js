@@ -176,7 +176,6 @@ async function runEstimatorAgent(input={}){
             values,url:page.url(),elapsedMs:Date.now()-started,
             excerpt:text.replace(/\\s+/g," ").slice(0,1200)
           });
-        });
         }
       }catch(error){
         results.push({id,name:site.name,status:"error",error:String(error?.message||error),url:page.url(),elapsedMs:Date.now()-started});
