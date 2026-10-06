@@ -1955,7 +1955,10 @@ function flatwaySlug(value){
   return normalizeSearchCity(value).replace(/\s+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"");
 }
 function flatwayStreetFromAddress(address){
-  return normalizeAddress(address).replace(/^\s+/,"").trim();
+  const normalized=normalizeAddress(address).replace(/^\s+/,"").trim();
+  // Flatway indexes the street without the house number. Keep the number
+  // separately so the caller can then open the exact-address page.
+  return normalized.replace(/^\s*\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?\s+/,"").trim();
 }
 function flatwayExtractTypeBlock(text,type){
   const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"Appartement":"Maison";
@@ -2088,7 +2091,10 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
       sources.push({
         id:"flatway",name:"Flatway",level:flatway.level,priceM2:flatway.priceM2,
         value,low,high,lowM2:flatway.lowM2,highM2:flatway.highM2,
-        url:flatway.sourceUrl,note:flatway.note,automatic:true
+        url:flatway.sourceUrl,note:flatway.note,
+        quality:flatway.level==="adresse"?"address_exact":"benchmark",
+        personalized:flatway.level==="adresse",
+        automatic:true
       });
     }
 
