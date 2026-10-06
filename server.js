@@ -42,6 +42,7 @@ const PORT = Number(process.env.PORT || 10000);
 const VERSION = "3.9.7";
 const BUILD_MARKER = "dvf-postgres-comparables-robust-v12-dpe03existant-multifulltext-v14-roads-v15-ai-v16-google-calendar-v17-temporal-revaluation-v18-independent-control";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
+const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
 app.disable("x-powered-by");
 
@@ -2413,6 +2414,67 @@ app.get("/api/territory-assets", async (req,res) => {
   }catch(error){
     console.warn("[JML ASSETS]",traceId,"ERROR",error?.message||error,"ms",Date.now()-startedAt);
     return res.status(200).json({ok:false,available:false,code:"JML-ASSET-OFFICIAL",message:"Les sources officielles d'équipements sont temporairement indisponibles.",source:"Éducation nationale + INSEE BPE 2025",traceId});
+  }
+});
+
+app.get("/api/streetview", async (req,res) => {
+  const address=clean(req.query.address,180);
+  const city=clean(req.query.city,100);
+  let lat=Number(req.query.lat), lon=Number(req.query.lon);
+  if(!GOOGLE_STREETVIEW_API_KEY){
+    return res.json({
+      ok:true,available:false,code:"JML-STREETVIEW-NOT-CONFIGURED",
+      message:"Street View n'est pas configuré sur ce serveur. Ajoutez GOOGLE_MAPS_API_KEY dans Render."
+    });
+  }
+  try{
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)){
+      const geo=await geocodeAddress(address,city);
+      if(geo){lat=Number(geo.lat);lon=Number(geo.lon);}
+    }
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)){
+      return res.status(422).json({ok:false,available:false,code:"JML-STREETVIEW-NO-LOCATION",message:"Adresse non géolocalisable."});
+    }
+
+    const location=encodeURIComponent(lat+","+lon);
+    const metadataUrl="https://maps.googleapis.com/maps/api/streetview/metadata?location="+location+"&key="+encodeURIComponent(GOOGLE_STREETVIEW_API_KEY);
+    const metadataResponse=await fetch(metadataUrl,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(7000)});
+    if(!metadataResponse.ok){
+      return res.status(502).json({ok:false,available:false,code:"JML-STREETVIEW-METADATA-HTTP",message:"Le service Street View n'a pas répondu correctement."});
+    }
+    const metadata=await metadataResponse.json();
+    if(String(metadata?.status||"")!=="OK"){
+      return res.json({
+        ok:true,available:false,code:"JML-STREETVIEW-"+String(metadata?.status||"UNKNOWN"),
+        message:"Aucune image Street View disponible à proximité de cette adresse.",
+        lat,lon,status:metadata?.status||"UNKNOWN"
+      });
+    }
+
+    const imageParams=new URLSearchParams({
+      size:"640x360",
+      location:lat+","+lon,
+      fov:"90",
+      pitch:"0",
+      return_error_code:"true",
+      key:GOOGLE_STREETVIEW_API_KEY
+    });
+    return res.json({
+      ok:true,available:true,
+      lat,lon,
+      panoId:metadata.pano_id||null,
+      date:metadata.date||null,
+      copyright:metadata.copyright||"Google Maps",
+      imageUrl:"https://maps.googleapis.com/maps/api/streetview?"+imageParams.toString(),
+      mapsUrl:"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(lat+","+lon),
+      source:"Google Maps / Street View"
+    });
+  }catch(error){
+    console.warn("JML Street View:",error?.message||error);
+    return res.status(200).json({
+      ok:false,available:false,code:"JML-STREETVIEW-ERROR",
+      message:"Street View est temporairement indisponible."
+    });
   }
 });
 
