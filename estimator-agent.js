@@ -362,9 +362,7 @@ async function runSpecificAdapter(page,id,input){
 }
 
 async function runEstimatorAgent(input={}){
-  const requested=Array.isArray(input.sites)&&input.sites.length
-    ? input.sites
-    : Object.keys(ALLOWED_SITES);
+  const requested=["pap"];
 
   // Priorité aux repères publics réellement accessibles : cela évite de dépendre
   // du rendu navigateur quand une page communale publique donne déjà un prix/m².
