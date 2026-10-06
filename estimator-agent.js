@@ -450,8 +450,8 @@ async function runSpecificAdapter(page,id,input){
 async function runEstimatorAgent(input={}){
   const requested=["pap"];
 
-  // Priorité aux repères publics réellement accessibles : cela évite de dépendre
-  // du rendu navigateur quand une page communale publique donne déjà un prix/m².
+  // Le repère public PAP est conservé uniquement comme secours.
+  // L'agent doit d'abord exécuter le vrai simulateur PAP personnalisé.
   let publicSources=[];
   try{
     publicSources=await getPublicMarketBenchmarks({
