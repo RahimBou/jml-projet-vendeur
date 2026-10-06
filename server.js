@@ -1959,6 +1959,9 @@ app.post("/api/estimator-agent/run", async (req,res)=>{
       postalCode:String(input.postalCode||"").match(/\\b\\d{5}\\b/)?.[0]||"",
       surface:Number(input.surface),
       rooms:Number(input.rooms),
+      propertyType:clean(input.propertyType,60),
+      terrain:Number(input.terrain),
+      dpe:clean(input.dpe,10).toUpperCase(),
       sites:Array.isArray(input.sites)?input.sites.slice(0,12):undefined
     });
     res.json(result);
@@ -3704,6 +3707,9 @@ app.post("/api/seller-space/:token/estimator-agent", async (req,res)=>{
       postalCode:String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"",
       surface:Number(space.surface),
       rooms:Number(space.rooms),
+      propertyType:clean(space.propertyType,60),
+      terrain:Number(space.terrain),
+      dpe:clean(space.dpe,10).toUpperCase(),
       sites:["pap","seloger","meilleursagents","century21","laforet"]
     });
     return res.json({ok:true,...result});
