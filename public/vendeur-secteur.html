@@ -1111,7 +1111,7 @@ async function loadExternalBenchmarks(){
        agentRows.forEach(x=>{statusNames[x.name||x.id]=x.status;});
        if(statusEl){
          statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>"+agentRows.map(x=>{
-           const label=x.status==="value_found"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
+           const label=x.status==="value_found"?(x.source==="pap_city_benchmark"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)+" · prix moyen de la ville":"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
            return label;
          }).join("<br>")||"Aucun résultat retourné.";
        }
@@ -1123,8 +1123,8 @@ async function loadExternalBenchmarks(){
            value:Math.round(Number(x.value)),low:x.low||null,high:x.high||null,
            lowM2:x.low&&Number(d.surface)>0?Math.round(Number(x.low)/Number(d.surface)):null,
            highM2:x.high&&Number(d.surface)>0?Math.round(Number(x.high)/Number(d.surface)):null,
-           url:x.url||"#",quality:"browser_estimate",personalized:true,automatic:true,
-           note:"Valeur récupérée par l'agent JML depuis le formulaire public de l'estimateur."
+           url:x.url||"#",quality:x.source==="pap_city_benchmark"?"pap_city_benchmark":"browser_estimate",personalized:x.personalized!==false,automatic:true,
+           note:x.note||"Valeur récupérée par l'agent JML depuis le formulaire public de l'estimateur."
          });
        });
        const extVals=sources.map(x=>Number(x.value)).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b);
