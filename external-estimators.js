@@ -232,6 +232,23 @@ function papDepartmentUrl(communeCode){
   const dep=String(communeCode||"").slice(0,2);
   return dep==="08" ? "https://www.pap.fr/vendeur/prix-m2/ardennes-08-g371" : null;
 }
+
+function findPapCityUrl(html,city,postal){
+  const wantedSlug=slugify(city);
+  const wantedPostal=String(postal||"").trim();
+  if(!wantedSlug||!/^[0-9]{5}$/.test(wantedPostal)) return null;
+  const source=String(html||"");
+  const re=/<a[^>]+href=["']([^"']*\\/vendeur\\/prix-m2\\/[^"']+)["'][^>]*>/gi;
+  for(const m of source.matchAll(re)){
+    let href=String(m[1]||"").replace(/&amp;/g,"&");
+    try{
+      const absolute=new URL(href,"https://www.pap.fr").href;
+      const path=new URL(absolute).pathname.toLowerCase();
+      if(path.includes("/vendeur/prix-m2/") && path.includes(wantedSlug) && path.includes(wantedPostal)) return absolute;
+    }catch(_){}
+  }
+  return null;
+}
 function efficityUrl(city,postal){
   return "https://www.efficity.com/prix-immobilier-m2/v_"+slugify(city)+"_"+postal+"/";
 }
@@ -328,20 +345,39 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
     }
     return null;
   }
-  const urls=[papUrl(cleanCity,postal)];
+  const directUrl=papUrl(cleanCity,postal);
   const depUrl=papDepartmentUrl(resolvedCommuneCode);
-  if(depUrl) urls.push(depUrl);
-  for(const url of urls){
-    const page=await fetchHtml(url,10000);
-    if(!page) continue;
+
+  async function buildResult(page,fallbackUrl){
+    if(!page) return null;
     const parsed=parsePap(page.html);
-    if(!parsed) continue;
-    return [{id:"pap",name:"PAP",level:"commune",priceM2:parsed.priceM2,
+    if(!parsed) return null;
+    return {id:"pap",name:"PAP",level:"commune",priceM2:parsed.priceM2,
       value:Number.isFinite(area)&&area>0?Math.round(parsed.priceM2*area):null,
-      lowM2:null,highM2:null,low:null,high:null,url:page.url||url,
+      lowM2:null,highM2:null,low:null,high:null,url:page.url||fallbackUrl,
       note:"Prix public PAP au m² de la commune, utilisé comme repère de marché.",
-      quality:"pap_public",personalized:false,automatic:true}];
+      quality:"pap_public",personalized:false,automatic:true};
   }
+
+  // PAP ajoute un suffixe technique à certaines pages de communes (ex. -g9256).
+  // On commence donc par l'URL courte, puis on résout l'URL canonique depuis la page du département.
+  const directPage=await fetchHtml(directUrl,10000);
+  const directResult=await buildResult(directPage,directUrl);
+  if(directResult) return [directResult];
+
+  if(depUrl){
+    const depPage=await fetchHtml(depUrl,10000);
+    const depResult=await buildResult(depPage,depUrl);
+    if(depResult) return [depResult];
+
+    const canonical=findPapCityUrl(depPage?.html,cleanCity,postal);
+    if(canonical && canonical!==directUrl){
+      const cityPage=await fetchHtml(canonical,10000);
+      const cityResult=await buildResult(cityPage,canonical);
+      if(cityResult) return [cityResult];
+    }
+  }
+
   return [];
 }
 module.exports={getPublicMarketBenchmarks,meilleursAgentsUrl,papUrl,efficityUrl,selogerUrl};
