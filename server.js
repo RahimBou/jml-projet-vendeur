@@ -3685,6 +3685,34 @@ app.get("/api/seller-space/:token", async (req,res)=>{
   }catch(e){return unexpected(res,"JML-S003","Lecture de votre espace vendeur indisponible.",e);}
 });
 
+app.post("/api/seller-space/:token/estimator-agent", async (req,res)=>{
+  const token=clean(req.params.token,100);
+  if(!token) return apiError(res,400,"JML-A001","Accès vendeur invalide.");
+  try{
+    let space=null;
+    if(pool){
+      const q=await db("SELECT * FROM jml_seller_spaces WHERE access_token=$1 LIMIT 1",[token]);
+      if(!q.rowCount) return apiError(res,404,"JML-A002","Espace vendeur introuvable.");
+      space=sellerSpacePublic(q.rows[0]);
+    }else{
+      space=memory.sellerSpaces.get(token);
+      if(!space) return apiError(res,404,"JML-A002","Espace vendeur introuvable.");
+    }
+    const result=await runEstimatorAgent({
+      address:clean(space.address,180),
+      city:clean(space.city,100),
+      postalCode:String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"",
+      surface:Number(space.surface),
+      rooms:Number(space.rooms),
+      sites:["pap","seloger","meilleursagents","century21","laforet"]
+    });
+    return res.json({ok:true,...result});
+  }catch(error){
+    console.error("Seller estimator agent:",error);
+    return res.status(502).json({ok:false,error:"Agent d'estimation indisponible."});
+  }
+});
+
 app.patch("/api/seller-space/:token", async (req,res)=>{
   const token=clean(req.params.token,100), b=req.body||{};
   const fields={city:clean(b.city,100),address:clean(b.address,180),propertyType:clean(b.propertyType,60),horizon:clean(b.horizon,20),surface:clean(b.surface,40),rooms:clean(b.rooms,40),dpe:clean(b.dpe,10),terrain:clean(b.terrain,40),conditionData:normalizeSellerCondition(b.conditionData),ownerData:Array.isArray(b.ownerData)?b.ownerData.slice(0,10).map(o=>({firstName:clean(o?.firstName,80),lastName:clean(o?.lastName,80),phone:clean(o?.phone,40),email:cleanEmail(o?.email)})):[],expectedPrice:clean(b.expectedPrice,30),saleReason:clean(b.saleReason,1000),alreadyEstimated:b.alreadyEstimated===true||b.alreadyEstimated==="Oui"?true:b.alreadyEstimated===false||b.alreadyEstimated==="Non"?false:null,alreadyProfessional:b.alreadyProfessional===true||b.alreadyProfessional==="Oui"?true:b.alreadyProfessional===false||b.alreadyProfessional==="Non"?false:null};
