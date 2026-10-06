@@ -1699,13 +1699,20 @@ async function buildComparableSales(market,property){
 
   const MAX_RADIUS_KM=3;
   const MAX_AGE_MONTHS=48;
+  // Les données indispensables au calcul DVF passent avant tout enrichissement DPE.
+  // Le DPE automatique ne doit jamais ralentir ni faire expirer la recherche de comparables.
   let subjectDpe=normalizeDpeLabel(property?.dpe)||null;
   let subjectDpeSource=subjectDpe?"Saisi dans le dossier":null;
-  if(!subjectDpe){ const autoDpe=await getAdemeDpeByAddress(property?.address,city); if(autoDpe?.dpe){subjectDpe=autoDpe.dpe;subjectDpeSource=autoDpe.source;} }
-  let local=[];
-  try{local=await getLocalDvfComparables(origin,MAX_RADIUS_KM,commune?.code||"");}catch(error){console.warn("JML comparables DVF local:",error.message);}
-  let freshDvfPlus=[];
-  try{freshDvfPlus=await getFreshDvfPlusComparables(origin,property,commune?.code||"");}catch(error){console.warn("JML comparables DVF+ récent:",error.message);}
+  const [localResult,freshResult]=await Promise.all([
+    getLocalDvfComparables(origin,MAX_RADIUS_KM,commune?.code||"").catch(error=>{
+      console.warn("JML comparables DVF local:",error.message); return [];
+    }),
+    getFreshDvfPlusComparables(origin,property,commune?.code||"").catch(error=>{
+      console.warn("JML comparables DVF+ récent:",error.message); return [];
+    })
+  ]);
+  const local=Array.isArray(localResult)?localResult:[];
+  const freshDvfPlus=Array.isArray(freshResult)?freshResult:[];
 
   const seen=new Set(),candidates=[];
   const now=Date.now();
@@ -1784,12 +1791,19 @@ async function buildComparableSales(market,property){
   evaluateRows(sourceRows);
 
   let externalRows=0;
-  try{
-    const commune=await resolveTerritoryCommune(city,"");
-    const external=await getExternalDvfByCommune(commune?.code,city);
-    externalRows=external.length;
-    evaluateRows(external);
-  }catch(error){console.warn("JML comparables DVF externe secours:",error.message);}
+  // Secours DVF externe uniquement si les sources principales n'ont pas fourni
+  // suffisamment de candidats. Ce secours est borné pour ne jamais bloquer le moteur.
+  if(candidates.length<5){
+    try{
+      const communeForFallback=commune||await resolveTerritoryCommune(city,"");
+      const external=await Promise.race([
+        getExternalDvfByCommune(communeForFallback?.code,city),
+        new Promise(resolve=>setTimeout(()=>resolve([]),5000))
+      ]);
+      externalRows=Array.isArray(external)?external.length:0;
+      evaluateRows(Array.isArray(external)?external:[]);
+    }catch(error){console.warn("JML comparables DVF externe secours:",error.message);}
+  }
 
   if(!candidates.length) return {sales:[],valuationSales:[],sameStreet:[],median:null,weightedPriceM2:null,weightedMedianPriceM2:null,matchCount:0,totalCandidates:0,radiusKm:null,searchScope:"Aucune transaction comparable",origin,originSource,source:"DVF local JML / PostgreSQL",engineVersion:"8.4.0-PG-DVF-VALUATION-COMPARE"};
 
@@ -1798,10 +1812,16 @@ async function buildComparableSales(market,property){
   // +/-15 % pour éviter qu'une petite série locale déforme brutalement la valeur.
   const temporal=applyTemporalRevaluation(candidates);
   const temporalIndex=temporal.index;
-  const temporalControl=await buildIndependentTemporalControl(
-    {propertyType:property?.propertyType,surface:surface,rooms:rooms},
-    commune?.code||""
-  );
+  const temporalControl=await Promise.race([
+    buildIndependentTemporalControl(
+      {propertyType:property?.propertyType,surface:surface,rooms:rooms},
+      commune?.code||""
+    ),
+    new Promise(resolve=>setTimeout(()=>resolve({
+      available:false,
+      method:"Contrôle temporel indépendant différé pour préserver la rapidité du repère DVF."
+    }),3000))
+  ]);
   const rawValues=candidates.map(x=>x.pricePerM2).filter(Number.isFinite).sort((a,b)=>a-b);
   const medianRaw=rawValues.length%2?rawValues[(rawValues.length-1)/2]:(rawValues[rawValues.length/2-1]+rawValues[rawValues.length/2])/2;
   const q1Raw=rawValues[Math.floor((rawValues.length-1)*0.25)]??medianRaw;
