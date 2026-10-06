@@ -231,7 +231,8 @@ async function runEstimatorAgent(input={}){
         await context.close().catch(()=>{});
       }
     };
-    const results=[];\n    for(const id of requested){ results.push(await runOne(id)); }
+    const results=[];
+    for(const id of requested){ results.push(await runOne(id)); }
     return {ok:true,results};
   }finally{
     await browser.close().catch(()=>{});
