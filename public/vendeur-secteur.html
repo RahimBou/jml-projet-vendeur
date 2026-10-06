@@ -854,7 +854,7 @@ section:has(.method-card){
   </div>
   <div>
    <div class="external-sources" id="externalSources"></div>
-   <div id="estimatorAgentStatus" style="margin:12px 0;padding:12px 14px;border:1px solid #dfe8e5;border-radius:12px;background:#f7faf9;font-size:13px;line-height:1.45;display:none"></div>
+   <div id="estimatorAgentStatus" style="margin:12px 0;padding:12px 14px;border:1px solid #dfe8e5;border-radius:12px;background:#f7faf9;font-size:13px;line-height:1.45;display:block"><b>🤖 Agent estimateur</b><br>Préparation…</div>
    <div class="external-self-check">
     <b>Vous souhaitez vérifier vous-même ?</b>
     <span>Ces liens restent disponibles en option. Ils ne sont pas nécessaires pour obtenir le repère automatique.</span>
@@ -1069,13 +1069,14 @@ async function loadExternalBenchmarks(){
    // Si les récupérations publiques classiques sont trop pauvres, l'agent
    // ouvre les formulaires officiels et tente d'en récupérer la valeur personnalisée.
    const sellerToken=new URLSearchParams(location.search).get("token");
-   if(sellerToken && sources.length<2){
+   if(sellerToken){
      try{
        const statusEl=document.getElementById("estimatorAgentStatus");
        if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>Ouverture des formulaires et récupération des valeurs…";}
        $("#externalNote").textContent="Agent estimateur : récupération des valeurs personnalisées en cours…";
-       const ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"}});
+       const controller=new AbortController(); const agentTimer=setTimeout(()=>controller.abort(),60000); let ar; try{ ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal}); } finally { clearTimeout(agentTimer); }
        const aj=await ar.json().catch(()=>({}));
+       if(!ar.ok) throw new Error(aj.error||("HTTP "+ar.status));
        const agentRows=Array.isArray(aj.results)?aj.results:[];
        const existing=new Set(sources.map(x=>String(x.id||"").toLowerCase()));
        const statusNames={};
