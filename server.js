@@ -8,6 +8,7 @@ const { Pool } = require("pg");
 const crypto = require("crypto");
 const registerPublicEventsRoute = require("./events");
 const { registerGoogleCalendarRoutes, getGoogleCalendarBusy } = require("./google-calendar");
+const { getPublicMarketBenchmarks } = require("./external-estimators");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -2039,20 +2040,37 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
   const propertyType=clean(req.query.propertyType,60);
   const surface=Number(req.query.surface);
   const jmlValue=Number(req.query.jmlValue);
-  const postalCode=clean(req.query.postalCode,10);
+  let postalCode=clean(req.query.postalCode,10).match(/\b\d{5}\b/)?.[0]||"";
+  let communeCode="";
   if(!city) return res.status(400).json({ok:false,code:"JML-EXT-400",error:"Commune requise."});
   try{
+    const commune=await resolveTerritoryCommune(city,address);
+    communeCode=String(commune?.code||"").trim();
+    if(!postalCode && address){
+      const geo=await geocodeAddress(address,city);
+      postalCode=String(geo?.label||"").match(/\b\d{5}\b/)?.[0]||"";
+    }
+
+    // Les estimateurs publics sont interrogés en parallèle. Nous ne remplissons
+    // jamais une valeur avec une supposition : si une source ne répond pas,
+    // elle reste simplement disponible via son lien de vérification manuelle.
+    const publicSources=await getPublicMarketBenchmarks({
+      city,address,propertyType,surface,postalCode,communeCode
+    });
+
     const flatway=await getFlatwayMarketBenchmark({city,address,propertyType,postalCode});
-    const sources=[];
+    const sources=[...publicSources];
     if(flatway.available&&Number.isFinite(flatway.priceM2)&&flatway.priceM2>0){
       const value=Number.isFinite(surface)&&surface>0?Math.round(flatway.priceM2*surface):null;
       const low=Number.isFinite(surface)&&surface>0&&flatway.lowM2?Math.round(flatway.lowM2*surface):null;
       const high=Number.isFinite(surface)&&surface>0&&flatway.highM2?Math.round(flatway.highM2*surface):null;
       sources.push({
         id:"flatway",name:"Flatway",level:flatway.level,priceM2:flatway.priceM2,
-        value,low,high,url:flatway.sourceUrl,note:flatway.note
+        value,low,high,lowM2:flatway.lowM2,highM2:flatway.highM2,
+        url:flatway.sourceUrl,note:flatway.note,automatic:true
       });
     }
+
     const externalValues=sources.map(x=>Number(x.value)).filter(v=>Number.isFinite(v)&&v>0);
     const vals=externalValues.concat(Number.isFinite(jmlValue)&&jmlValue>0?[jmlValue]:[]).sort((a,b)=>a-b);
     const median=vals.length?(vals.length%2?vals[(vals.length-1)/2]:(vals[vals.length/2-1]+vals[vals.length/2])/2):null;
@@ -2060,6 +2078,7 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
     const gap=extMedian&&Number.isFinite(jmlValue)&&jmlValue>0?((jmlValue/extMedian)-1)*100:null;
     const marketLow=sources.length?Math.min(...sources.map(x=>x.low).filter(Number.isFinite)):null;
     const marketHigh=sources.length?Math.max(...sources.map(x=>x.high).filter(Number.isFinite)):null;
+
     return res.json({
       ok:true,generatedAt:new Date().toISOString(),sources,
       externalCount:sources.length,externalMedian:extMedian,
@@ -2067,10 +2086,12 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
       jmlGapPct:gap,
       synthesizedValue:median,
       marketLow,marketHigh,
-      confidence:sources.length>=2?"Bonne":sources.length===1?(sources[0].level==="adresse"?"Modérée":"Indicative"):"Indisponible",
+      automaticCount:sources.filter(x=>x.automatic!==false).length,
+      availableSources:sources.map(x=>x.name),
+      confidence:sources.length>=3?"Bonne":sources.length===2?"Modérée":sources.length===1?(sources[0].level==="adresse"?"Modérée":"Indicative"):"Indisponible",
       note:sources.length
-        ?"La synthèse combine automatiquement le moteur JML et des repères publics accessibles. Elle reste indicative et ne remplace pas un avis de valeur professionnel."
-        :"Aucun repère externe public exploitable n'a pu être récupéré automatiquement pour cette adresse."
+        ?"Les repères sont récupérés automatiquement depuis les pages publiques accessibles des estimateurs. Ils restent indicatifs. Les liens de vérification manuelle des 5 estimateurs sont conservés ci-dessous."
+        :"Aucun repère externe public exploitable n'a pu être récupéré automatiquement pour cette adresse. Les 5 liens de vérification manuelle restent disponibles."
     });
   }catch(error){
     console.error("JML external-market-benchmarks:",error.message);
