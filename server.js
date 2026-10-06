@@ -3732,6 +3732,10 @@ app.post("/api/seller-space/:token/estimator-agent", async (req,res)=>{
       space=memory.sellerSpaces.get(token);
       if(!space) return apiError(res,404,"JML-A002","Espace vendeur introuvable.");
     }
+    const cached=space.estimatorAgent;
+    if(cached && (cached.status==="running" || cached.status==="completed" || cached.status==="error")){
+      return res.json({ok:cached.status!=="error",status:cached.status,results:Array.isArray(cached.results)?cached.results:[],error:cached.error||null});
+    }
     let agentPostal=String(space.postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
     if(!agentPostal && space.address && space.city){
       const geo=await geocodeAddress(clean(space.address,180),clean(space.city,100));
