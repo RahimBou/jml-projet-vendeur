@@ -3720,7 +3720,7 @@ app.post("/api/seller-space/:token/estimator-agent", async (req,res)=>{
     return res.json({ok:true,...result});
   }catch(error){
     console.error("Seller estimator agent:",error);
-    return res.status(502).json({ok:false,error:"Agent d'estimation indisponible."});
+    return res.status(502).json({ok:false,error:"Agent d'estimation indisponible.",detail:String(error?.message||error)});
   }
 });
 
