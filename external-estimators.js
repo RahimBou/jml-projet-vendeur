@@ -168,12 +168,23 @@ async function getGeoRegistryEstimate({address,city,postalCode,propertyType,surf
 async function fetchHtml(url, timeout=8000){
   try{
     const response=await fetch(url,{headers:DEFAULT_HEADERS,redirect:"follow",signal:AbortSignal.timeout(timeout)});
-    if(!response.ok) return null;
-    const html=await response.text();
-    return html && html.length>200 ? {html,url:response.url||url} : null;
-  }catch(_error){
-    return null;
-  }
+    if(response.ok){
+      const html=await response.text();
+      if(html && html.length>200) return {html,url:response.url||url,readerUsed:false};
+    }
+  }catch(_error){}
+  try{
+    const response=await fetch("https://r.jina.ai/"+url,{
+      headers:{"Accept":"text/plain","User-Agent":"JML-Projet-Vendeur/4.1"},
+      redirect:"follow",
+      signal:AbortSignal.timeout(15000)
+    });
+    if(response.ok){
+      const html=await response.text();
+      if(html && html.length>100) return {html,url,readerUsed:true};
+    }
+  }catch(_error){}
+  return null;
 }
 
 function htmlText(html){
