@@ -125,27 +125,24 @@ async function runEstimatorAgent(input={}){
   const requested=Array.isArray(input.sites)&&input.sites.length
     ? input.sites
     : Object.keys(ALLOWED_SITES);
-  const results=[];
   const browser=await chromium.launch({headless:true});
   try{
-    for(const id of requested){
+    const runOne=async(id)=>{
       const site=ALLOWED_SITES[id];
-      if(!site){ results.push({id,status:"unsupported"}); continue; }
+      if(!site) return {id,status:"unsupported"};
       const started=Date.now();
-      const context=await browser.newContext({
-        locale:"fr-FR",
-        userAgent:"JML-Projet-Vendeur/4.1"
-      });
+      const context=await browser.newContext({locale:"fr-FR",userAgent:"JML-Projet-Vendeur/4.1"});
       const page=await context.newPage();
       try{
-        await page.goto(site.url,{waitUntil:"domcontentloaded",timeout:20000});
+        await page.goto(site.url,{waitUntil:"domcontentloaded",timeout:15000});
         await acceptCookies(page);
         if(await detectCaptcha(page)){
-          results.push({id,name:site.name,status:"manual_required",reason:"CAPTCHA détecté",url:page.url()});
-          await context.close(); continue;
+          return {id,name:site.name,status:"manual_required",reason:"CAPTCHA détecté",url:page.url(),elapsedMs:Date.now()-started};
         }
 
         await fillSmart(page,["adresse","address","rue"],input.address);
+        await page.waitForTimeout(500);
+        await page.keyboard.press("Enter").catch(()=>{});
         await fillSmart(page,["ville","city","commune"],input.city);
         await fillSmart(page,["code postal","postal","zip"],input.postalCode);
         await fillSmart(page,["surface","m²","m2"],input.surface);
@@ -154,39 +151,57 @@ async function runEstimatorAgent(input={}){
         await fillSmart(page,["terrain","surface du terrain"],input.terrain);
         await fillSmart(page,["dpe","diagnostic"],input.dpe);
 
-        const submit=await firstLocator(page,[
-          'button:has-text("Estimer")',
-          'button:has-text("Obtenir")',
-          'button:has-text("Calculer")',
-          'button[type="submit"]',
-          'input[type="submit"]'
-        ]);
-        if(submit) await submit.click({timeout:4000}).catch(()=>{});
-        await page.waitForTimeout(2500);
-
-        if(await detectCaptcha(page)){
-          results.push({id,name:site.name,status:"manual_required",reason:"CAPTCHA après soumission",url:page.url()});
-        }else{
-          const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
-          const values=moneyValues(text);
-          const estimate=extractEstimate(text);
-          results.push({
-            id,name:site.name,status:estimate?"value_found":values.length?"candidates_found":"no_value",
-            value:estimate?.value||null,low:estimate?.low||null,high:estimate?.high||null,
-            values,url:page.url(),elapsedMs:Date.now()-started,
-            excerpt:text.replace(/\\s+/g," ").slice(0,1200)
-          });
+        for(let step=0;step<4;step++){
+          const next=await firstLocator(page,[
+            'button:has-text("Suivant")',
+            'button:has-text("Continuer")',
+            'button:has-text("Poursuivre")',
+            'button:has-text("Valider")'
+          ]);
+          const submit=await firstLocator(page,[
+            'button:has-text("Estimer")',
+            'button:has-text("Obtenir")',
+            'button:has-text("Calculer")',
+            'button:has-text("Voir mon estimation")',
+            'button[type="submit"]',
+            'input[type="submit"]'
+          ]);
+          if(submit){
+            await submit.click({timeout:2500}).catch(()=>{});
+            break;
+          }
+          if(!next) break;
+          await next.click({timeout:2500}).catch(()=>{});
+          await page.waitForTimeout(800);
+          if(await detectCaptcha(page)) break;
         }
+
+        await page.waitForTimeout(2500);
+        if(await detectCaptcha(page)){
+          return {id,name:site.name,status:"manual_required",reason:"CAPTCHA après soumission",url:page.url(),elapsedMs:Date.now()-started};
+        }
+
+        const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+        const values=moneyValues(text);
+        const estimate=extractEstimate(text);
+        return {
+          id,name:site.name,
+          status:estimate?"value_found":values.length?"candidates_found":"no_value",
+          value:estimate?.value||null,low:estimate?.low||null,high:estimate?.high||null,
+          values,url:page.url(),elapsedMs:Date.now()-started,
+          excerpt:text.replace(/\\s+/g," ").slice(0,1200)
+        };
       }catch(error){
-        results.push({id,name:site.name,status:"error",error:String(error?.message||error),url:page.url(),elapsedMs:Date.now()-started});
+        return {id,name:site.name,status:"error",error:String(error?.message||error),url:page.url(),elapsedMs:Date.now()-started};
       }finally{
-        await context.close();
+        await context.close().catch(()=>{});
       }
-    }
+    };
+    const results=await Promise.all(requested.map(runOne));
+    return {ok:true,results};
   }finally{
-    await browser.close();
+    await browser.close().catch(()=>{});
   }
-  return {ok:true,results};
 }
 
 module.exports={runEstimatorAgent,ALLOWED_SITES};
