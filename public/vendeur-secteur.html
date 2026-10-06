@@ -1056,6 +1056,10 @@ async function loadExternalBenchmarks(){
      address:d.address||"",
      propertyType:d.propertyType||"",
      surface:d.surface||"",
+     rooms:d.rooms||"",
+     dpe:d.dpe||"",
+     terrain:d.terrain||"",
+     condition:(d.conditionData&&d.conditionData.general)||"",
      jmlValue:Number.isFinite(jml)?String(jml):""
    });
    const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),12000,"Repères externes");
