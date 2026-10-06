@@ -855,6 +855,7 @@ section:has(.method-card){
   <div>
    <div class="external-sources" id="externalSources"></div>
    <div id="estimatorAgentStatus" style="margin:12px 0;padding:12px 14px;border:1px solid #dfe8e5;border-radius:12px;background:#f7faf9;font-size:13px;line-height:1.45;display:block"><b>🤖 Agent estimateur</b><br>Préparation…</div>
+   <div id="listingResearchStatus" style="margin:10px 0;padding:12px 14px;border:1px solid #e4ebe8;border-radius:12px;background:#fff;font-size:13px;line-height:1.45"><b>🔎 Agent marché</b><br>Recherche des annonces comparables…</div>
    <div class="external-self-check">
     <b>Vous souhaitez vérifier vous-même ?</b>
     <span>Ces liens restent disponibles en option. Ils ne sont pas nécessaires pour obtenir le repère automatique.</span>
@@ -1771,12 +1772,56 @@ function renderSellerPost(){
   el.textContent+=" Ces éléments décrivent le marché et le cadre de vie ; ils ne remplacent pas l'analyse précise de l'état du bien, de ses prestations et de sa stratégie de vente.";
 }
 
+function renderListingResearch(research){
+ const el=$("#listingResearchStatus");
+ if(!el)return;
+ const x=research||{};
+ if(x.status==="running"||!research){
+   el.innerHTML="<b>🔎 Agent marché</b><br>⏳ Recherche des annonces actuellement en vente qui ressemblent à votre bien…";
+   return;
+ }
+ if(x.status==="error"){
+   el.innerHTML="<b>🔎 Agent marché</b><br>⚠️ La recherche des annonces n’a pas pu terminer. Le moteur DVF reste disponible.";
+   return;
+ }
+ const rows=Array.isArray(x.listings)?x.listings:[];
+ const summary=x.weightedPriceM2?("Repère annonces pondéré : <b>"+m2(x.weightedPriceM2)+"</b>"+(x.estimatedValue?" · soit environ <b>"+eur(x.estimatedValue)+"</b>":"")):"Aucun nombre suffisant d’annonces comparables exploitable.";
+ const cards=rows.slice(0,6).map(a=>'<div style="border:1px solid #e5ebe8;border-radius:10px;padding:10px;margin-top:8px;background:#fafcfb">'+
+   '<div style="font-weight:700">'+esc(a.title||"Annonce comparable")+'</div>'+
+   '<div style="margin-top:4px"><b>'+eur(a.price)+'</b> · '+esc(a.surface||"—")+' m²'+(a.rooms?' · '+esc(a.rooms)+' pièces':'')+(a.terrain?' · terrain '+esc(a.terrain)+' m²':'')+'</div>'+
+   '<div style="margin-top:3px">'+m2(a.priceM2)+' · pertinence '+esc(a.score||"—")+'/100 · '+esc(a.source||"source publique")+'</div>'+
+   (a.url?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:5px">Voir l’annonce ↗</a>':"")+
+   '</div>').join("");
+ el.innerHTML="<b>🔎 Agent marché</b><br>"+summary+
+   '<div style="margin-top:6px;color:#5c6a66">L’agent compare le type, la surface, les pièces, le terrain et la localisation. Les prix affichés sont des <b>prix demandés</b>, pas des prix de vente signés.</div>'+
+   (cards||'<div style="margin-top:8px">Aucune annonce assez proche pour l’instant.</div>');
+}
+async function pollListingResearch(token){
+ if(!token)return;
+ let tries=0;
+ const tick=async()=>{
+   if(tries++>12)return;
+   try{
+     const r=await fetch("/api/seller-space/"+encodeURIComponent(token),{cache:"no-store"});
+     const j=await r.json().catch(()=>({}));
+     if(r.ok&&j.ok&&j.space){
+       pageData.space={...pageData.space,...j.space};
+       renderListingResearch(j.space.listingResearch);
+       if(j.space.listingResearch?.status==="running"||j.space.listingResearch?.status==="pending") setTimeout(tick,8000);
+     }else if(tries<12) setTimeout(tick,8000);
+   }catch(_){ if(tries<12)setTimeout(tick,8000); }
+ };
+ tick();
+}
+
 async function run(){
  try{
   const d=await loadServerSpace();
   loadStreetView(d);
   pageData.space=d;
   setProject(d);
+  renderListingResearch(d.listingResearch);
+  pollListingResearch(d.token||new URLSearchParams(location.search).get("token"));
  addDiag("Page / navigateur","JML-D001",PAGE_BUILD+" · données du projet récupérées depuis l’espace vendeur / URL");
  $("#status").textContent="Dossier chargé · recherche des données locales…";
  if(!d.city){
