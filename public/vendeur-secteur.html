@@ -1087,8 +1087,9 @@ function renderReference(ref){
  const methodText=r.valuationBlend?.method||"Ventes comparables et données de marché disponibles";
  const range=r.rangeLow!=null&&r.rangeHigh!=null
    ?eur(r.rangeLow)+" à "+eur(r.rangeHigh)
-   :"Fourchette non disponible";
- const floor=r.sellerFloor!=null?Number(r.sellerFloor):(r.rangeLow!=null?Number(r.rangeLow):null);
+   :(r.rangeLow!=null?eur(r.rangeLow)+" → maximum externe non disponible":"Fourchette non disponible");
+ const floor=r.marketMinimumValue!=null?Number(r.marketMinimumValue):(r.sellerFloor!=null?Number(r.sellerFloor):null);
+ const ceiling=r.marketMaximumValue!=null?Number(r.marketMaximumValue):null;
  $("#reference").innerHTML=
  '<div class="ref-main seller-reference-main">'+
    '<span class="reference-kicker">REPÈRE DE VALEUR</span>'+
@@ -1099,7 +1100,8 @@ function renderReference(ref){
  '</div>'+
  '<div class="ref-list seller-reference-details">'+
    '<div class="ref-row reference-range"><b>Fourchette observée</b><span>'+esc(range)+'</span></div>'+
-   '<div class="ref-row seller-floor-row"><b>🔴 Repère bas conseillé</b><span>'+esc(floor!=null?eur(floor):"—")+'</span></div>'+
+   '<div class="ref-row seller-floor-row"><b>🔴 Prix minimum conseillé</b><span>'+esc(floor!=null?eur(floor):"—")+'</span></div>'+
+   '<div class="ref-row"><b>🟢 Prix maximum externe</b><span>'+esc(ceiling!=null?eur(ceiling):"—")+'</span></div>'+
    '<div class="ref-row"><b>Repère au m²</b><span>'+esc(m2(r.basePriceM2))+'</span></div>'+
    '<div class="ref-row"><b>Ventes utilisées</b><span>'+esc(txLabel)+'</span></div>'+
    '<div class="ref-row"><b>Fiabilité du repère</b><span>'+esc(r.confidence||"Faible")+'</span></div>'+
