@@ -1064,7 +1064,39 @@ async function loadExternalBenchmarks(){
    });
    const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),12000,"Repères externes");
    pageData.externalBenchmarks=data;
-   const sources=Array.isArray(data.sources)?data.sources:[];
+   let sources=Array.isArray(data.sources)?data.sources:[];
+   // Si les récupérations publiques classiques sont trop pauvres, l'agent
+   // ouvre les formulaires officiels et tente d'en récupérer la valeur personnalisée.
+   const sellerToken=new URLSearchParams(location.search).get("token");
+   if(sellerToken && sources.length<2){
+     try{
+       $("#externalNote").textContent="Agent estimateur : remplissage automatique des formulaires en cours…";
+       const ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"}});
+       const aj=await ar.json().catch(()=>({}));
+       const agentRows=Array.isArray(aj.results)?aj.results:[];
+       const existing=new Set(sources.map(x=>String(x.id||"").toLowerCase()));
+       agentRows.filter(x=>x.status==="value_found"&&Number.isFinite(Number(x.value))).forEach(x=>{
+         const id="agent_"+String(x.id||"").toLowerCase();
+         if(existing.has(id)) return;
+         sources.push({
+           id,name:x.name,level:"address",priceM2:Number(d.surface)>0?Math.round(Number(x.value)/Number(d.surface)):null,
+           value:Math.round(Number(x.value)),low:x.low||null,high:x.high||null,
+           lowM2:x.low&&Number(d.surface)>0?Math.round(Number(x.low)/Number(d.surface)):null,
+           highM2:x.high&&Number(d.surface)>0?Math.round(Number(x.high)/Number(d.surface)):null,
+           url:x.url||"#",quality:"browser_estimate",personalized:true,automatic:true,
+           note:"Valeur récupérée par l'agent JML depuis le formulaire public de l'estimateur."
+         });
+       });
+       if(sources.length) data.externalMedian=sources.map(x=>Number(x.value)).filter(Number.isFinite).sort((a,b)=>a-b)[Math.floor((sources.length-1)/2)]||data.externalMedian;
+       const extVals=sources.map(x=>Number(x.value)).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b);
+       if(extVals.length){
+         data.externalMedian=extVals.length%2?extVals[(extVals.length-1)/2]:(extVals[extVals.length/2-1]+extVals[extVals.length/2])/2;
+         data.synthesizedValue=Number.isFinite(jml)?(jml+data.externalMedian)/2:data.externalMedian;
+         data.jmlGapPct=jml>0?((jml/data.externalMedian)-1)*100:null;
+       }
+       data.externalCount=sources.length;
+     }catch(_agentError){}
+   }
    $("#externalCount").textContent=sources.length+" source"+(sources.length>1?"s":"")+" analysée"+(sources.length>1?"s":"");
    $("#externalMedian").textContent=Number.isFinite(Number(data.externalMedian))?fmtEuroInput(data.externalMedian):"—";
    $("#externalGap").textContent=Number.isFinite(Number(data.jmlGapPct))
