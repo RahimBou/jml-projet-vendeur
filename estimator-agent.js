@@ -266,6 +266,100 @@ function extractEstimateFromJson(value){
   return {value:uniq[0].value,low:null,high:null,source:"network"};
 }
 
+
+async function fillLabel(page,labels,value){
+  if(value===undefined||value===null||String(value).trim()==="") return false;
+  for(const label of labels){
+    try{
+      const loc=page.getByLabel(new RegExp(label,"i")).first();
+      if(await loc.count() && await loc.isVisible({timeout:700})){ await loc.fill(String(value)); return true; }
+    }catch(_){}
+  }
+  return fillSmart(page,labels,value);
+}
+
+async function clickButtonText(page,names){
+  for(const name of names){
+    const loc=page.getByRole("button",{name:new RegExp(name,"i")}).first();
+    try{
+      if(await loc.count() && await loc.isVisible({timeout:700})){ await loc.click({timeout:2500}); return true; }
+    }catch(_){}
+  }
+  return false;
+}
+
+async function chooseOption(page,names){
+  for(const name of names){
+    try{
+      const loc=page.getByRole("radio",{name:new RegExp(name,"i")}).first();
+      if(await loc.count() && await loc.isVisible({timeout:700})){ await loc.check().catch(()=>loc.click()); return true; }
+    }catch(_){}
+    if(await clickText(page,[new RegExp("^"+name+"$","i"),name])) return true;
+  }
+  return false;
+}
+
+async function runPAPAdapter(page,input){
+  const full=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
+  const okAddress=await fillLabel(page,["Adresse du bien","Adresse"],full);
+  if(!okAddress) return {status:"form_not_found",reason:"Champ adresse PAP introuvable"};
+  await page.waitForTimeout(1000);
+  const options=page.locator('[role="option"],li,[class*="autocomplete"],[class*="suggest"]');
+  const count=await options.count().catch(()=>0);
+  for(let i=0;i<Math.min(count,12);i++){
+    const o=options.nth(i), txt=(await o.innerText().catch(()=>"")).trim().toLowerCase();
+    if(txt && ((input.city&&txt.includes(String(input.city).toLowerCase()))||(input.postalCode&&txt.includes(String(input.postalCode))))){
+      await o.click({timeout:2000}).catch(()=>{}); break;
+    }
+  }
+  await chooseOption(page,[/maison/i.test(String(input.propertyType||""))?"Maison":"Appartement"]);
+  await fillLabel(page,["Surface du bien","Surface"],input.surface);
+  await fillLabel(page,["Nombre de pièces","Pièces","pieces"],input.rooms);
+  await fillLabel(page,["Terrain","Surface du terrain"],input.terrain);
+  return {status:"form_filled"};
+}
+
+async function runSeLogerAdapter(page,input){
+  const full=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
+  const okAddress=await fillLabel(page,["Adresse","Adresse du bien","address"],full);
+  if(!okAddress) return {status:"form_not_found",reason:"Champ adresse SeLoger introuvable"};
+  await page.waitForTimeout(1000);
+  await page.keyboard.press("ArrowDown").catch(()=>{});
+  await page.keyboard.press("Enter").catch(()=>{});
+  await fillLabel(page,["Code postal","Postal"],input.postalCode);
+  await fillLabel(page,["Ville","Commune","City"],input.city);
+  await chooseOption(page,[/maison/i.test(String(input.propertyType||""))?"Maison":"Appartement"]);
+  await fillLabel(page,["Surface","Surface Carrez"],input.surface);
+  await fillLabel(page,["Nombre de pièces","Pièces","pieces"],input.rooms);
+  await fillLabel(page,["Année de construction","Année","Construction"],input.year);
+  await fillLabel(page,["DPE","Diagnostic"],input.dpe);
+  return {status:"form_filled"};
+}
+
+async function runMeilleursAgentsAdapter(page,input){
+  const full=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
+  const okAddress=await fillLabel(page,["Adresse","Adresse du bien"],full);
+  if(!okAddress) return {status:"form_not_found",reason:"Champ adresse Meilleurs Agents introuvable"};
+  await page.waitForTimeout(900);
+  await page.keyboard.press("ArrowDown").catch(()=>{});
+  await page.keyboard.press("Enter").catch(()=>{});
+  await fillLabel(page,["Code postal","Postal"],input.postalCode);
+  await fillLabel(page,["Ville","Commune"],input.city);
+  await chooseOption(page,[/maison/i.test(String(input.propertyType||""))?"Maison":"Appartement"]);
+  await fillLabel(page,["Surface","Surface Carrez"],input.surface);
+  await fillLabel(page,["Nombre de pièces","Pièces","pieces"],input.rooms);
+  await fillLabel(page,["Surface du terrain","Terrain"],input.terrain);
+  await fillLabel(page,["DPE","Diagnostic"],input.dpe);
+  return {status:"form_filled"};
+}
+
+async function runSpecificAdapter(page,id,input){
+  if(id==="pap") return runPAPAdapter(page,input);
+  if(id==="seloger") return runSeLogerAdapter(page,input);
+  if(id==="meilleursagents") return runMeilleursAgentsAdapter(page,input);
+  return {status:"generic"};
+}
+
 async function runEstimatorAgent(input={}){
   const requested=Array.isArray(input.sites)&&input.sites.length
     ? input.sites
@@ -299,6 +393,10 @@ async function runEstimatorAgent(input={}){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA détecté",url:page.url(),elapsedMs:Date.now()-started};
         }
 
+        const adapter=await runSpecificAdapter(page,id,input);
+        if(adapter.status==="form_not_found"){
+          return {id,name:site.name,status:adapter.status,reason:adapter.reason,url:page.url(),elapsedMs:Date.now()-started};
+        }
         await prepareSiteForm(page,id,input);
 
         for(let step=0;step<4;step++){
