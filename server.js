@@ -40,8 +40,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.9.7";
-const BUILD_MARKER = "dvf-postgres-comparables-robust-v12-dpe03existant-multifulltext-v14-roads-v15-ai-v16-google-calendar-v17-temporal-revaluation-v18-independent-control";
+const VERSION = "3.9.8";
+const BUILD_MARKER = "dvf-postgres-comparables-robust-v12-dpe03existant-multifulltext-v14-roads-v15-ai-v16-google-calendar-v17-temporal-revaluation-v18-independent-control-v19-hybrid-external-market";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -2208,10 +2208,63 @@ app.get("/api/territory-summary", async (req,res) => {
       console.warn("JML nearby isolated:",error.message);
     }
 
+    stage="external-market-control";
+    // Contrôle indépendant : estimateurs publics + repère micro-secteur.
+    // Les estimateurs externes ne remplacent jamais les ventes DVF ; ils servent
+    // à détecter un biais de sous/surévaluation du moteur JML.
+    let externalControl={
+      available:false,sources:[],publicSources:[],microAddress:null,
+      externalMedianM2:null,postalCode:null
+    };
+    try{
+      let postalCode="";
+      if(address){
+        const geo=await geocodeAddress(address,commune.nom);
+        postalCode=String(geo?.label||"").match(/\b\d{5}\b/)?.[0]||"";
+      }
+      const publicSources=await getPublicMarketBenchmarks({
+        city:commune.nom,address,propertyType,surface,postalCode,communeCode:commune.code
+      });
+      let flatway=null;
+      try{
+        flatway=await getFlatwayMarketBenchmark({
+          city:commune.nom,address,propertyType,postalCode
+        });
+      }catch(error){
+        console.warn("JML micro-marché Flatway:",error.message);
+      }
+      const microAddress=flatway?.available&&flatway?.level==="adresse"&&Number.isFinite(Number(flatway.priceM2))
+        ?flatway:null;
+      const publicM2=publicSources
+        .map(x=>Number(x.priceM2))
+        .filter(v=>Number.isFinite(v)&&v>0)
+        .sort((a,b)=>a-b);
+      const publicMedianM2=publicM2.length
+        ?(publicM2.length%2?publicM2[(publicM2.length-1)/2]:(publicM2[publicM2.length/2-1]+publicM2[publicM2.length/2])/2)
+        :null;
+      const fallbackFlatwayM2=flatway&&Number.isFinite(Number(flatway.priceM2))?Number(flatway.priceM2):null;
+      const effectiveExternalM2=publicMedianM2??fallbackFlatwayM2;
+      const sources=[...publicSources];
+      if(flatway?.available&&Number.isFinite(Number(flatway.priceM2))){
+        sources.push({
+          id:"flatway",name:"Flatway",level:flatway.level,priceM2:Number(flatway.priceM2),
+          lowM2:flatway.lowM2||null,highM2:flatway.highM2||null,url:flatway.sourceUrl,
+          automatic:true,note:flatway.note
+        });
+      }
+      externalControl={
+        available:Boolean(effectiveExternalM2||microAddress),
+        sources,publicSources,microAddress,
+        externalMedianM2:effectiveExternalM2?Number(effectiveExternalM2):null,
+        publicMedianM2:publicMedianM2?Number(publicMedianM2):null,
+        postalCode:postalCode||null
+      };
+    }catch(error){
+      console.warn("JML contrôle estimateurs externes:",error.message);
+    }
+
     stage="seller-reference";
-    // Calcul du repère vendeur directement ici.
-    // On ne dépend plus de buildSellerReference() afin qu'une erreur interne
-    // de cette fonction ne puisse plus faire tomber Mon secteur.
+    // Calcul du repère vendeur : DVF comparables + micro-marché + contrôle externe.
     const propertyTypeText=String(propertyType||"").toLowerCase();
     const isSellerApartment=/appartement|studio|duplex|loft/i.test(propertyTypeText);
     const isSellerHouse=/maison/i.test(propertyTypeText);
@@ -2234,37 +2287,73 @@ app.get("/api/territory-summary", async (req,res) => {
     const exactRecentPrice=Number(exactRecentSale?.price);
     const exactRecentUsable=!!exactRecentSale&&Number.isFinite(exactRecentSurface)&&exactRecentSurface>0&&Number.isFinite(exactRecentPrice)&&exactRecentPrice>0&&sellerHasSurface&&Math.abs(exactRecentSurface-sellerSurface)/sellerSurface<=0.15;
     const useComparableReference=Number.isFinite(comparableBase)&&comparableBase>0&&comparableCount>=5;
-    const referenceBase=exactRecentUsable
-      ? exactRecentPrice/exactRecentSurface
-      : useComparableReference
-        ? comparableBase
-        : sellerBase;
-    const referenceSource=exactRecentUsable
-      ?"Vente DVF+ récente du bien"
-      : useComparableReference
-        ?"Ventes DVF comparables"
-        :"Référence communale";
-    const sellerValue=exactRecentUsable
-      ? Math.round(exactRecentPrice)
-      : sellerHasSurface&&Number.isFinite(referenceBase)&&referenceBase>0
-        ? Math.round(referenceBase*sellerSurface)
-        : null;
+    const microM2=Number(externalControl?.microAddress?.priceM2);
+    const hasMicro=Number.isFinite(microM2)&&microM2>0;
+    const externalM2=Number(externalControl?.externalMedianM2);
+    const hasExternal=Number.isFinite(externalM2)&&externalM2>0;
+
+    let referenceBase=null,referenceSource="",blend=null;
+    if(exactRecentUsable){
+      referenceBase=exactRecentPrice/exactRecentSurface;
+      referenceSource="Vente DVF+ récente du bien";
+      blend={method:"Vente exacte récente",components:[{source:"DVF+ vente exacte",weight:1,priceM2:referenceBase}],normalized:true};
+    }else{
+      // Pondération cible : DVF 50 % / micro-secteur 30 % / estimateurs 20 %.
+      // Si une composante manque, son poids est automatiquement redistribué.
+      const components=[];
+      if(useComparableReference) components.push({source:"DVF comparables",targetWeight:0.50,priceM2:comparableBase});
+      if(hasMicro) components.push({source:"Micro-marché / adresse",targetWeight:0.30,priceM2:microM2});
+      if(hasExternal) components.push({source:"Estimateurs externes",targetWeight:0.20,priceM2:externalM2});
+      const totalWeight=components.reduce((s,x)=>s+x.targetWeight,0);
+      if(totalWeight>0){
+        components.forEach(x=>{x.weight=x.targetWeight/totalWeight;});
+        referenceBase=components.reduce((s,x)=>s+x.priceM2*x.weight,0);
+        blend={
+          method:"DVF comparables 50 % + micro-marché 30 % + estimateurs externes 20 %, poids redistribués si une source manque",
+          components:components.map(x=>({source:x.source,weight:Number(x.weight.toFixed(3)),priceM2:Math.round(x.priceM2)})),
+          normalized:true
+        };
+        referenceSource=components.length===3
+          ?"DVF + micro-marché + estimateurs externes"
+          :components.map(x=>x.source).join(" + ");
+      }else if(sellerHasBase){
+        referenceBase=sellerBase;
+        referenceSource="Référence communale";
+        blend={method:"Référence communale de secours",components:[{source:"Marché communal",weight:1,priceM2:sellerBase}],normalized:true};
+      }
+    }
+
+    const sellerValue=sellerHasSurface&&Number.isFinite(referenceBase)&&referenceBase>0
+      ?Math.round(referenceBase*sellerSurface)
+      :null;
+    const blendConfidence=exactRecentUsable
+      ?"Élevée"
+      :(useComparableReference&&hasMicro&&hasExternal&&externalControl.sources.length>=3
+        ?"Bonne"
+        :(useComparableReference&&(hasMicro||hasExternal)
+          ?"Intermédiaire"
+          :(referenceBase?"Indicative":"Indisponible")));
     const sellerReference={
       available:Number.isFinite(referenceBase)&&referenceBase>0,
       type:sellerType,
-      basePriceM2:Number.isFinite(referenceBase)&&referenceBase>0?referenceBase:null,
+      basePriceM2:Number.isFinite(referenceBase)&&referenceBase>0?Math.round(referenceBase):null,
       surface:sellerHasSurface?sellerSurface:null,
-      landSurface: isSellerLand && sellerHasSurface ? sellerSurface : (Number.isFinite(Number(landSurface))&&Number(landSurface)>0?Number(landSurface):null),
+      landSurface:isSellerLand&&sellerHasSurface?sellerSurface:(Number.isFinite(Number(landSurface))&&Number(landSurface)>0?Number(landSurface):null),
       referenceValue:sellerValue,
       range:{
-        low:sellerValue!==null?Math.round(sellerValue*0.85):null,
-        high:sellerValue!==null?Math.round(sellerValue*1.15):null,
-        marginPct:15
+        low:sellerValue!==null?Math.round(sellerValue*(blendConfidence==="Bonne"?0.88:0.85)):null,
+        high:sellerValue!==null?Math.round(sellerValue*(blendConfidence==="Bonne"?1.12:1.15)):null,
+        marginPct:blendConfidence==="Bonne"?12:15
       },
       transactions:useComparableReference?comparableCount:(Number.isFinite(Number(market?.transactions))?Number(market.transactions):null),
       communalTransactions:Number.isFinite(Number(market?.transactions))?Number(market.transactions):null,
       communalBasePriceM2:sellerBase,
-      comparableBasePriceM2:Number.isFinite(comparableBase)&&comparableBase>0?comparableBase:null,
+      comparableBasePriceM2:Number.isFinite(comparableBase)&&comparableBase>0?Math.round(comparableBase):null,
+      microMarketPriceM2:hasMicro?Math.round(microM2):null,
+      externalMedianPriceM2:hasExternal?Math.round(externalM2):null,
+      externalSources:externalControl.sources,
+      valuationBlend:blend,
+      confidence:blendConfidence,
       latestKnownSale:exactRecentUsable?{
         price:Math.round(exactRecentPrice),
         surface:Math.round(exactRecentSurface),
@@ -2275,9 +2364,11 @@ app.get("/api/territory-summary", async (req,res) => {
       history:Array.isArray(market?.history)?market.history:[],
       comparables:comparable,
       explanation:sellerHasSurface&&Number.isFinite(referenceBase)&&referenceBase>0
-        ?(useComparableReference
-          ?"Repère construit à partir des ventes DVF comparables retenues pour le type de bien, la surface, les pièces, la proximité et la récence. Le repère communal reste affiché séparément comme benchmark."
-          :"Repère communal utilisé provisoirement car le moteur ne dispose pas encore d'un nombre suffisant de ventes comparables. Ce repère n'est pas une estimation certifiée.")
+        ?(exactRecentUsable
+          ?"Vente DVF+ récente du bien retenue comme référence prioritaire."
+          :(useComparableReference
+            ?"Repère hybride : ventes DVF comparables en priorité, corrigées par le micro-marché lorsqu'un repère d'adresse est disponible et contrôlées par plusieurs estimateurs publics."
+            :"Repère hybride de secours : estimateurs publics et marché communal, faute de volume suffisant de comparables DVF."))
         :"Le repère personnalisé sera calculé dès que le type de bien, la surface et les données de marché seront disponibles."
     };
 
