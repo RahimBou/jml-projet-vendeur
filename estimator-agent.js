@@ -125,7 +125,7 @@ async function runEstimatorAgent(input={}){
   const requested=Array.isArray(input.sites)&&input.sites.length
     ? input.sites
     : Object.keys(ALLOWED_SITES);
-  const browser=await chromium.launch({headless:true});
+  const browser=await chromium.launch({headless:true,args:["--no-sandbox","--disable-setuid-sandbox","--disable-dev-shm-usage"]});
   try{
     const runOne=async(id)=>{
       const site=ALLOWED_SITES[id];
