@@ -3601,7 +3601,7 @@ async function createSellerSpace(data, prospectId, transactionClient = null){
     await runQuery(
       `INSERT INTO jml_seller_spaces
        (id,access_token,prospect_id,city,address,property_type,horizon,surface,rooms,dpe,terrain,owner_data,expected_price,sale_reason,already_estimated,already_professional,checklist,condition_data,estimator_agent_data,created_at,updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
       [space.id,space.accessToken,space.prospectId,space.city||null,space.address||null,space.propertyType||null,space.horizon||null,space.surface||null,space.rooms||null,space.dpe||null,space.terrain||null,JSON.stringify(space.ownerData),space.expectedPrice||null,space.saleReason||null,space.alreadyEstimated,space.alreadyProfessional,JSON.stringify(space.checklist),JSON.stringify(space.conditionData),JSON.stringify({status:"pending",results:[],updatedAt:space.createdAt}),space.createdAt,space.updatedAt]
     );
   }else { space.estimatorAgent={status:"pending",results:[],updatedAt:space.createdAt}; memory.sellerSpaces.set(space.accessToken,space); }
