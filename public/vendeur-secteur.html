@@ -1069,7 +1069,7 @@ async function loadExternalBenchmarks(){
    let sources=Array.isArray(data.sources)?data.sources:[];
    // Si les récupérations publiques classiques sont trop pauvres, l'agent
    // ouvre les formulaires officiels et tente d'en récupérer la valeur personnalisée.
-   const sellerToken=new URLSearchParams(location.search).get("token");
+   const sellerToken=pageData.space?.token||new URLSearchParams(location.search).get("token")||"";
    if(sellerToken){
      try{
        const statusEl=document.getElementById("estimatorAgentStatus");
