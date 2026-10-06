@@ -247,6 +247,25 @@ async function waitForResult(page,timeout=8000){
   return true;
 }
 
+function extractEstimateFromJson(value){
+  const candidates=[];
+  const walk=(v,path="")=>{
+    if(v==null) return;
+    if(typeof v==="number" && Number.isFinite(v) && v>=30000 && v<=5000000){ candidates.push({value:Math.round(v),path}); return; }
+    if(typeof v==="string"){ for(const n of moneyValues(v)) candidates.push({value:n,path}); return; }
+    if(typeof v==="object") for(const [k,x] of Object.entries(v).slice(0,250)) walk(x,path?path+"."+k:k);
+  };
+  walk(value);
+  const preferred=candidates.filter(x=>/(estimate|estimation|valuation|value|price|prix|amount|montant|minimum|maximum|median|range|fourchette)/i.test(x.path));
+  const pool=preferred.length?preferred:candidates;
+  const uniq=[...new Map(pool.map(x=>[x.value,x])).values()];
+  if(!uniq.length) return null;
+  if(uniq.length===1) return {value:uniq[0].value,low:null,high:null,source:"network"};
+  const nums=uniq.map(x=>x.value), low=Math.min(...nums), high=Math.max(...nums);
+  if(high-low>0 && high/low<4) return {value:Math.round((low+high)/2),low,high,source:"network"};
+  return {value:uniq[0].value,low:null,high:null,source:"network"};
+}
+
 async function runEstimatorAgent(input={}){
   const requested=Array.isArray(input.sites)&&input.sites.length
     ? input.sites
@@ -260,6 +279,18 @@ async function runEstimatorAgent(input={}){
       const started=Date.now();
       const context=await browser.newContext({locale:"fr-FR",userAgent:"JML-Projet-Vendeur/4.1"});
       const page=await context.newPage();
+      const networkEstimates=[];
+      page.on("response",async response=>{
+        try{
+          const ct=(response.headers()["content-type"]||"").toLowerCase();
+          if(!ct.includes("json")) return;
+          const url=response.url();
+          if(!/(estimate|estimat|valuation|price|prix|property|bien|market)/i.test(url)) return;
+          const data=await response.json().catch(()=>null);
+          const est=extractEstimateFromJson(data);
+          if(est) networkEstimates.push({...est,url});
+        }catch(_){ }
+      });
       try{
         await page.goto(site.url,{waitUntil:"commit",timeout:60000});
         await page.waitForLoadState("domcontentloaded",{timeout:20000}).catch(()=>{});
@@ -303,12 +334,16 @@ async function runEstimatorAgent(input={}){
 
         const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
         const values=moneyValues(text);
-        const estimate=extractEstimate(text) || extractEstimateFromCandidates(values,text);
+        const domEstimate=extractEstimate(text) || extractEstimateFromCandidates(values,text);
+        const networkEstimate=networkEstimates.length ? networkEstimates[networkEstimates.length-1] : null;
+        const estimate=networkEstimate || domEstimate;
         return {
           id,name:site.name,
           status:estimate?"value_found":values.length?"candidates_found":"no_value",
           value:estimate?.value||null,low:estimate?.low||null,high:estimate?.high||null,
+          source:estimate?.source||"dom",
           values,url:page.url(),elapsedMs:Date.now()-started,
+          networkHits:networkEstimates.length,
           excerpt:text.replace(/\\s+/g," ").slice(0,1200)
         };
       }catch(error){
