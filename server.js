@@ -1989,8 +1989,8 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
       availableSources:sources.map(x=>x.name),
       confidence:sources.length>=3?"Bonne":sources.length===2?"Modérée":sources.length===1?(sources[0].level==="adresse"?"Modérée":"Indicative"):"Indisponible",
       note:sources.length
-        ?"Les repères sont récupérés automatiquement depuis les pages publiques accessibles des estimateurs. Ils restent indicatifs. Les liens de vérification manuelle des 6 estimateurs sont conservés ci-dessous."
-        :"Aucun repère externe public exploitable n'a pu être récupéré automatiquement pour cette adresse. Les 6 liens de vérification manuelle restent disponibles."
+        ?"Les repères sont récupérés automatiquement depuis les pages publiques accessibles des estimateurs. Ils restent indicatifs. Les liens officiels de vérification des estimateurs sont conservés ci-dessous."
+        :"Aucun repère externe public exploitable n'a pu être récupéré automatiquement pour cette adresse. Les liens officiels de vérification restent disponibles."
     });
   }catch(error){
     console.error("JML external-market-benchmarks:",error.message);
