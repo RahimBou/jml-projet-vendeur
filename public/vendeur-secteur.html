@@ -1088,6 +1088,7 @@ function renderReference(ref){
  const range=r.rangeLow!=null&&r.rangeHigh!=null
    ?eur(r.rangeLow)+" à "+eur(r.rangeHigh)
    :"Fourchette non disponible";
+ const floor=r.sellerFloor!=null?Number(r.sellerFloor):(r.rangeLow!=null?Number(r.rangeLow):null);
  $("#reference").innerHTML=
  '<div class="ref-main seller-reference-main">'+
    '<span class="reference-kicker">REPÈRE DE VALEUR</span>'+
@@ -1098,6 +1099,7 @@ function renderReference(ref){
  '</div>'+
  '<div class="ref-list seller-reference-details">'+
    '<div class="ref-row reference-range"><b>Fourchette observée</b><span>'+esc(range)+'</span></div>'+
+   '<div class="ref-row seller-floor-row"><b>🔴 Repère bas conseillé</b><span>'+esc(floor!=null?eur(floor):"—")+'</span></div>'+
    '<div class="ref-row"><b>Repère au m²</b><span>'+esc(m2(r.basePriceM2))+'</span></div>'+
    '<div class="ref-row"><b>Ventes utilisées</b><span>'+esc(txLabel)+'</span></div>'+
    '<div class="ref-row"><b>Fiabilité du repère</b><span>'+esc(r.confidence||"Faible")+'</span></div>'+
@@ -1148,6 +1150,7 @@ function renderSellerReading(r){
    evolution.push("Le repère communal des "+communalTypeLabel+" est de "+communalText+". Le repère issu des comparables est de "+baseText+", soit "+gapM2Text+" ("+gapText+") par rapport à cette référence.");
  }
  const valueRange=r.rangeLow!=null&&r.rangeHigh!=null?eur(r.rangeLow)+" à "+eur(r.rangeHigh):"la fourchette observée";
+ const floorText=floor!=null?eur(floor):"non disponible";
  el.querySelector(".seller-reading-grid").innerHTML=
    '<div class="reading-panel reading-panel-how">'+
      '<div class="reading-number">1</div>'+
@@ -1169,6 +1172,7 @@ function renderSellerReading(r){
      '<h3>Chaque bien est unique</h3>'+
      '<p>Les ventes comparables permettent de construire un repère de marché. Elles ne remplacent pas l’analyse concrète du bien.</p>'+
      '<div class="reading-range"><strong>Fourchette observée : '+esc(valueRange)+'</strong><span>Elle permet de situer la zone de marché autour du repère.</span></div>'+
+     '<div class="reading-range seller-floor-reading"><strong>🔴 Repère bas conseillé : '+esc(floorText)+'</strong><span>Ce niveau sert de garde-fou pour la négociation. Il ne constitue pas une garantie de prix et doit être réévalué selon l’état réel du bien, les travaux et l’urgence de vente.</span></div>'+
      '<ul class="reading-factors">'+
        '<li><strong>État général du bien</strong><span>Entretien, travaux à prévoir, rénovation récente…</span></li>'+
        '<li><strong>Qualité des prestations</strong><span>Cuisine, salles de bains, isolation, matériaux, équipements…</span></li>'+
@@ -1814,6 +1818,7 @@ async function run(){
     fromComparables:compM2!=null,
     referenceSource:blendLabel,
     valuationBlend:{method:"DVF 50 % + micro-marché 30 % + estimateurs externes 20 %",components},
+    sellerFloor:hybridValue!=null&&surf?Math.round((hybridValue*(confidence==="Bonne"?0.88:0.85))/500)*500:null,
     microMarketPriceM2:microM2,
     externalMedianPriceM2:extMedianM2,
     externalSources:extSources,
