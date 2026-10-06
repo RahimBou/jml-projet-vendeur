@@ -1083,7 +1083,8 @@ function renderReference(ref){
  pageData.reference=r;
  const comparable=!!r.fromComparables;
  const txLabel=comparable?(r.transactions??"—"):"Contexte communal";
- const nature=comparable?"Ventes DVF comparables":"Repère communal de secours";
+ const nature=r.referenceSource|| (comparable?"Ventes DVF comparables":"Repère communal de secours");
+ const methodText=r.valuationBlend?.method||"Ventes comparables et données de marché disponibles";
  const range=r.rangeLow!=null&&r.rangeHigh!=null
    ?eur(r.rangeLow)+" à "+eur(r.rangeHigh)
    :"Fourchette non disponible";
@@ -1093,7 +1094,7 @@ function renderReference(ref){
    '<h3>Valeur centrale du marché</h3>'+
    '<div class="ref-value">'+esc(eur(value))+'</div>'+
    '<div class="reference-formula">'+esc(formula)+'</div>'+
-   '<p class="reference-sub">Cette valeur est calculée à partir des ventes réelles comparables retenues autour de votre bien.</p>'+
+   '<p class="reference-sub">'+esc(methodText)+'</p>'+
  '</div>'+
  '<div class="ref-list seller-reference-details">'+
    '<div class="ref-row reference-range"><b>Fourchette observée</b><span>'+esc(range)+'</span></div>'+
