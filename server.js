@@ -3636,7 +3636,7 @@ async function startEstimatorAgentForSpace(space){
     if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
     else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent=done;
   }catch(error){
-    const failed={status:"error",results:[],error:String(error?.message||error),updatedAt:now()};
+    const failed={status:"retry",results:[],error:String(error?.message||error),updatedAt:now()};
     if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(failed)]).catch(()=>{});
     else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent=failed;
     console.error("JML background estimator agent:",error);
