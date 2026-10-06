@@ -177,7 +177,7 @@ async function collectComparableListings(input={}){
   const seen=new Set();
   let candidates=all.filter(x=>{
     const u=x.url.toLowerCase();
-    if(seen.has(u)||!isListingHost(new URL(x.url).hostname)) return false;
+    if(seen.has(u)||!isListingHost(new URL(x.url).hostname)||!isDirectListingUrl(x.url)) return false;
     seen.add(u); return true;
   }).map(parseListing);
   const enriched=[];
@@ -197,7 +197,7 @@ async function collectComparableListings(input={}){
     unique.push({
       title:clean(x.title,180),url:x.url,source:new URL(x.url).hostname.replace(/^www\./,""),
       price:Math.round(x.price),surface:Number(x.surface),rooms:x.rooms,terrain:x.terrain||null,
-      priceM2:Math.round(x.priceM2),score:Math.round(x.score),
+      priceM2:Math.round(x.priceM2),score:Math.max(0,Math.min(100,Math.round(x.score))),
       type:x.type||type
     });
     if(unique.length>=10) break;
