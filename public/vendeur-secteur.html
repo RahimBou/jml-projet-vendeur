@@ -1080,17 +1080,29 @@ async function loadExternalBenchmarks(){
        if(aj.status==="running"){
          const statusEl=document.getElementById("estimatorAgentStatus");
          if(statusEl) statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Les formulaires sont traités en arrière-plan. Les résultats seront enregistrés automatiquement.";
-         setTimeout(async()=>{
+         const pollEstimator=async()=>{
            try{
              const poll=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store"});
              const pj=await poll.json().catch(()=>({}));
-             if(pj.status==="completed") location.reload();
-             else if(pj.status==="error"){
+             if(pj.status==="completed"){
+               location.reload();
+               return;
+             }
+             if(pj.status==="error" || !poll.ok){
                const se=document.getElementById("estimatorAgentStatus");
                if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>❌ "+esc(pj.error||"Erreur de traitement.");
-             } else location.reload();
-           }catch(_pollError){ location.reload(); }
-         },8000);
+               return;
+             }
+             const se=document.getElementById("estimatorAgentStatus");
+             if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Traitement en cours… les sources sont analysées en arrière-plan.";
+             setTimeout(pollEstimator,8000);
+           }catch(_pollError){
+             const se=document.getElementById("estimatorAgentStatus");
+             if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Traitement toujours en cours…";
+             setTimeout(pollEstimator,10000);
+           }
+         };
+         setTimeout(pollEstimator,8000);
          return;
        }
        const agentRows=Array.isArray(aj.results)?aj.results:[];
