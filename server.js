@@ -2021,27 +2021,34 @@ async function getFlatwayMarketBenchmark({city,address,propertyType,postalCode}=
     const typeBlock=flatwayExtractTypeBlock(flatwayText(cityHtml),propertyType);
     let best=typeBlock?{...typeBlock,level:"commune",sourceUrl:cityUrl}:null;
 
+    // Flatway expose aussi une page publique déterministe par adresse.
+    // On la construit directement avant la recherche de la page rue afin de
+    // ne pas dépendre du libellé HTML de la commune.
     const street=flatwayStreetFromAddress(address);
+    const streetSlug=flatwaySlug(street);
+    const numberMatch=String(address||"").match(/^\s*(\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)/);
+    const houseNumber=numberMatch?.[1]?.replace(/\s+/g,"")||"";
+    if(streetSlug&&houseNumber){
+      const exactUrl="https://flatway.fr/estimation/"+dep+"/"+flatwaySlug(city)+"-"+postal+"-"+communeCode+"/"+streetSlug+"-"+postal.slice(2)+"/"+encodeURIComponent(houseNumber);
+      const exactHtml=await fetchPublicHtml(exactUrl);
+      if(exactHtml){
+        const exactText=flatwayText(exactHtml);
+        const exactIsHouse=/\bMaison\b/i.test(exactText.slice(0,900));
+        const exactIsApartment=/\bAppartement\b|\bAppart\.\b/i.test(exactText.slice(0,900));
+        const wantedApartment=/appartement|studio|duplex|loft/i.test(propertyType||"");
+        const typeMatches=wantedApartment?exactIsApartment:exactIsHouse;
+        const exactBlock=typeMatches?flatwayExtractTypeBlock(exactText,propertyType):null;
+        if(exactBlock) best={...exactBlock,level:"adresse",sourceUrl:exactUrl};
+      }
+    }
+
     const streetUrl=flatwayFindStreetUrl(cityHtml,street);
     if(streetUrl){
       const streetHtml=await fetchPublicHtml(streetUrl);
       if(streetHtml){
         const streetBlock=flatwayExtractTypeBlock(flatwayText(streetHtml),propertyType);
         if(streetBlock) best={...streetBlock,level:"rue",sourceUrl:streetUrl};
-        const num=String(address||"").match(/^\s*(\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)/)?.[1];
-        if(num){
-          const exactUrl=streetUrl.replace(/\/$/,"")+"/"+encodeURIComponent(num.replace(/\s+/g,""));
-          const exactHtml=await fetchPublicHtml(exactUrl);
-          if(exactHtml){
-            const exactText=flatwayText(exactHtml);
-            const exactIsHouse=/\bMaison\b/i.test(exactText.slice(0,900));
-            const exactIsApartment=/\bAppartement\b|\bAppart\./i.test(exactText.slice(0,900));
-            const wantedApartment=/appartement|studio|duplex|loft/i.test(propertyType||"");
-            const typeMatches=wantedApartment?exactIsApartment:exactIsHouse;
-            const exactBlock=typeMatches?flatwayExtractTypeBlock(exactText,propertyType):null;
-            if(exactBlock) best={...exactBlock,level:"adresse",sourceUrl:exactUrl};
-          }
-        }
+        // La page exacte est déjà testée directement ci-dessus.\n        // On ne dépend plus du lien HTML de la page rue pour l'adresse exacte.
       }
     }
     const data=best?{
@@ -2093,7 +2100,7 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
         value,low,high,lowM2:flatway.lowM2,highM2:flatway.highM2,
         url:flatway.sourceUrl,note:flatway.note,
         quality:flatway.level==="adresse"?"address_exact":"benchmark",
-        personalized:flatway.level==="adresse",
+        personalized:false,
         automatic:true
       });
     }
