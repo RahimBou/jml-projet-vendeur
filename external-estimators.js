@@ -193,10 +193,10 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
   const postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
   if(!cleanCity||!/^\d{5}$/.test(postal)) return [];
   const tasks=[
-  const geoRegistryTask=(async()=>{
-    if(!address) return null;
-    return await getGeoRegistryEstimate({address,propertyType,surface});
-  })(),
+    (async()=>{
+      if(!address) return null;
+      return await getGeoRegistryEstimate({address,propertyType,surface});
+    })(),
     readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
       const direct=pairForType(text,type);
       if(direct) return direct;
@@ -240,10 +240,6 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
           return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])}:null;
         })
       : Promise.resolve(null),
-    (async()=>{
-      if(!address||!communeCode) return null;
-      return await readFlatwayExactAddress(cleanCity,postal,communeCode,address,propertyType,surface);
-    })(),
     readSource("Orpi",orpiUrl(cleanCity),propertyType,surface,(text,type)=>{
       const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
       const re=wanted==="appartement"
@@ -253,7 +249,6 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
       return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1]),lowM2:numberFrom(m[2]),highM2:numberFrom(m[3])}:null;
     })
   ];
-  tasks.push(geoRegistryTask);
   const results=await Promise.allSettled(tasks);
   return results.map(x=>x.status==="fulfilled"?x.value:null).filter(Boolean);
 }
