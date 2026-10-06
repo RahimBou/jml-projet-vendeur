@@ -3868,7 +3868,7 @@ app.post("/api/leads", async (req,res) => {
         const sellerSpace=existingSpaceResult.rowCount
           ? sellerSpacePublic(existingSpaceResult.rows[0])
           : await createSellerSpace(
-              {city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain},
+              {city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData},
               prospectId,
               client
             );
@@ -3914,7 +3914,7 @@ app.post("/api/leads", async (req,res) => {
     }
     let sellerSpace=[...memory.sellerSpaces.values()].find(s=>String(s.prospectId||"")===String(prospectId||""))||null;
     if(!sellerSpace){
-      sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain},prospectId);
+      sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData},prospectId);
     }
     const sellerSpaceUrl=req.protocol+"://"+req.get("host")+"/espace-vendeur/"+sellerSpace.accessToken;
     let emailConfirmation = { sent: false, reason: "no-email" };
