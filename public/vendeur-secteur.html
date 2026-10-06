@@ -1798,7 +1798,7 @@ async function run(){
   // mais ne sert plus de plancher commercial.
   const marketMinimumValue=referenceValue;
   const externalHighValues=extSources
-    .filter(x=>x && (x.personalized===true || x.level==="address" || x.level==="exact_address"))
+    .filter(x=>x && (x.personalized===true || x.level==="address" || x.level==="exact_address" || x.level==="adresse" || x.quality==="address_exact"))
     .map(x=>n(x.value))
     .filter(v=>v!=null&&v>300000);
   const marketMaximumValue=externalHighValues.length
