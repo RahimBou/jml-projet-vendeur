@@ -228,8 +228,8 @@ function papUrl(city,postal){
 function papSaleUrl(city,postal){
   return "https://www.pap.fr/annonce/vente-immobiliere-"+slugify(city)+"-"+postal;
 }
-function papDepartmentUrl(communeCode){
-  const dep=String(communeCode||"").slice(0,2);
+function papDepartmentUrl(communeCode,postalCode){
+  const dep=String(communeCode||"").slice(0,2) || String(postalCode||"").slice(0,2);
   return dep==="08" ? "https://www.pap.fr/vendeur/prix-m2/ardennes-08-g371" : null;
 }
 
@@ -346,7 +346,7 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
     return null;
   }
   const directUrl=papUrl(cleanCity,postal);
-  const depUrl=papDepartmentUrl(resolvedCommuneCode);
+  const depUrl=papDepartmentUrl(resolvedCommuneCode,postal);
 
   async function buildResult(page,fallbackUrl){
     if(!page) return null;
