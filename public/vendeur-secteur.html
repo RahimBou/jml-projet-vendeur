@@ -746,6 +746,19 @@ section:has(.method-card){
 
 <!-- Section 01 — atouts de l’adresse temporairement retirée pour refonte ultérieure. -->
 
+<section class="section" id="streetViewSection" style="display:none">
+ <div class="head"><div><div class="eyebrow">PHOTO DE L'ADRESSE</div><h2>Vue du bien depuis la rue</h2></div><div class="source">Google Maps · Street View</div></div>
+ <div class="card street-view-card">
+  <div class="street-view-image-wrap"><img id="streetViewImage" alt="Vue Street View de l'adresse du bien" loading="lazy"></div>
+  <div class="street-view-meta">
+   <div><b id="streetViewTitle">Adresse géolocalisée</b><span id="streetViewDate">Vérification de la disponibilité…</span></div>
+   <a id="streetViewMaps" target="_blank" rel="noopener noreferrer" class="street-view-link">Ouvrir dans Google Maps ↗</a>
+  </div>
+  <div class="street-view-attribution" translate="no">Google Maps</div>
+  <p class="street-view-note">Cette image sert de repère visuel de l'environnement extérieur. Elle ne constitue pas une preuve de l'identité exacte du bien et peut être antérieure à la situation actuelle.</p>
+ </div>
+</section>
+
 <section class="section">
  <div class="head"><div><div class="eyebrow">02 · MARCHÉ LOCAL</div><h2>Les chiffres de votre commune</h2></div><div class="source">DVF+ / Cerema / DGFiP</div></div>
  <div class="card">
@@ -1226,6 +1239,35 @@ let order=[
   ["services","Services","Poste, banque, restauration et services locaux."]
 ];
 
+function renderStreetView(data){
+ const section=$("#streetViewSection"), img=$("#streetViewImage"), meta=$("#streetViewDate"), maps=$("#streetViewMaps");
+ if(!section||!img||!meta||!maps)return;
+ if(!data||data.available!==true||!data.imageUrl){
+   section.style.display="none";
+   return;
+ }
+ section.style.display="";
+ img.src=data.imageUrl;
+ img.onerror=()=>{section.style.display="none";};
+ meta.textContent=data.date
+   ?"Image Street View · prise de vue : "+String(data.date)
+   :"Image Street View · date de prise de vue non communiquée";
+ maps.href=data.mapsUrl||"https://www.google.com/maps";
+}
+
+async function loadStreetView(d){
+ try{
+  const params=new URLSearchParams({city:d?.city||"",address:d?.address||""});
+  const lat=Number(d?.lat),lon=Number(d?.lon);
+  if(Number.isFinite(lat)&&Number.isFinite(lon)){params.set("lat",String(lat));params.set("lon",String(lon));}
+  const data=await getData("/api/streetview?"+params.toString(),9000,"Street View");
+  renderStreetView(data);
+ }catch(error){
+  addDiag("Street View",error.code||"JML-STREETVIEW-CLIENT",error.message||"Indisponible");
+  renderStreetView(null);
+ }
+}
+
 function setProject(d){
   d=d||{};
   $("#city").textContent=d.city||"Commune non renseignée";
@@ -1541,6 +1583,7 @@ function renderSellerPost(){
 async function run(){
  try{
   const d=await loadServerSpace();
+  loadStreetView(d);
   pageData.space=d;
   setProject(d);
  addDiag("Page / navigateur","JML-D001",PAGE_BUILD+" · données du projet récupérées depuis l’espace vendeur / URL");
@@ -1696,6 +1739,18 @@ document.getElementById("printSellerPoster")?.addEventListener("click",()=>windo
 run();
 })();
 </script>
+<style id="street-view-v1">
+.street-view-card{padding:12px!important;background:linear-gradient(135deg,#fffdf8,#f4eee2)!important;border:1px solid #dfd4bf!important;}
+.street-view-image-wrap{width:100%;overflow:hidden;border-radius:14px;background:#e8e3d9;min-height:180px;}
+.street-view-image-wrap img{display:block;width:100%;height:auto;max-height:420px;object-fit:cover;border-radius:14px;}
+.street-view-meta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;padding:0 2px;}
+.street-view-meta b{display:block;color:var(--g);font:700 15px Georgia,"Times New Roman",serif;}
+.street-view-meta span{display:block;margin-top:3px;color:var(--muted);font-size:8.5px;}
+.street-view-link{display:inline-block;padding:8px 10px;border-radius:999px;background:var(--g);color:#fff;text-decoration:none;font-size:8.5px;font-weight:900;white-space:nowrap;}
+.street-view-attribution{margin-top:9px;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:400;color:#5e5e5e;}
+.street-view-note{margin:8px 2px 0;color:#68736c;font-size:8.5px;line-height:1.45;}
+@media(max-width:600px){.street-view-meta{align-items:flex-start;flex-direction:column}.street-view-link{margin-top:2px}.street-view-image-wrap{min-height:140px}}
+</style>
 <style id="jml-page-compact-v1">
 /* Version compacte : conserve tout le contenu, réduit uniquement les espaces */
 .wrap{padding:14px 14px 38px!important}
