@@ -154,6 +154,99 @@ async function detectCaptcha(page){
   return /captcha|recaptcha|hcaptcha|je ne suis pas un robot/.test(body);
 }
 
+
+async function clickText(page, patterns){
+  for(const pattern of patterns){
+    const loc=page.getByText(pattern,{exact:false}).first();
+    try{
+      if(await loc.count() && await loc.isVisible({timeout:700})){
+        await loc.click({timeout:2500});
+        return true;
+      }
+    }catch(_){}
+  }
+  return false;
+}
+
+async function prepareSiteForm(page,id,input){
+  const addressFull=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
+  if(id==="pap"){
+    await fillSmart(page,["adresse du bien","adresse","address","rue"],addressFull||input.address);
+    await page.waitForTimeout(900);
+    const suggestions=page.locator('[role="option"], li, [class*="suggest"], [class*="autocomplete"]');
+    try{
+      const count=await suggestions.count();
+      for(let i=0;i<Math.min(count,8);i++){
+        const s=suggestions.nth(i);
+        const txt=(await s.innerText().catch(()=>"" )).trim();
+        if(txt && ((input.city&&txt.toLowerCase().includes(String(input.city).toLowerCase())) ||
+                   (input.postalCode&&txt.includes(String(input.postalCode))) ||
+                   (input.address&&txt.toLowerCase().includes(String(input.address).toLowerCase())))){
+          await s.click({timeout:1800}).catch(()=>{});
+          break;
+        }
+      }
+    }catch(_){}
+    if(/maison/i.test(String(input.propertyType||""))){
+      await clickText(page,[/^Maison$/i,"Maison"]);
+    }else{
+      await clickText(page,[/^Appartement$/i,"Appartement"]);
+    }
+    await fillSmart(page,["surface du bien","surface","m²","m2"],input.surface);
+    await fillSmart(page,["pièces","pieces","rooms"],input.rooms);
+    await fillSmart(page,["année","construction"],input.year);
+    return;
+  }
+
+  if(id==="meilleursagents"){
+    await fillSmart(page,["adresse du bien","adresse","address","rue"],addressFull||input.address);
+    await page.waitForTimeout(900);
+    await page.keyboard.press("ArrowDown").catch(()=>{});
+    await page.keyboard.press("Enter").catch(()=>{});
+    await page.waitForTimeout(700);
+    await fillSmart(page,["code postal","postal","zip"],input.postalCode);
+    await fillSmart(page,["ville","city","commune"],input.city);
+    return;
+  }
+
+  if(id==="seloger"){
+    await fillSmart(page,["adresse du bien","adresse","address","rue"],addressFull||input.address);
+    await page.waitForTimeout(900);
+    await page.keyboard.press("ArrowDown").catch(()=>{});
+    await page.keyboard.press("Enter").catch(()=>{});
+    await page.waitForTimeout(500);
+    await fillSmart(page,["surface","m²","m2"],input.surface);
+    await fillSmart(page,["pièces","pieces","rooms"],input.rooms);
+    await fillSmart(page,["type de bien","type","property type"],input.propertyType);
+    return;
+  }
+
+  await fillSmart(page,["adresse","address","rue"],input.address);
+  await page.waitForTimeout(500);
+  await page.keyboard.press("Enter").catch(()=>{});
+  await fillSmart(page,["ville","city","commune"],input.city);
+  await fillSmart(page,["code postal","postal","zip"],input.postalCode);
+  await fillSmart(page,["surface","m²","m2"],input.surface);
+  await fillSmart(page,["pièces","pieces","rooms"],input.rooms);
+  await fillSmart(page,["type de bien","type","property type"],input.propertyType);
+  await fillSmart(page,["terrain","surface du terrain"],input.terrain);
+  await fillSmart(page,["dpe","diagnostic"],input.dpe);
+}
+
+async function waitForResult(page,timeout=8000){
+  const end=Date.now()+timeout;
+  while(Date.now()<end){
+    if(await detectCaptcha(page)) return false;
+    const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+    if(/(?:estimation|valeur estimée|prix estimé|votre bien|fourchette de prix|€)/i.test(text)){
+      const values=moneyValues(text);
+      if(values.length) return true;
+    }
+    await page.waitForTimeout(500);
+  }
+  return true;
+}
+
 async function runEstimatorAgent(input={}){
   const requested=Array.isArray(input.sites)&&input.sites.length
     ? input.sites
@@ -168,22 +261,14 @@ async function runEstimatorAgent(input={}){
       const context=await browser.newContext({locale:"fr-FR",userAgent:"JML-Projet-Vendeur/4.1"});
       const page=await context.newPage();
       try{
-        await page.goto(site.url,{waitUntil:"domcontentloaded",timeout:60000});
+        await page.goto(site.url,{waitUntil:"commit",timeout:60000});
+        await page.waitForLoadState("domcontentloaded",{timeout:20000}).catch(()=>{});
         await acceptCookies(page);
         if(await detectCaptcha(page)){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA détecté",url:page.url(),elapsedMs:Date.now()-started};
         }
 
-        await fillSmart(page,["adresse","address","rue"],input.address);
-        await page.waitForTimeout(500);
-        await page.keyboard.press("Enter").catch(()=>{});
-        await fillSmart(page,["ville","city","commune"],input.city);
-        await fillSmart(page,["code postal","postal","zip"],input.postalCode);
-        await fillSmart(page,["surface","m²","m2"],input.surface);
-        await fillSmart(page,["pièces","pieces","rooms"],input.rooms);
-        await fillSmart(page,["type de bien","type","property type"],input.propertyType);
-        await fillSmart(page,["terrain","surface du terrain"],input.terrain);
-        await fillSmart(page,["dpe","diagnostic"],input.dpe);
+        await prepareSiteForm(page,id,input);
 
         for(let step=0;step<4;step++){
           const next=await firstLocator(page,[
@@ -210,7 +295,8 @@ async function runEstimatorAgent(input={}){
           if(await detectCaptcha(page)) break;
         }
 
-        await page.waitForTimeout(4000);
+        await waitForResult(page,8000);
+        await page.waitForTimeout(1200);
         if(await detectCaptcha(page)){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA après soumission",url:page.url(),elapsedMs:Date.now()-started};
         }
