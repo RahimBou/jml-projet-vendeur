@@ -168,23 +168,12 @@ async function getGeoRegistryEstimate({address,city,postalCode,propertyType,surf
 async function fetchHtml(url, timeout=8000){
   try{
     const response=await fetch(url,{headers:DEFAULT_HEADERS,redirect:"follow",signal:AbortSignal.timeout(timeout)});
-    if(response.ok){
-      const html=await response.text();
-      if(html && html.length>200) return {html,url:response.url||url,readerUsed:false};
-    }
-  }catch(_error){}
-  try{
-    const response=await fetch("https://r.jina.ai/"+url,{
-      headers:{"Accept":"text/plain","User-Agent":"JML-Projet-Vendeur/4.1"},
-      redirect:"follow",
-      signal:AbortSignal.timeout(15000)
-    });
-    if(response.ok){
-      const html=await response.text();
-      if(html && html.length>100) return {html,url,readerUsed:true};
-    }
-  }catch(_error){}
-  return null;
+    if(!response.ok) return null;
+    const html=await response.text();
+    return html && html.length>200 ? {html,url:response.url||url} : null;
+  }catch(_error){
+    return null;
+  }
 }
 
 function htmlText(html){
@@ -228,26 +217,9 @@ function papUrl(city,postal){
 function papSaleUrl(city,postal){
   return "https://www.pap.fr/annonce/vente-immobiliere-"+slugify(city)+"-"+postal;
 }
-function papDepartmentUrl(communeCode,postalCode){
-  const dep=String(communeCode||"").slice(0,2) || String(postalCode||"").slice(0,2);
+function papDepartmentUrl(communeCode){
+  const dep=String(communeCode||"").slice(0,2);
   return dep==="08" ? "https://www.pap.fr/vendeur/prix-m2/ardennes-08-g371" : null;
-}
-
-function findPapCityUrl(html,city,postal){
-  const wantedSlug=slugify(city);
-  const wantedPostal=String(postal||"").trim();
-  if(!wantedSlug||!/^[0-9]{5}$/.test(wantedPostal)) return null;
-  const source=String(html||"");
-  const re=/<a[^>]+href=["']([^"']*\/vendeur\/prix-m2\/[^"']+)["'][^>]*>/gi;
-  for(const m of source.matchAll(re)){
-    let href=String(m[1]||"").replace(/&amp;/g,"&");
-    try{
-      const absolute=new URL(href,"https://www.pap.fr").href;
-      const path=new URL(absolute).pathname.toLowerCase();
-      if(path.includes("/vendeur/prix-m2/") && path.includes(wantedSlug) && path.includes(wantedPostal)) return absolute;
-    }catch(_){}
-  }
-  return null;
 }
 function efficityUrl(city,postal){
   return "https://www.efficity.com/prix-immobilier-m2/v_"+slugify(city)+"_"+postal+"/";
@@ -276,21 +248,6 @@ function selogerUrl(city,communeCode){
   if(!region||!department) return null;
   const internalCode=String(Number(code.slice(2))).padStart(4,"0");
   return "https://www.seloger.com/prix-de-l-immo/vente/"+region+"/"+department+"/"+slugify(city)+"/"+dep.replace(/^0/,"")+internalCode+".htm";
-}
-
-async function resolveCommuneCode(city,postalCode){
-  try{
-    const qs=new URLSearchParams({nom:String(city||""),codePostal:String(postalCode||""),fields:"code,nom,codesPostaux",format:"json"});
-    const r=await fetch("https://geo.api.gouv.fr/communes?"+qs.toString(),{
-      headers:{"Accept":"application/json","User-Agent":"JML-Projet-Vendeur/4.1"},
-      signal:AbortSignal.timeout(6000)
-    });
-    if(!r.ok) return "";
-    const rows=await r.json();
-    const wanted=String(postalCode||"");
-    const exact=(Array.isArray(rows)?rows:[]).find(x=>Array.isArray(x.codesPostaux)&&x.codesPostaux.includes(wanted));
-    return String((exact||rows?.[0])?.code||"").match(/^\d{5}$/)?.[0]||"";
-  }catch(_){ return ""; }
 }
 
 async function readSource(name,url,propertyType,surface,parser){
@@ -322,98 +279,66 @@ async function readSource(name,url,propertyType,surface,parser){
 async function getPublicMarketBenchmarks({city,address,propertyType,surface,postalCode,communeCode,rooms,dpe,condition,terrain}={}){
   const cleanCity=normalizeText(city);
   const postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
-  const area=Number(surface);
-  if(!cleanCity||!/^[0-9]{5}$/.test(postal)) return [];
-  const resolvedCommuneCode=String(communeCode||"").match(/^\d{5}$/)?.[0] || await resolveCommuneCode(cleanCity,postal);
-  const wantedHouse=!/appartement|studio|duplex|loft/i.test(propertyType||"");
-
-  // MeilleursAgents : repère communal public, très simple à exploiter.
-  // La page ville contient séparément le prix moyen appartement et maison.
-  // On l'utilise comme premier essai de source alternative à PAP.
-  const maUrl=meilleursAgentsUrl(cleanCity,postal);
-  const maPage=await fetchHtml(maUrl,10000);
-  if(maPage){
-    const maText=htmlText(maPage.html);
-    const maBlock=wantedHouse
-      ? maText.match(/Prix\s*m2\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,500}?Prix\s*des\s*maisons/i)
-      : maText.match(/Prix\s*m2\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,500}?Prix\s*des\s*appartements/i);
-    const sections=wantedHouse
-      ? maText.match(/Prix\s*des\s*maisons[\s\S]{0,500}?Prix\s*m²\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,300}?Fourchette\s*basse\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,200}?Fourchette\s*haute\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i)
-      : maText.match(/Prix\s*des\s*appartements[\s\S]{0,500}?Prix\s*m²\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,300}?Fourchette\s*basse\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,200}?Fourchette\s*haute\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i);
-    const priceM2=numberFrom(sections?.[1]||maBlock?.[1]);
-    if(priceM2){
-      const lowM2=numberFrom(sections?.[2]), highM2=numberFrom(sections?.[3]);
-      return [{
-        id:"meilleursagents",name:"Meilleurs Agents",level:"commune",
-        priceM2,lowM2,highM2,
-        value:Number.isFinite(area)&&area>0?Math.round(priceM2*area):null,
-        low:Number.isFinite(area)&&area>0&&lowM2?Math.round(lowM2*area):null,
-        high:Number.isFinite(area)&&area>0&&highM2?Math.round(highM2*area):null,
-        url:maPage.url||maUrl,
-        note:"Repère public Meilleurs Agents au m² de la commune, utilisé comme estimation approximative automatique.",
-        quality:"meilleursagents_public",personalized:false,automatic:true
-      }];
-    }
-  }
-  function parsePap(text){
-    const t=htmlText(text);
-    const exactHouse=t.match(/prix\s*\/\s*m²\s*des\s*maisons\s*([\d\s\u00a0\u202f.,]+)\s*€/i);
-    if(wantedHouse && exactHouse){ const priceM2=numberFrom(exactHouse[1]); if(priceM2) return {type:"Maison",priceM2}; }
-    const exactApartment=t.match(/prix\s*\/\s*m²\s*des\s*appartements\s*([\d\s\u00a0\u202f.,]+)\s*€/i);
-    if(!wantedHouse && exactApartment){ const priceM2=numberFrom(exactApartment[1]); if(priceM2) return {type:"Appartement",priceM2}; }
-    const faq=wantedHouse
-      ? t.match(/prix\s+(?:au|du)\s*m[²2]\s+[^.]{0,220}?maison[^\d]{0,100}([\d\s\u00a0\u202f.,]+)\s*euros?/i)
-      : t.match(/prix\s+(?:au|du)\s*m[²2]\s+[^.]{0,220}?appartement[^\d]{0,100}([\d\s\u00a0\u202f.,]+)\s*euros?/i);
-    if(faq){ const priceM2=numberFrom(faq[1]); if(priceM2) return {type:wantedHouse?"Maison":"Appartement",priceM2}; }
-    // Sur la page département PAP, la ville apparaît dans le tableau
-    // sous la forme "Ville (CP) appartement € maison €". Cela permet
-    // de récupérer le repère communal même lorsque PAP refuse l'URL
-    // courte ou que la page communale est protégée.
-    const cityPos=t.toLowerCase().indexOf(cleanCity.toLowerCase());
-    if(cityPos>=0){
-      const row=t.slice(cityPos,cityPos+700);
-      const nums=[...row.matchAll(/([\d\s\u00a0\u202f.,]+)\s*€/g)]
-        .map(m=>numberFrom(m[1])).filter(Boolean);
-      // Pour une maison, PAP affiche appartement puis maison.
-      // Pour un appartement, le premier prix est celui des appartements.
-      const priceM2=wantedHouse?nums[1]:nums[0];
-      if(priceM2) return {type:wantedHouse?"Maison":"Appartement",priceM2};
-    }
-    return null;
-  }
-  const directUrl=papUrl(cleanCity,postal);
-  const depUrl=papDepartmentUrl(resolvedCommuneCode,postal);
-
-  async function buildResult(page,fallbackUrl){
-    if(!page) return null;
-    const parsed=parsePap(page.html);
-    if(!parsed) return null;
-    return {id:"pap",name:"PAP",level:"commune",priceM2:parsed.priceM2,
-      value:Number.isFinite(area)&&area>0?Math.round(parsed.priceM2*area):null,
-      lowM2:null,highM2:null,low:null,high:null,url:page.url||fallbackUrl,
-      note:"Prix public PAP au m² de la commune, utilisé comme repère de marché.",
-      quality:"pap_public",personalized:false,automatic:true};
-  }
-
-  // PAP ajoute un suffixe technique à certaines pages de communes (ex. -g9256).
-  // On commence donc par l'URL courte, puis on résout l'URL canonique depuis la page du département.
-  const directPage=await fetchHtml(directUrl,10000);
-  const directResult=await buildResult(directPage,directUrl);
-  if(directResult) return [directResult];
-
-  if(depUrl){
-    const depPage=await fetchHtml(depUrl,10000);
-    const depResult=await buildResult(depPage,depUrl);
-    if(depResult) return [depResult];
-
-    const canonical=findPapCityUrl(depPage?.html,cleanCity,postal);
-    if(canonical && canonical!==directUrl){
-      const cityPage=await fetchHtml(canonical,10000);
-      const cityResult=await buildResult(cityPage,canonical);
-      if(cityResult) return [cityResult];
-    }
-  }
-
-  return [];
+  if(!cleanCity||!/^\d{5}$/.test(postal)) return [];
+  const tasks=[
+    (async()=>{
+      if(!address) return null;
+      return await getGeoRegistryEstimate({address,city:cleanCity,postalCode,propertyType,surface,rooms,dpe,condition,terrain});
+    })(),
+    readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
+      const direct=pairForType(text,type);
+      if(direct) return direct;
+      const app=text.match(/Appartement[\s\S]{0,250}?Prix m2 moyen[\s:]*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,100}?de[\s:]*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,100}?à[\s:]*([\d\s\u00a0\u202f.,]+)\s*€/i);
+      return app?{type:"Appartement",priceM2:numberFrom(app[1]),lowM2:numberFrom(app[2]),highM2:numberFrom(app[3])}:null;
+    }),
+    (async()=>{
+      const urls=[papUrl(cleanCity,postal),papSaleUrl(cleanCity,postal)];
+      const depUrl=papDepartmentUrl(communeCode);
+      if(depUrl) urls.push(depUrl);
+      for(const url of urls){
+        const result=await readSource("PAP",url,propertyType,surface,(text,type)=>{
+          const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
+          const re=wanted==="appartement"
+            ?/(?:prix\s*\/\s*m²\s*des\s*appartements|prix moyen[^0-9]{0,40}appartements?|appartements?)[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i
+            :/(?:prix\s*\/\s*m²\s*des\s*maisons|prix moyen[^0-9]{0,40}maisons?|maisons?)[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i;
+          const m=text.match(re);
+          if(!m) return null;
+          return {type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])};
+        });
+        if(result) return result;
+      }
+      return null;
+    })(),    readSource("efficity",efficityUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
+      const direct=pairForType(text,type);
+      if(direct) return direct;
+      const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
+      const re=wanted==="appartement"
+        ?/(?:appartements?)[\s\S]{0,120}?prix\s*m2\s*moyen[\s:]*([\d\s\u00a0\u202f.,]+)\s*€/i
+        :/(?:maisons?)[\s\S]{0,120}?prix\s*m2\s*moyen[\s:]*([\d\s\u00a0\u202f.,]+)\s*€/i;
+      const m=text.match(re);
+      return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])}:null;
+    }),
+    selogerUrl(cleanCity,communeCode)
+      ? readSource("SeLoger",selogerUrl(cleanCity,communeCode),propertyType,surface,(text,type)=>{
+          const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
+          const re=wanted==="appartement"
+            ?/prix moyen des appartements au m2[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i
+            :/prix moyen des maisons au m2[\s\S]{0,100}?([\d\s\u00a0\u202f.,]+)\s*€/i;
+          const m=text.match(re);
+          return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1])}:null;
+        })
+      : Promise.resolve(null),
+    readSource("Orpi",orpiUrl(cleanCity),propertyType,surface,(text,type)=>{
+      const wanted=/appartement|studio|duplex|loft/i.test(type||"")?"appartement":"maison";
+      const re=wanted==="appartement"
+        ?/Appartement[\s\S]{0,120}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i
+        :/Maison[\s\S]{0,120}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,80}?([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i;
+      const m=text.match(re);
+      return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1]),lowM2:numberFrom(m[2]),highM2:numberFrom(m[3])}:null;
+    })
+  ];
+  const results=await Promise.allSettled(tasks);
+  return results.map(x=>x.status==="fulfilled"?x.value:null).filter(Boolean);
 }
+
 module.exports={getPublicMarketBenchmarks,meilleursAgentsUrl,papUrl,efficityUrl,selogerUrl};
