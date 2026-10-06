@@ -9,6 +9,8 @@ const crypto = require("crypto");
 const registerPublicEventsRoute = require("./events");
 const { registerGoogleCalendarRoutes, getGoogleCalendarBusy } = require("./google-calendar");
 const { getPublicMarketBenchmarks } = require("./external-estimators");
+const { runEstimatorAgent } = require("./estimator-agent");
+
 
 const app = express();
 app.set("trust proxy", 1);
@@ -1944,6 +1946,27 @@ async function buildComparableSales(market,property){
     }
   };
 }
+app.post("/api/estimator-agent/run", async (req,res)=>{
+  try{
+    const secret=String(process.env.ESTIMATOR_AGENT_SECRET||"").trim();
+    if(!secret || String(req.get("x-jml-agent-key")||"")!==secret){
+      return res.status(403).json({ok:false,error:"Agent non autorisé."});
+    }
+    const input=req.body||{};
+    const result=await runEstimatorAgent({
+      address:clean(input.address,180),
+      city:clean(input.city,100),
+      postalCode:String(input.postalCode||"").match(/\\b\\d{5}\\b/)?.[0]||"",
+      surface:Number(input.surface),
+      rooms:Number(input.rooms),
+      sites:Array.isArray(input.sites)?input.sites.slice(0,12):undefined
+    });
+    res.json(result);
+  }catch(error){
+    console.error("Estimator agent:",error);
+    res.status(502).json({ok:false,error:"Agent d'estimation indisponible."});
+  }
+});
 app.get("/api/external-market-benchmarks", async (req,res) => {
   const city=clean(req.query.city,100);
   const address=clean(req.query.address,180);
