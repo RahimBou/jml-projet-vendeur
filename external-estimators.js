@@ -27,6 +27,79 @@ function numberFrom(value){
 
 const geoRegistryEstimateCache=new Map();
 
+function normalizeStreetKey(value){
+  return normalizeText(String(value||""))
+    .replace(/^\\d+[a-z]?\\s*/i,"")
+    .replace(/\\b(av|avenue|bd|boulevard|chem|chemin|rte|route|pl|place|imp|impasse|all|allee|allée|rue|faubourg|fg)\\b/g," ")
+    .replace(/[^a-z0-9]+/g," ")
+    .trim()
+    .replace(/\\s+/g," ");
+}
+function medianNumber(values){
+  const a=values.filter(Number.isFinite).sort((x,y)=>x-y);
+  if(!a.length) return null;
+  const m=Math.floor(a.length/2);
+  return a.length%2?a[m]:(a[m-1]+a[m])/2;
+}
+function quartileNumber(values,q){
+  const a=values.filter(Number.isFinite).sort((x,y)=>x-y);
+  if(!a.length) return null;
+  const pos=(a.length-1)*q, lo=Math.floor(pos), hi=Math.ceil(pos);
+  return lo===hi?a[lo]:a[lo]+(a[hi]-a[lo])*(pos-lo);
+}
+async function getGeoRegistryStreetEstimate({address,city,postalCode,propertyType,surface}={}){
+  const area=Number(surface);
+  if(!address || !Number.isFinite(area) || area<=0) return null;
+  const type_local=/appartement|studio|duplex|loft/i.test(propertyType||"") ? 2 : 1;
+  const fullAddress=[String(address||"").trim(),String(postalCode||"").trim(),String(city||"").trim()].filter(Boolean).join(", ");
+  const streetKey=normalizeStreetKey(address);
+  try{
+    const url="https://georegistry.fr/api/v1/dvf/ventes/address?adresse="+encodeURIComponent(fullAddress)+"&radius=1000&limit=100&type_local="+type_local;
+    const response=await fetch(url,{
+      headers:{"Accept":"application/json","User-Agent":"JML-Projet-Vendeur/4.1 (external-estimator)"},
+      signal:AbortSignal.timeout(9000)
+    });
+    if(!response.ok) return null;
+    const payload=await response.json();
+    const sales=Array.isArray(payload?.data)?payload.data:[];
+    const valid=sales.map(x=>{
+      const price=Number(x?.valeur_fonciere), m2=Number(x?.prix_m2), built=Number(x?.surface_bati);
+      return {
+        street:normalizeStreetKey(x?.adresse),
+        price,
+        m2:Number.isFinite(m2)&&m2>0?m2:(Number.isFinite(price)&&price>0&&Number.isFinite(built)&&built>0?price/built:null),
+        distance:Number(x?.distance_m)
+      };
+    }).filter(x=>x.street===streetKey&&Number.isFinite(x.m2)&&x.m2>0);
+    if(!valid.length) return null;
+    const m2s=valid.map(x=>x.m2);
+    const median=medianNumber(m2s);
+    if(!Number.isFinite(median)||median<=0) return null;
+    const lowM2=quartileNumber(m2s,.25), highM2=quartileNumber(m2s,.75);
+    const data={
+      id:"georegistry_street",
+      name:"GeoRegistry — rue",
+      level:"address",
+      priceM2:Math.round(median),
+      lowM2:Number.isFinite(lowM2)?Math.round(lowM2):null,
+      highM2:Number.isFinite(highM2)?Math.round(highM2):null,
+      value:Math.round(median*area),
+      low:Number.isFinite(lowM2)?Math.round(lowM2*area):null,
+      high:Number.isFinite(highM2)?Math.round(highM2*area):null,
+      url:"https://georegistry.fr/estimation",
+      note:"Repère automatique calculé à partir des ventes DVF GeoRegistry retrouvées sur la même rue ; ce n'est pas une estimation commerciale.",
+      quality:"street_dvf",
+      personalized:true,
+      automatic:true,
+      confidence:valid.length>=5?"high":valid.length>=3?"medium":"low",
+      comparablesCount:valid.length
+    };
+    return data;
+  }catch(_error){
+    return null;
+  }
+}
+
 async function getGeoRegistryEstimate({address,city,postalCode,propertyType,surface,rooms,dpe,condition,terrain}={}) {
   const area=Number(surface);
   const cacheKey=[address,city,postalCode,propertyType,surface,rooms,dpe,condition,terrain].map(normalizeText).join("|");
@@ -50,37 +123,44 @@ async function getGeoRegistryEstimate({address,city,postalCode,propertyType,surf
       }),
       signal:AbortSignal.timeout(9000)
     });
-    if(!response.ok) return null;
-    const payload=await response.json();
-    const result=payload?.data;
-    const estimate=Number(result?.estimate);
-    const priceM2=Number(result?.price_per_m2);
-    if(!Number.isFinite(estimate)||estimate<=0||!Number.isFinite(priceM2)||priceM2<=0) return null;
-    const low=Number(result?.range?.low);
-    const high=Number(result?.range?.high);
-    const confidence=result?.confidence?String(result.confidence):null;
-    const comparablesCount=Number(result?.comparables_count);
-    const data={
-      id:"georegistry",
-      name:"GeoRegistry",
-      level:"address",
-      priceM2:Math.round(priceM2),
-      lowM2:Number.isFinite(low)&&low>0?Math.round(low/area):null,
-      highM2:Number.isFinite(high)&&high>0?Math.round(high/area):null,
-      value:Math.round(estimate),
-      low:Number.isFinite(low)&&low>0?Math.round(low):null,
-      high:Number.isFinite(high)&&high>0?Math.round(high):null,
-      url:"https://georegistry.fr/estimation",
-      note:"Estimation automatique à l'adresse par comparables DVF ; fourchette et confiance fournies par le moteur.",
-      quality:"address_estimate",
-      personalized:true,
-      automatic:true,
-      confidence,
-      comparablesCount:Number.isFinite(comparablesCount)?comparablesCount:null
-    };
-    geoRegistryEstimateCache.set(cacheKey,{expiresAt:Date.now()+30*60*1000,data});
-    return data;
-  }catch(error){
+    if(response.ok){
+      const payload=await response.json();
+      const result=payload?.data;
+      const estimate=Number(result?.estimate);
+      const priceM2=Number(result?.price_per_m2);
+      if(Number.isFinite(estimate)&&estimate>0&&Number.isFinite(priceM2)&&priceM2>0){
+        const low=Number(result?.range?.low), high=Number(result?.range?.high);
+        const confidence=result?.confidence?String(result.confidence):null;
+        const comparablesCount=Number(result?.comparables_count);
+        const data={
+          id:"georegistry",name:"GeoRegistry",level:"address",
+          priceM2:Math.round(priceM2),
+          lowM2:Number.isFinite(low)&&low>0?Math.round(low/area):null,
+          highM2:Number.isFinite(high)&&high>0?Math.round(high/area):null,
+          value:Math.round(estimate),
+          low:Number.isFinite(low)&&low>0?Math.round(low):null,
+          high:Number.isFinite(high)&&high>0?Math.round(high):null,
+          url:"https://georegistry.fr/estimation",
+          note:"Estimation automatique à l'adresse par comparables DVF ; fourchette et confiance fournies par le moteur.",
+          quality:"address_estimate",personalized:true,automatic:true,confidence,
+          comparablesCount:Number.isFinite(comparablesCount)?comparablesCount:null
+        };
+        geoRegistryEstimateCache.set(cacheKey,{expiresAt:Date.now()+30*60*1000,data});
+        return data;
+      }
+    }
+    const street=await getGeoRegistryStreetEstimate({address,city,postalCode,propertyType,surface});
+    if(street){
+      geoRegistryEstimateCache.set(cacheKey,{expiresAt:Date.now()+30*60*1000,data:street});
+      return street;
+    }
+    return null;
+  }catch(_error){
+    const street=await getGeoRegistryStreetEstimate({address,city,postalCode,propertyType,surface});
+    if(street){
+      geoRegistryEstimateCache.set(cacheKey,{expiresAt:Date.now()+30*60*1000,data:street});
+      return street;
+    }
     return null;
   }
 }
