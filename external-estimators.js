@@ -326,6 +326,35 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
   if(!cleanCity||!/^[0-9]{5}$/.test(postal)) return [];
   const resolvedCommuneCode=String(communeCode||"").match(/^\d{5}$/)?.[0] || await resolveCommuneCode(cleanCity,postal);
   const wantedHouse=!/appartement|studio|duplex|loft/i.test(propertyType||"");
+
+  // MeilleursAgents : repère communal public, très simple à exploiter.
+  // La page ville contient séparément le prix moyen appartement et maison.
+  // On l'utilise comme premier essai de source alternative à PAP.
+  const maUrl=meilleursAgentsUrl(cleanCity,postal);
+  const maPage=await fetchHtml(maUrl,10000);
+  if(maPage){
+    const maText=htmlText(maPage.html);
+    const maBlock=wantedHouse
+      ? maText.match(/Prix\s*m2\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,500}?Prix\s*des\s*maisons/i)
+      : maText.match(/Prix\s*m2\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,500}?Prix\s*des\s*appartements/i);
+    const sections=wantedHouse
+      ? maText.match(/Prix\s*des\s*maisons[\s\S]{0,500}?Prix\s*m²\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,300}?Fourchette\s*basse\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,200}?Fourchette\s*haute\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i)
+      : maText.match(/Prix\s*des\s*appartements[\s\S]{0,500}?Prix\s*m²\s*moyen\s*([\d\s\u00a0\u202f.,]+)\s*€[\s\S]{0,300}?Fourchette\s*basse\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²[\s\S]{0,200}?Fourchette\s*haute\s*([\d\s\u00a0\u202f.,]+)\s*€\s*\/\s*m²/i);
+    const priceM2=numberFrom(sections?.[1]||maBlock?.[1]);
+    if(priceM2){
+      const lowM2=numberFrom(sections?.[2]), highM2=numberFrom(sections?.[3]);
+      return [{
+        id:"meilleursagents",name:"Meilleurs Agents",level:"commune",
+        priceM2,lowM2,highM2,
+        value:Number.isFinite(area)&&area>0?Math.round(priceM2*area):null,
+        low:Number.isFinite(area)&&area>0&&lowM2?Math.round(lowM2*area):null,
+        high:Number.isFinite(area)&&area>0&&highM2?Math.round(highM2*area):null,
+        url:maPage.url||maUrl,
+        note:"Repère public Meilleurs Agents au m² de la commune, utilisé comme estimation approximative automatique.",
+        quality:"meilleursagents_public",personalized:false,automatic:true
+      }];
+    }
+  }
   function parsePap(text){
     const t=htmlText(text);
     const exactHouse=t.match(/prix\s*\/\s*m²\s*des\s*maisons\s*([\d\s\u00a0\u202f.,]+)\s*€/i);
