@@ -25,6 +25,58 @@ function numberFrom(value){
   return Number.isFinite(n)&&n>0?n:null;
 }
 
+async function getGeoRegistryEstimate({address,propertyType,surface}={}) {
+  const area=Number(surface);
+  if(!address || !Number.isFinite(area) || area<=0) return null;
+  const type_local=/appartement|studio|duplex|loft/i.test(propertyType||"") ? 2 : 1;
+  try{
+    const response=await fetch("https://georegistry.fr/api/v1/dvf/estimate",{
+      method:"POST",
+      headers:{
+        "Accept":"application/json",
+        "Content-Type":"application/json",
+        "User-Agent":"JML-Projet-Vendeur/4.1 (external-estimator)"
+      },
+      body:JSON.stringify({
+        type_local,
+        surface_bati:Math.round(area),
+        adresse:String(address).trim()
+      }),
+      signal:AbortSignal.timeout(9000)
+    });
+    if(!response.ok) return null;
+    const payload=await response.json();
+    const result=payload?.data;
+    const estimate=Number(result?.estimate);
+    const priceM2=Number(result?.price_per_m2);
+    if(!Number.isFinite(estimate)||estimate<=0||!Number.isFinite(priceM2)||priceM2<=0) return null;
+    const low=Number(result?.range?.low);
+    const high=Number(result?.range?.high);
+    const confidence=result?.confidence?String(result.confidence):null;
+    const comparablesCount=Number(result?.comparables_count);
+    return {
+      id:"georegistry",
+      name:"GeoRegistry",
+      level:"address",
+      priceM2:Math.round(priceM2),
+      lowM2:Number.isFinite(low)&&low>0?Math.round(low/area):null,
+      highM2:Number.isFinite(high)&&high>0?Math.round(high/area):null,
+      value:Math.round(estimate),
+      low:Number.isFinite(low)&&low>0?Math.round(low):null,
+      high:Number.isFinite(high)&&high>0?Math.round(high):null,
+      url:"https://georegistry.fr/estimation",
+      note:"Estimation automatique à l'adresse par comparables DVF ; fourchette et confiance fournies par le moteur.",
+      quality:"address_estimate",
+      personalized:true,
+      automatic:true,
+      confidence,
+      comparablesCount:Number.isFinite(comparablesCount)?comparablesCount:null
+    };
+  }catch(error){
+    return null;
+  }
+}
+
 async function fetchHtml(url, timeout=8000){
   try{
     const response=await fetch(url,{headers:DEFAULT_HEADERS,redirect:"follow",signal:AbortSignal.timeout(timeout)});
@@ -87,48 +139,6 @@ function efficityUrl(city,postal){
 function orpiUrl(city){
   return "https://www.orpi.com/prix-immobilier/"+slugify(city);
 }
-function flatwayExactAddressUrl(city,postal,communeCode,address){
-  const raw=normalizeText(address);
-  const num=(raw.match(/^\s*(\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?)/)||[])[1]||"";
-  if(!num||!/^[0-9]{5}$/.test(String(postal||""))||!/^[0-9]{5}$/.test(String(communeCode||""))) return null;
-  let street=raw
-    .replace(/^\s*\d+[A-Za-z]?(?:\s*[-/]\s*\d+[A-Za-z]?)?\s*/,"")
-    .replace(/\b\d{5}\b/g," ")
-    .replace(new RegExp("\\b"+slugify(city).replace(/-/g,"[ -]")+"\\b","i")," ")
-    .replace(/\s+/g," ").trim();
-  street=street.replace(/^,\s*|,\s*$/g,"");
-  if(!street)return null;
-  const dep=String(communeCode).slice(0,2);
-  const citySlug=slugify(city);
-  const streetSlug=slugify(street);
-  return "https://flatway.fr/estimation/"+dep+"/"+citySlug+"-"+postal+"-"+communeCode+"/"+streetSlug+"-"+postal.slice(2)+"/"+encodeURIComponent(num.replace(/\s+/g,""));
-}
-async function readFlatwayExactAddress(city,postal,communeCode,address,propertyType,surface){
-  const url=flatwayExactAddressUrl(city,postal,communeCode,address);
-  if(!url)return null;
-  const page=await fetchHtml(url,10000);
-  if(!page)return null;
-  const parsed=pairForType(htmlText(page.html),propertyType);
-  if(!parsed)return null;
-  const value=Number.isFinite(Number(surface))&&Number(surface)>0 ? Math.round(parsed.priceM2*Number(surface)) : null;
-  return {
-    id:"flatway-exact-address",
-    name:"Flatway",
-    level:"adresse",
-    priceM2:parsed.priceM2,
-    lowM2:parsed.lowM2||null,
-    highM2:parsed.highM2||null,
-    value,
-    low:Number.isFinite(Number(surface))&&Number(surface)>0&&parsed.lowM2?Math.round(parsed.lowM2*Number(surface)):null,
-    high:Number.isFinite(Number(surface))&&Number(surface)>0&&parsed.highM2?Math.round(parsed.highM2*Number(surface)):null,
-    url:page.url||url,
-    note:"Repère public à l'adresse exacte ; il s'agit d'un benchmark public Flatway, pas d'une saisie personnalisée dans un formulaire.",
-    quality:"address_exact",
-    personalized:false,
-    automatic:true
-  };
-}
-
 function selogerRegionForDepartment(departmentCode){
   const code=String(departmentCode||"").padStart(2,"0");
   const map={
@@ -178,11 +188,15 @@ async function readSource(name,url,propertyType,surface,parser){
   };
 }
 
-async function getPublicMarketBenchmarks({city,propertyType,surface,postalCode,communeCode}={}){
+async function getPublicMarketBenchmarks({city,address,propertyType,surface,postalCode,communeCode}={}){
   const cleanCity=normalizeText(city);
   const postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
   if(!cleanCity||!/^\d{5}$/.test(postal)) return [];
   const tasks=[
+  const geoRegistryTask=(async()=>{
+    if(!address) return null;
+    return await getGeoRegistryEstimate({address,propertyType,surface});
+  })(),
     readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
       const direct=pairForType(text,type);
       if(direct) return direct;
@@ -239,6 +253,7 @@ async function getPublicMarketBenchmarks({city,propertyType,surface,postalCode,c
       return m?{type:wanted==="appartement"?"Appartement":"Maison",priceM2:numberFrom(m[1]),lowM2:numberFrom(m[2]),highM2:numberFrom(m[3])}:null;
     })
   ];
+  tasks.push(geoRegistryTask);
   const results=await Promise.allSettled(tasks);
   return results.map(x=>x.status==="fulfilled"?x.value:null).filter(Boolean);
 }
