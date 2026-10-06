@@ -2319,30 +2319,16 @@ app.get("/api/territory-summary", async (req,res) => {
       referenceBase=exactRecentPrice/exactRecentSurface;
       referenceSource="Vente DVF+ récente du bien";
       blend={method:"Vente exacte récente",components:[{source:"DVF+ vente exacte",weight:1,priceM2:referenceBase}],normalized:true};
-    }else{
-      // Pondération cible : DVF 50 % / micro-secteur 30 % / estimateurs 20 %.
-      // Si une composante manque, son poids est automatiquement redistribué.
-      const components=[];
-      if(useComparableReference) components.push({source:"DVF comparables",targetWeight:0.50,priceM2:comparableBase});
-      if(hasMicro) components.push({source:"Micro-marché / adresse",targetWeight:0.30,priceM2:microM2});
-      if(hasExternal) components.push({source:"Estimateurs externes",targetWeight:0.20,priceM2:externalM2});
-      const totalWeight=components.reduce((s,x)=>s+x.targetWeight,0);
-      if(totalWeight>0){
-        components.forEach(x=>{x.weight=x.targetWeight/totalWeight;});
-        referenceBase=components.reduce((s,x)=>s+x.priceM2*x.weight,0);
-        blend={
-          method:"DVF comparables 50 % + micro-marché 30 % + estimateurs externes 20 %, poids redistribués si une source manque",
-          components:components.map(x=>({source:x.source,weight:Number(x.weight.toFixed(3)),priceM2:Math.round(x.priceM2)})),
-          normalized:true
-        };
-        referenceSource=components.length===3
-          ?"DVF + micro-marché + estimateurs externes"
-          :components.map(x=>x.source).join(" + ");
-      }else if(sellerHasBase){
-        referenceBase=sellerBase;
-        referenceSource="Référence communale";
-        blend={method:"Référence communale de secours",components:[{source:"Marché communal",weight:1,priceM2:sellerBase}],normalized:true};
-      }
+    }else if(Number.isFinite(comparableBase)&&comparableBase>0){
+      // La valeur centrale reste celle du moteur JML historique.
+      // Les estimateurs externes servent uniquement de contre-vérification.
+      referenceBase=comparableBase;
+      referenceSource="Ventes DVF comparables";
+      blend={method:"Méthode JML historique : ventes DVF comparables pondérées",components:[{source:"DVF comparables",weight:1,priceM2:comparableBase}],normalized:true};
+    }else if(sellerHasBase){
+      referenceBase=sellerBase;
+      referenceSource="Référence communale de secours";
+      blend={method:"Référence communale de secours",components:[{source:"Marché communal",weight:1,priceM2:sellerBase}],normalized:true};
     }
 
     const sellerValue=sellerHasSurface&&Number.isFinite(referenceBase)&&referenceBase>0
