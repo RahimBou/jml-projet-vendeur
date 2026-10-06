@@ -397,7 +397,7 @@ async function runEstimatorAgent(input={}){
         if(adapter.status==="form_not_found"){
           return {id,name:site.name,status:adapter.status,reason:adapter.reason,url:page.url(),elapsedMs:Date.now()-started};
         }
-        await prepareSiteForm(page,id,input);
+        if(adapter.status==="generic") await prepareSiteForm(page,id,input);
 
         for(let step=0;step<4;step++){
           const next=await firstLocator(page,[
