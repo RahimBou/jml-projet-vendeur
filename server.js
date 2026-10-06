@@ -1949,6 +1949,10 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
   const address=clean(req.query.address,180);
   const propertyType=clean(req.query.propertyType,60);
   const surface=Number(req.query.surface);
+  const rooms=Number(req.query.rooms);
+  const dpe=clean(req.query.dpe,10).toUpperCase();
+  const condition=clean(req.query.condition,40);
+  const terrain=Number(req.query.terrain);
   const jmlValue=Number(req.query.jmlValue);
   let postalCode=clean(req.query.postalCode,10).match(/\b\d{5}\b/)?.[0]||"";
   let communeCode="";
@@ -1965,7 +1969,7 @@ app.get("/api/external-market-benchmarks", async (req,res) => {
     // jamais une valeur avec une supposition : si une source ne répond pas,
     // elle reste simplement disponible via son lien de vérification manuelle.
     const publicSources=await getPublicMarketBenchmarks({
-      city,address,propertyType,surface,postalCode,communeCode
+      city,address,propertyType,surface,postalCode,communeCode,rooms,dpe,condition,terrain
     });
 
     const sources=[...publicSources];
