@@ -2129,10 +2129,11 @@ app.get("/api/territory-comparables", async (req,res) => {
   try{
     const commune=await resolveTerritoryCommune(city,address);
     if(!commune) return res.status(422).json({ok:false,code:"JML-COMP-422",error:"Commune introuvable."});
-    let market={city:commune.nom,recentSales:[],transactions:null};
-    try{ market=await getCommuneMarketData(commune.nom,commune.code); }catch(error){
-      console.warn("JML comparables market isolated:",error.message);
-    }
+    // IMPORTANT : cet endpoint ne doit récupérer que les comparables.
+    // Le marché communal est déjà chargé séparément par le navigateur.
+    // Appeler getCommuneMarketData ici ajoutait une seconde récupération coûteuse
+    // avant même de commencer la recherche DVF fine.
+    const market={city:commune.nom,recentSales:[],transactions:null};
     const comparable=await buildComparableSales(market,{address,propertyType,surface,landSurface,rooms,city:commune.nom});
     return res.json({
       ok:true,version:VERSION,build:BUILD_MARKER,commune,
