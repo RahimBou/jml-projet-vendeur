@@ -25,8 +25,13 @@ function numberFrom(value){
   return Number.isFinite(n)&&n>0?n:null;
 }
 
+const geoRegistryEstimateCache=new Map();
+
 async function getGeoRegistryEstimate({address,propertyType,surface}={}) {
   const area=Number(surface);
+  const cacheKey=normalizeText(address)+"|"+normalizeText(propertyType)+"|"+Math.round(area);
+  const cached=geoRegistryEstimateCache.get(cacheKey);
+  if(cached&&cached.expiresAt>Date.now()) return {...cached.data,cache:true};
   if(!address || !Number.isFinite(area) || area<=0) return null;
   const type_local=/appartement|studio|duplex|loft/i.test(propertyType||"") ? 2 : 1;
   try{
@@ -54,7 +59,7 @@ async function getGeoRegistryEstimate({address,propertyType,surface}={}) {
     const high=Number(result?.range?.high);
     const confidence=result?.confidence?String(result.confidence):null;
     const comparablesCount=Number(result?.comparables_count);
-    return {
+    const data={
       id:"georegistry",
       name:"GeoRegistry",
       level:"address",
@@ -72,6 +77,8 @@ async function getGeoRegistryEstimate({address,propertyType,surface}={}) {
       confidence,
       comparablesCount:Number.isFinite(comparablesCount)?comparablesCount:null
     };
+    geoRegistryEstimateCache.set(cacheKey,{expiresAt:Date.now()+30*60*1000,data});
+    return data;
   }catch(error){
     return null;
   }
