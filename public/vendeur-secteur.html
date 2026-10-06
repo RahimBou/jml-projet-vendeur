@@ -1111,7 +1111,7 @@ async function loadExternalBenchmarks(){
        agentRows.forEach(x=>{statusNames[x.name||x.id]=x.status;});
        if(statusEl){
          statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>"+agentRows.map(x=>{
-           const label=x.status==="value_found"?(x.source==="pap_city_benchmark"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)+" · prix moyen de la ville":"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
+           const label=x.status==="value_found"?(x.source==="pap_city_benchmark"||x.source==="meilleursagents_city_benchmark"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)+" · prix moyen de la ville":"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value)):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
            return label;
          }).join("<br>")||"Aucun résultat retourné.";
        }
