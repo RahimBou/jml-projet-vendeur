@@ -2987,6 +2987,7 @@ async function initDb() {
   await db(`ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS sale_reason TEXT`);
   await db(`ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS already_estimated BOOLEAN`);
   await db(`ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS already_professional BOOLEAN`);
+  await db(`ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS estimator_agent_data JSONB`);
 
   await db(`ALTER TABLE jml_activities ADD COLUMN IF NOT EXISTS outcome TEXT`);
   await db(`ALTER TABLE jml_activities ADD COLUMN IF NOT EXISTS appointment_at TIMESTAMPTZ`);
@@ -3636,6 +3637,7 @@ function sellerSpacePublic(row){
     city:row.city||"", address:row.address||"", propertyType:row.property_type||row.propertyType||"",
     horizon:row.horizon||"unknown", surface:row.surface||"", rooms:row.rooms||"", dpe:row.dpe||"", terrain:row.terrain||"", ownerData:Array.isArray(row.owner_data)?row.owner_data:[], expectedPrice:row.expected_price||"", saleReason:row.sale_reason||"", alreadyEstimated:row.already_estimated, alreadyProfessional:row.already_professional,
     conditionData:normalizeSellerCondition(row.condition_data||row.conditionData),
+    estimatorAgent:row.estimator_agent_data||row.estimatorAgent||null,
     checklist:Array.isArray(row.checklist)?row.checklist:[], createdAt:row.created_at||row.createdAt, updatedAt:row.updated_at||row.updatedAt
   };
 }
