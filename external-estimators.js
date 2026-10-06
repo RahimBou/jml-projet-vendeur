@@ -336,10 +336,17 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
       ? t.match(/prix\s+(?:au|du)\s*m[²2]\s+[^.]{0,220}?maison[^\d]{0,100}([\d\s\u00a0\u202f.,]+)\s*euros?/i)
       : t.match(/prix\s+(?:au|du)\s*m[²2]\s+[^.]{0,220}?appartement[^\d]{0,100}([\d\s\u00a0\u202f.,]+)\s*euros?/i);
     if(faq){ const priceM2=numberFrom(faq[1]); if(priceM2) return {type:wantedHouse?"Maison":"Appartement",priceM2}; }
+    // Sur la page département PAP, la ville apparaît dans le tableau
+    // sous la forme "Ville (CP) appartement € maison €". Cela permet
+    // de récupérer le repère communal même lorsque PAP refuse l'URL
+    // courte ou que la page communale est protégée.
     const cityPos=t.toLowerCase().indexOf(cleanCity.toLowerCase());
     if(cityPos>=0){
-      const row=t.slice(cityPos,cityPos+500);
-      const nums=[...row.matchAll(/([\d\s\u00a0\u202f.,]+)\s*€/g)].map(m=>numberFrom(m[1])).filter(Boolean);
+      const row=t.slice(cityPos,cityPos+700);
+      const nums=[...row.matchAll(/([\d\s\u00a0\u202f.,]+)\s*€/g)]
+        .map(m=>numberFrom(m[1])).filter(Boolean);
+      // Pour une maison, PAP affiche appartement puis maison.
+      // Pour un appartement, le premier prix est celui des appartements.
       const priceM2=wantedHouse?nums[1]:nums[0];
       if(priceM2) return {type:wantedHouse?"Maison":"Appartement",priceM2};
     }
