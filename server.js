@@ -3711,7 +3711,7 @@ async function startEstimatorAgentForSpace(space){
   const running={status:"running",results:[],startedAt,updatedAt:startedAt};
   try{
     if(pool){
-      await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(running)]);
+      await db("UPDATE jml_seller_spaces SET estimator_agent_data=COALESCE(estimator_agent_data,'{}'::jsonb) || $2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(running)]);
     }else if(memory.sellerSpaces.has(space.accessToken)){
       memory.sellerSpaces.get(space.accessToken).estimatorAgent=running;
     }
@@ -3730,12 +3730,12 @@ async function startEstimatorAgentForSpace(space){
       sites:["pap","seloger","meilleursagents","century21","laforet"]
     });
     const done={status:"completed",results:Array.isArray(result?.results)?result.results:[],completedAt:now(),updatedAt:now()};
-    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=jsonb_set(COALESCE(estimator_agent_data,'{}'::jsonb),'{estimatorAgent}',$2::jsonb,true),updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
-    else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent={...(memory.sellerSpaces.get(space.accessToken).estimatorAgent||{}),estimatorAgent:done};
+    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=COALESCE(estimator_agent_data,'{}'::jsonb) || $2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
+    else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent={...(memory.sellerSpaces.get(space.accessToken).estimatorAgent||{}),...done};
     refreshSellerValuationAnalysis(space.accessToken).catch(()=>{});
   }catch(error){
     const failed={status:"retry",results:[],error:String(error?.message||error),updatedAt:now()};
-    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(failed)]).catch(()=>{});
+    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=COALESCE(estimator_agent_data,'{}'::jsonb) || $2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(failed)]).catch(()=>{});
     else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent=failed;
     console.error("JML background estimator agent:",error);
   }
