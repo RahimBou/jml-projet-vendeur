@@ -808,51 +808,6 @@ h1 span{color:var(--gold2);display:block}
     </div>
   </div>
 </header>
-<main class="card">
-  <div class="top">
-    <div>
-      <div class="tag">Votre premier repère commence ici</div>
-      <h2>Estimez votre bien gratuitement</h2>
-      <p>Renseignez quelques informations essentielles. Notre analyse croise les ventes réelles disponibles et les données du marché local pour vous donner un premier repère de valeur.</p>
-    </div>
-    <div class="aside">
-      <div class="ico">⌂</div>
-      <div><strong>Une approche locale et humaine</strong><small>Spécialiste du marché immobilier dans les Ardennes, je vous accompagne avec des conseils adaptés à votre situation.</small></div>
-    </div>
-  </div>
-  <form id="form">
-    <div class="f"><span class="n">01</span><div><label for="nom">Votre nom et prénom <i>*</i></label><div class="in"><input id="nom" required placeholder="Nom / prénom" autocomplete="name"></div></div></div>
-    <div class="f"><span class="n">02</span><div><label for="ville">Commune de votre bien</label><div class="in"><input id="ville" value="Charleville-Mézières"></div></div></div>
-    <div class="f"><span class="n">03</span><div><label for="tel">Votre téléphone</label><div class="in"><input id="tel" type="tel" placeholder="Votre numéro de téléphone" autocomplete="tel"></div></div></div>
-    <div class="f"><span class="n">04</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
-    <div class="f"><span class="n">05</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
-    <div class="f"><span class="n">06</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
-    <div class="f compact-property" id="surfaceField"><span class="n">07</span><div><label for="surface" id="surfaceLabel">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div></div>
-    <div class="f compact-property" id="piecesField"><span class="n">08</span><div><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div></div>
-    <div class="extra edit-only-extra" id="extra" aria-hidden="true">
-  <div class="extra-section-title full-extra">INFORMATIONS COMPLÉMENTAIRES — MODIFICATION</div>
-  <div class="extra-field" id="terrainField"><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div>
-  <div class="extra-field full-extra"><label for="adresse">Adresse du bien</label><div class="in"><input id="adresse" type="text" autocomplete="street-address" placeholder="Numéro et rue"></div></div>
-  <div class="extra-field" id="dpeField"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
-  <div class="extra-field"><label for="generalState">État général</label><div class="in"><select id="generalState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></div></div>
-  <div class="extra-field"><label for="works">Travaux à prévoir</label><div class="in"><select id="works"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></div></div>
-  <div class="extra-field"><label for="garage">Garage / stationnement</label><div class="in"><select id="garage"><option value="">Non renseigné</option><option>Garage</option><option>Parking / stationnement</option><option>Garage + stationnement</option><option>Sans garage / stationnement</option><option>Ne sait pas</option></select></div></div>
-  <div class="extra-field"><label for="roof">Toiture</label><div class="in"><select id="roof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></div></div>
-  <div class="extra-field"><label for="renovation">Rénovation récente</label><div class="in"><select id="renovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></div></div>
-  <div class="extra-field"><label for="electricity">Électricité</label><div class="in"><select id="electricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></div></div>
-  <div class="extra-field"><label for="insulation">Isolation</label><div class="in"><select id="insulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></div></div>
-  <div class="extra-field"><label for="heating">Chauffage</label><div class="in"><select id="heating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
-  <div class="extra-field"><label for="windows">Fenêtres</label><div class="in"><select id="windows"><option value="">Non renseigné</option><option>Récentes</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
-  <div class="extra-field"><label for="kitchen">Cuisine</label><div class="in"><select id="kitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
-  <div class="extra-field"><label for="bathrooms">Salle(s) de bains</label><div class="in"><select id="bathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
-  <div class="extra-field"><label for="facade">Façade</label><div class="in"><select id="facade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></div></div>
-  <div class="extra-field"><label for="extras">Extérieurs / dépendances</label><div class="in"><select id="extras"><option value="">Non renseigné</option><option>Jardin / terrain</option><option>Terrasse</option><option>Dépendances</option><option>Jardin + dépendances</option><option>Aucun</option></select></div></div>
-  <div class="extra-field full-extra"><label for="conditionNotes">Précisions utiles sur l’état du bien</label><div class="in"><input id="conditionNotes" type="text" maxlength="300" placeholder="Ex. toiture refaite en 2023, garage double, électricité à prévoir…"></div></div>
-</div>
-    <div class="bottom"><label class="chk"><input type="checkbox" required>J'accepte que JML Immobilier utilise ces informations pour me recontacter au sujet de mon projet immobilier. J’ai pris connaissance du caractère facultatif des informations non nécessaires à la prise de contact.</label><button class="btn" type="submit">Obtenir mon premier repère →</button></div>
-    <div class="ok" id="ok">Merci ! Je vous recontacte très prochainement.</div>
-  </form>
-</main>
 <section class="estimation-story" aria-labelledby="estimation-story-title">
   <div class="estimation-story-head">
     <div>
@@ -898,6 +853,51 @@ h1 span{color:var(--gold2);display:block}
     <a href="#form">Commencer mon estimation →</a>
   </div>
 </section>
+<main class="card">
+  <div class="top">
+    <div>
+      <div class="tag">Votre premier repère commence ici</div>
+      <h2>Estimez votre bien gratuitement</h2>
+      <p>Renseignez quelques informations essentielles. Notre analyse croise les ventes réelles disponibles et les données du marché local pour vous donner un premier repère de valeur.</p>
+    </div>
+    <div class="aside">
+      <div class="ico">⌂</div>
+      <div><strong>Une approche locale et humaine</strong><small>Spécialiste du marché immobilier dans les Ardennes, je vous accompagne avec des conseils adaptés à votre situation.</small></div>
+    </div>
+  </div>
+  <form id="form">
+    <div class="f"><span class="n">01</span><div><label for="nom">Votre nom et prénom <i>*</i></label><div class="in"><input id="nom" required placeholder="Nom / prénom" autocomplete="name"></div></div></div>
+    <div class="f"><span class="n">02</span><div><label for="ville">Commune de votre bien</label><div class="in"><input id="ville" value="Charleville-Mézières"></div></div></div>
+    <div class="f"><span class="n">03</span><div><label for="tel">Votre téléphone</label><div class="in"><input id="tel" type="tel" placeholder="Votre numéro de téléphone" autocomplete="tel"></div></div></div>
+    <div class="f"><span class="n">04</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
+    <div class="f"><span class="n">05</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
+    <div class="f"><span class="n">06</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
+    <div class="f compact-property" id="surfaceField"><span class="n">07</span><div><label for="surface" id="surfaceLabel">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div></div>
+    <div class="f compact-property" id="piecesField"><span class="n">08</span><div><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div></div>
+    <div class="extra edit-only-extra" id="extra" aria-hidden="true">
+  <div class="extra-section-title full-extra">INFORMATIONS COMPLÉMENTAIRES — MODIFICATION</div>
+  <div class="extra-field" id="terrainField"><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div>
+  <div class="extra-field full-extra"><label for="adresse">Adresse du bien</label><div class="in"><input id="adresse" type="text" autocomplete="street-address" placeholder="Numéro et rue"></div></div>
+  <div class="extra-field" id="dpeField"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
+  <div class="extra-field"><label for="generalState">État général</label><div class="in"><select id="generalState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></div></div>
+  <div class="extra-field"><label for="works">Travaux à prévoir</label><div class="in"><select id="works"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></div></div>
+  <div class="extra-field"><label for="garage">Garage / stationnement</label><div class="in"><select id="garage"><option value="">Non renseigné</option><option>Garage</option><option>Parking / stationnement</option><option>Garage + stationnement</option><option>Sans garage / stationnement</option><option>Ne sait pas</option></select></div></div>
+  <div class="extra-field"><label for="roof">Toiture</label><div class="in"><select id="roof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></div></div>
+  <div class="extra-field"><label for="renovation">Rénovation récente</label><div class="in"><select id="renovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></div></div>
+  <div class="extra-field"><label for="electricity">Électricité</label><div class="in"><select id="electricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></div></div>
+  <div class="extra-field"><label for="insulation">Isolation</label><div class="in"><select id="insulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></div></div>
+  <div class="extra-field"><label for="heating">Chauffage</label><div class="in"><select id="heating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
+  <div class="extra-field"><label for="windows">Fenêtres</label><div class="in"><select id="windows"><option value="">Non renseigné</option><option>Récentes</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
+  <div class="extra-field"><label for="kitchen">Cuisine</label><div class="in"><select id="kitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
+  <div class="extra-field"><label for="bathrooms">Salle(s) de bains</label><div class="in"><select id="bathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
+  <div class="extra-field"><label for="facade">Façade</label><div class="in"><select id="facade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></div></div>
+  <div class="extra-field"><label for="extras">Extérieurs / dépendances</label><div class="in"><select id="extras"><option value="">Non renseigné</option><option>Jardin / terrain</option><option>Terrasse</option><option>Dépendances</option><option>Jardin + dépendances</option><option>Aucun</option></select></div></div>
+  <div class="extra-field full-extra"><label for="conditionNotes">Précisions utiles sur l’état du bien</label><div class="in"><input id="conditionNotes" type="text" maxlength="300" placeholder="Ex. toiture refaite en 2023, garage double, électricité à prévoir…"></div></div>
+</div>
+    <div class="bottom"><label class="chk"><input type="checkbox" required>J'accepte que JML Immobilier utilise ces informations pour me recontacter au sujet de mon projet immobilier. J’ai pris connaissance du caractère facultatif des informations non nécessaires à la prise de contact.</label><button class="btn" type="submit">Obtenir mon premier repère →</button></div>
+    <div class="ok" id="ok">Merci ! Je vous recontacte très prochainement.</div>
+  </form>
+</main>
 <section class="pro-value-note"><b>Un premier repère, pas une promesse de prix.</b><br>
 Lorsque les informations sur votre bien sont suffisamment complètes, le repère de valeur JML s’appuie sur les ventes comparables disponibles. Il constitue un <b>point de départ pour travailler le positionnement</b> du bien. L’état, les travaux, le DPE, l’emplacement, les prestations, le terrain, le stationnement, la luminosité et les éventuelles nuisances peuvent faire varier la valeur à la hausse ou à la baisse. Le repère ne constitue ni une expertise immobilière, ni une promesse de prix, ni une garantie de vente.</section>
 <section class="pro-agent"><div class="pro-agent-badge">AB</div><div>
