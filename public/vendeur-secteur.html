@@ -877,15 +877,24 @@ section:has(.method-card){
 <section class="section">
  <div class="head"><div><div class="eyebrow">03 · AGENT DVF</div><h2>Agent DVF — ventes réelles</h2></div><div class="source">DVF+ · Cerema</div></div>
  <div class="card reference" id="reference">
-  <div class="ref-main"><h3>Analyse automatique des ventes</h3><div class="ref-value">—</div><p>—</p></div>
-  <div class="ref-list"><div class="ref-row"><b>Repère au m²</b><span>—</span></div><div class="ref-row"><b>Ventes prises en compte</b><span>—</span></div><div class="ref-row"><b>Nature du repère</b><span>—</span></div></div>
+  <div class="ref-main seller-reference-main">
+   <span class="reference-kicker">🤖 AGENT DVF · SOURCE OFFICIELLE</span>
+   <h3>Analyse automatique des ventes</h3>
+   <div class="ref-value">Analyse en cours…</div>
+   <p class="reference-sub"><b>🤖 Agent DVF</b> · Recherche des ventes réelles comparables autour de l'adresse.</p>
+  </div>
+  <div class="ref-list seller-reference-details">
+   <div class="ref-row"><b>Ventes compatibles</b><span>Recherche…</span></div>
+   <div class="ref-row"><b>Ventes même rue</b><span>Recherche…</span></div>
+   <div class="ref-row"><b>Source</b><span>DVF+ · Cerema</span></div>
+  </div>
  </div>
  <div class="seller-reading" id="sellerReading">
   <div class="seller-reading-head"><span>LECTURE VENDEUR</span><b>Ce que cela signifie pour votre vente</b></div>
   <div class="seller-reading-grid">
    <div>
     <p class="reading-title">En clair</p>
-    <p>Le montant affiché est un <b>repère de marché</b> construit à partir des transactions disponibles et, lorsque les données le permettent, des ventes les plus comparables autour de votre adresse.</p>
+    <p>Le montant affiché est calculé par l’<b>Agent DVF</b> à partir des transactions réelles disponibles et des ventes les plus comparables autour de votre adresse.</p>
    </div>
    <div>
     <p class="reading-title">À garder en tête</p>
@@ -1720,11 +1729,11 @@ function renderListingResearch(research){
  if(!el)return;
  const x=research||{};
  if(x.status==="running"||!research){
-   el.innerHTML="<b>🔎 Agent marché</b><br>⏳ Recherche des annonces actuellement en vente qui ressemblent à votre bien…";
+   el.innerHTML="<b>🔎 Agent DVF</b><br>⏳ Analyse des ventes réelles DVF qui ressemblent à votre bien…";
    return;
  }
  if(x.status==="error"){
-   el.innerHTML="<b>🔎 Agent marché</b><br>⚠️ La recherche des annonces n’a pas pu terminer. Le moteur DVF reste disponible.";
+   el.innerHTML="<b>🔎 Agent DVF</b><br>⚠️ La recherche des annonces n’a pas pu terminer. Le moteur DVF reste disponible.";
    return;
  }
  const rows=Array.isArray(x.listings)?x.listings:[];
@@ -1735,7 +1744,7 @@ function renderListingResearch(research){
    '<div style="margin-top:3px">'+m2(a.priceM2)+' · pertinence '+esc(a.score||"—")+'/100 · '+esc(a.source||"source publique")+'</div>'+
    (a.url?'<a href="'+esc(a.url)+'" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:5px">Voir l’annonce ↗</a>':"")+
    '</div>').join("");
- el.innerHTML="<b>🔎 Agent marché</b><br>"+summary+
+ el.innerHTML="<b>🔎 Agent DVF</b><br>"+summary+
    '<div style="margin-top:6px;color:#5c6a66">L’agent compare le type, la surface, les pièces, le terrain et la localisation. Les prix affichés sont des <b>prix demandés</b>, pas des prix de vente signés.</div>'+
    (cards||'<div style="margin-top:8px">Aucune annonce assez proche pour l’instant.</div>');
 }
