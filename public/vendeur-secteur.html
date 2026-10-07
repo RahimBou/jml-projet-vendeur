@@ -900,6 +900,7 @@ section:has(.method-card){
    <div class="ref-row"><b>Source</b><span>DVF+ · Cerema</span></div>
   </div>
  </div>
+ <div class="seller-next-step" id="sellerNextStep" style="display:none"></div>
  <div class="seller-reading" id="sellerReading">
   <div class="seller-reading-head"><span>LECTURE VENDEUR</span><b>Ce que cela signifie pour votre vente</b></div>
   <div class="seller-reading-grid">
@@ -1160,7 +1161,7 @@ function renderReference(ref){
    '<div class="ref-row"><b>Fiabilité</b><span>'+esc(r.confidence||"Faible")+'</span></div>'+
    '<div class="ref-row"><b>Source</b><span>DVF+ · Cerema</span></div>'+
  '</div>';
- renderSellerReading(r);
+ renderSellerReading(r);\n renderSellerNextStep();
 }
 function renderSellerReading(r){
  const el=$("#sellerReading"); if(!el)return;
@@ -1750,7 +1751,23 @@ function renderSellerPost(){
   el.textContent+=" Ces éléments décrivent le marché et le cadre de vie ; ils ne remplacent pas l'analyse précise de l'état du bien, de ses prestations et de sa stratégie de vente.";
 }
 
-function renderListingResearch(research){
+function renderSellerNextStep(){
+ const el=$("#sellerNextStep"),d=pageData.space||{},cd=d.conditionData||{};
+ if(!el)return;
+ const missing=[];
+ if(!d.surface)missing.push(["Surface","Améliore le calcul du repère"]);
+ if(!d.rooms)missing.push(["Nombre de pièces","Affinage des comparables"]);
+ if(!d.dpe)missing.push(["DPE","Lecture énergétique"]);
+ if(!cd.generalState)missing.push(["État général","Positionnement du bien"]);
+ if(!cd.works)missing.push(["Travaux","Impact potentiel des travaux"]);
+ if(!cd.garage)missing.push(["Garage / stationnement","Caractéristique mesurable"]);
+ if(!d.terrain && /maison/i.test(d.propertyType||""))missing.push(["Terrain","Comparaison plus précise"]);
+ const shown=missing.slice(0,3);
+ if(!shown.length){el.style.display="none";return;}
+ el.style.display="block";
+ el.innerHTML='<div class="eyebrow">AFFINER VOTRE REPÈRE</div><h3>Votre premier repère est prêt.</h3><p>Vous pouvez maintenant l’affiner avec quelques informations supplémentaires. Chaque donnée ajoutée permet à l’Agent de mieux situer votre bien.</p><div class="seller-next-step-grid">'+shown.map(x=>'<div class="seller-missing"><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div>').join("")+'</div><button type="button" id="refinePropertyBtn">Affiner mon estimation →</button><small>Vous choisissez les informations à ajouter.</small>';
+ $("#refinePropertyBtn").onclick=()=>$("#editPropertyBtn")?.click();
+}\nfunction renderListingResearch(research){
  const el=$("#listingResearchStatus");
  if(!el)return;
  const x=research||{};
@@ -1809,7 +1826,7 @@ async function pollListingResearch(token){
      if(r.ok&&j.ok&&j.space){
        pageData.space={...pageData.space,...j.space};
        renderListingResearch(j.space.listingResearch);
-       renderCharacteristicAnalysis(j.space.estimatorAgent?.valuationAnalysis||null);
+       renderCharacteristicAnalysis(j.space.estimatorAgent?.valuationAnalysis||null);\n       renderSellerNextStep();
        if(j.space.listingResearch?.status==="running"||j.space.listingResearch?.status==="pending"||j.space.estimatorAgent?.status==="running"||j.space.estimatorAgent?.status==="pending") setTimeout(tick,8000);
      }else if(tries<12) setTimeout(tick,8000);
    }catch(_){ if(tries<12)setTimeout(tick,8000); }
