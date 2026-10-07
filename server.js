@@ -1731,7 +1731,20 @@ async function buildComparableSales(market,property){
 
   const seen=new Set(),candidates=[];
   const now=Date.now();
-  const streetKey=v=>normalizeAddress(v).replace(/\b\d+\b/g,"").trim();
+  const streetKey=v=>{
+    let x=normalizeAddress(v)
+      .replace(/\b\d{5}\b/g," ")
+      .replace(/\b\d+\b/g," ")
+      .replace(/[.,;:/\\-]+/g," ")
+      .replace(/\b(r|ruee?)\b/g,"rue")
+      .replace(/\b(av|av\.|avenuee?)\b/g,"avenue")
+      .replace(/\b(bd|bd\.|boulevardd?)\b/g,"boulevard")
+      .replace(/\b(imp|imp\.|impassee?)\b/g,"impasse")
+      .replace(/\b(pl|pl\.|placee?)\b/g,"place")
+      .replace(/\s+/g," ")
+      .trim();
+    return x;
+  };
   const ageMonths=v=>{const d=parseSaleDate(v);return d?Math.max(0,(now-d.getTime())/(30.4375*86400000)):99;};
   const clamp01=v=>Math.max(0,Math.min(1,v));
   const expSim=(diff,scale)=>Math.exp(-Math.abs(diff)/Math.max(0.0001,scale));
