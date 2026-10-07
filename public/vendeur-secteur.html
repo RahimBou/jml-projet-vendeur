@@ -52,7 +52,11 @@ body{
   background-repeat:no-repeat;
   color:#fff;
   border-radius:20px;
-  padding:20px 21px 18px;
+  min-height:230px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:28px 30px 26px;
   box-shadow:0 16px 38px rgba(23,59,50,.18);
 }
 .hero:after{
@@ -80,16 +84,16 @@ h1,h2,h3{
 .hero h1{
   position:relative;
   z-index:1;
-  font-size:33px;
+  font-size:38px;
   line-height:1.08;
   margin:6px 0;
 }
 .hero p{
   position:relative;
   z-index:1;
-  max-width:760px;
-  color:#dbe7e0;
-  font-size:12px;
+  max-width:820px;
+  color:#e6eee9;
+  font-size:13px;
   line-height:1.6;
   margin:0;
 }
@@ -717,7 +721,12 @@ section:has(.method-card){
     grid-template-columns:1fr;
   }
 }
+@media(max-width:760px){
+ .hero{min-height:205px;padding:24px 22px 22px}
+ .hero h1{font-size:34px}
+}
 @media(max-width:520px){
+  .hero{min-height:190px;padding:22px 18px 20px}
   .hero h1{font-size:29px}
   #reference .ref-value{font-size:28px}
   .card{padding:13px}
@@ -795,6 +804,29 @@ section:has(.method-card){
  .jml-agent-card{break-inside:avoid}
  .jml-legal{background:#fffdf8!important;color:#263a32!important;border:1px solid #cfc3aa}
 }
+<style id="property-edit-ui">
+.project-actions{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.edit-property-btn{border:1px solid #c9a85b;background:#fffaf0;color:#173b32;border-radius:999px;padding:8px 12px;font-size:9px;font-weight:900;cursor:pointer;box-shadow:0 4px 10px rgba(23,59,50,.08)}
+.edit-property-btn:hover{background:#f3e5c2}
+.property-modal{position:fixed;inset:0;z-index:10000;display:none;align-items:center;justify-content:center;padding:18px}
+.property-modal.open{display:flex}
+.property-modal-backdrop{position:absolute;inset:0;background:rgba(12,28,24,.68);backdrop-filter:blur(4px)}
+.property-modal-dialog{position:relative;z-index:1;width:min(880px,100%);max-height:92vh;overflow:auto;background:#fffdf8;border:1px solid #d7c49a;border-radius:20px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.property-modal-dialog h2{margin:5px 0 7px;color:#173b32;font:700 28px Georgia,serif}
+.property-modal-intro{margin:0 0 16px;color:#56645e;font-size:11px;line-height:1.5}
+.property-modal-close{position:absolute;right:14px;top:12px;width:34px;height:34px;border:0;border-radius:50%;background:#edf1ed;color:#173b32;font-size:22px;cursor:pointer}
+.property-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.property-form-grid label{display:block;color:#365149;font-size:9px;font-weight:900}
+.property-form-grid label.full{grid-column:1/-1}
+.property-form-grid input,.property-form-grid select,.property-form-grid textarea{width:100%;box-sizing:border-box;margin-top:5px;padding:10px 11px;border:1px solid #d9d1c3;border-radius:10px;background:#fff;color:#263a32;font:500 11px Arial,sans-serif}
+.property-form-grid textarea{min-height:72px;resize:vertical}
+.property-modal-note{margin-top:13px;padding:10px 12px;border-radius:10px;background:#eef3ef;color:#53645b;font-size:8.5px;line-height:1.45}
+.property-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}
+.secondary-btn,.primary-btn{border-radius:999px;padding:10px 15px;font-size:9px;font-weight:900;cursor:pointer}
+.secondary-btn{border:1px solid #d3c8b5;background:#fff;color:#52615b}
+.primary-btn{border:1px solid #c9a85b;background:#173b32;color:#fff}
+@media(max-width:760px){.project-actions{align-items:stretch}.edit-property-btn{width:100%}.property-modal{padding:8px}.property-modal-dialog{padding:20px 14px;border-radius:16px;max-height:95vh}.property-form-grid{grid-template-columns:1fr}.property-form-grid label.full{grid-column:auto}.property-modal-dialog h2{font-size:23px}.property-modal-actions{position:sticky;bottom:0;background:#fffdf8;padding-top:8px}}
+</style>
 </style></head>
 <body>
 <main class="wrap">
@@ -808,7 +840,7 @@ section:has(.method-card){
 <section class="card project">
   <div class="project-top">
     <div><div class="eyebrow">VOTRE BIEN</div><h2 id="city">Chargement…</h2><div class="address" id="address">—</div></div>
-    <div class="status" id="status">Initialisation…</div>
+    <div class="project-actions"><div class="status" id="status">Initialisation…</div><button type="button" class="edit-property-btn" id="editPropertyBtn">✎ Modifier les informations</button></div>
   </div>
   <div class="grid">
     <div class="box"><label>Type</label><strong id="type">—</strong></div>
@@ -942,7 +974,40 @@ section:has(.method-card){
   <a href="https://www.instagram.com/abderrahimboujnikh/" target="_blank" rel="noopener noreferrer" aria-label="Instagram Abderrahim Boujnikh">◎&nbsp; Instagram</a>
   <a href="https://fr.linkedin.com/in/abderrahim-boujnikh-7a401b104" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn Abderrahim Boujnikh">in&nbsp; LinkedIn</a>
   <div class="jml-agency-link"><span>Site de l'agence</span><a href="https://www.jml-immobilier.fr/" target="_blank" rel="noopener noreferrer">JML Immobilier</a></div>
-</div></main>
+</div><div class="property-modal" id="propertyModal" aria-hidden="true">
+  <div class="property-modal-backdrop" data-close-property></div>
+  <div class="property-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="propertyModalTitle">
+    <button type="button" class="property-modal-close" data-close-property aria-label="Fermer">×</button>
+    <div class="eyebrow">MISE À JOUR DU DOSSIER</div>
+    <h2 id="propertyModalTitle">Corriger les informations du bien</h2>
+    <p class="property-modal-intro">Corrigez les données si quelque chose a changé ou si une information était incomplète. Le nouveau repère sera recalculé avec les données corrigées.</p>
+    <div class="property-form-grid">
+      <label>Type de bien<select id="editPropertyType"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></label>
+      <label>Adresse<input id="editAddress" type="text" autocomplete="street-address"></label>
+      <label>Surface habitable (m²)<input id="editSurface" type="number" min="0" step="0.1"></label>
+      <label>Nombre de pièces<input id="editRooms" type="number" min="0" step="1"></label>
+      <label>Terrain (m²)<input id="editTerrain" type="number" min="0" step="1"></label>
+      <label>DPE<select id="editDpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></label>
+      <label>État général<select id="editGeneralState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></label>
+      <label>Travaux à prévoir<select id="editWorks"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></label>
+      <label>Toiture<select id="editRoof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></label>
+      <label>Rénovation récente<select id="editRenovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></label>
+      <label>Électricité<select id="editElectricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></label>
+      <label>Isolation<select id="editInsulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></label>
+      <label>Chauffage<select id="editHeating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
+      <label>Fenêtres<select id="editWindows"><option value="">Non renseigné</option><option>Récentes</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
+      <label>Cuisine<select id="editKitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
+      <label>Salle(s) de bains<select id="editBathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
+      <label>Façade<select id="editFacade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></label>
+      <label>Terrain / garage / dépendances<select id="editExtras"><option value="">Non renseigné</option><option>Très bon atout</option><option>Bon atout</option><option>Présents</option><option>À améliorer</option><option>Aucun</option></select></label>
+      <label class="full">Précisions utiles<textarea id="editConditionNotes" maxlength="500" placeholder="Ex. toiture refaite en 2023, chaudière récente, garage double, vue dégagée…"></textarea></label>
+    </div>
+    <div class="property-modal-note">Les corrections sont enregistrées dans ce navigateur pour ce dossier. Elles permettent d'affiner le calcul sans modifier les données administratives de votre demande initiale.</div>
+    <div class="property-modal-actions"><button type="button" class="secondary-btn" data-close-property>Annuler</button><button type="button" class="primary-btn" id="savePropertyEdits">Enregistrer et recalculer</button></div>
+  </div>
+</div>
+
+</main>
 
 <script>
 (function(){
@@ -954,6 +1019,14 @@ const eur=v=>n(v)!=null?Math.round(Number(v)).toLocaleString("fr-FR")+" €":"�
 const m2=v=>n(v)!=null?Math.round(Number(v)).toLocaleString("fr-FR")+" €/m²":"—";
 const fmtDate=v=>v?String(v).slice(0,10):"—";
 
+function getSellerOverrides(){
+ try{return JSON.parse(localStorage.getItem("jml-seller-overrides-v1")||"{}")}catch(e){return {}}
+}
+function mergeSellerOverrides(space){
+ const o=getSellerOverrides();
+ if(!o||!Object.keys(o).length)return space;
+ return {...space,...o,conditionData:{...(space.conditionData||{}),...(o.conditionData||{})}};
+}
 function getSpace(){
  let x={};
  try{x=JSON.parse(localStorage.getItem("jml-seller-space-v1")||"{}")}catch(e){}
@@ -966,7 +1039,7 @@ function getSpace(){
  x.dpe=x.dpe||p.get("dpe")||"";
  x.terrain=x.terrain||p.get("terrain")||"";
  x.token=x.token||p.get("token")||"";
- return x;
+ return mergeSellerOverrides(x);
 }
 async function loadServerSpace(){
  const p=new URLSearchParams(location.search);
@@ -988,7 +1061,7 @@ async function loadServerSpace(){
      const r=await fetch("/api/seller-space/"+encodeURIComponent(effectiveToken),{cache:"no-store",signal:ctl.signal});
      const j=await r.json().catch(()=>({}));
      if(r.ok&&j.ok&&j.space){
-       const space={...j.space,dpe:j.space.dpe||local.dpe||p.get("dpe")||"",token:effectiveToken,submitted:true};
+       const space=mergeSellerOverrides({...j.space,dpe:j.space.dpe||local.dpe||p.get("dpe")||"",token:effectiveToken,submitted:true});
        try{localStorage.setItem("jml-seller-space-v1",JSON.stringify(space));}catch(_e){}
        return space;
      }
@@ -1848,6 +1921,35 @@ async function pollListingResearch(token){
  };
  tick();
 }
+
+
+// Édition locale du dossier vendeur
+(function(){
+ const modal=$("#propertyModal"), open=$("#editPropertyBtn"), save=$("#savePropertyEdits");
+ if(!modal||!open||!save)return;
+ const close=()=>{modal.classList.remove("open");modal.setAttribute("aria-hidden","true")};
+ const ids=["PropertyType","Address","Surface","Rooms","Terrain","Dpe","GeneralState","Works","Roof","Renovation","Electricity","Insulation","Heating","Windows","Kitchen","Bathrooms","Facade","Extras","ConditionNotes"];
+ const set=(id,v)=>{const el=$("#edit"+id);if(el)el.value=v||""};
+ const get=(id)=>($("#edit"+id)?.value||"").trim();
+ open.addEventListener("click",()=>{
+   const d=pageData.space||getSpace(), cd=d.conditionData||{};
+   set("PropertyType",d.propertyType);set("Address",d.address);set("Surface",d.surface);set("Rooms",d.rooms);set("Terrain",d.terrain);set("Dpe",d.dpe);
+   ids.slice(6).forEach(k=>set(k,cd[k.charAt(0).toLowerCase()+k.slice(1)]||""));
+   modal.classList.add("open");modal.setAttribute("aria-hidden","false");
+ });
+ modal.querySelectorAll("[data-close-property]").forEach(x=>x.addEventListener("click",close));
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close()});
+ save.addEventListener("click",()=>{
+   const conditionData={};
+   ["GeneralState","Works","Roof","Renovation","Electricity","Insulation","Heating","Windows","Kitchen","Bathrooms","Facade","Extras","ConditionNotes"].forEach(k=>conditionData[k.charAt(0).toLowerCase()+k.slice(1)]=get(k));
+   const overrides={
+     propertyType:get("PropertyType"),address:get("Address"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData
+   };
+   try{localStorage.setItem("jml-seller-overrides-v1",JSON.stringify(overrides));}catch(e){}
+   close();
+   location.reload();
+ });
+})();
 
 async function run(){
  try{
