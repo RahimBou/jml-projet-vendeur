@@ -6,6 +6,7 @@ const readline = require("readline");
 const { Readable } = require("stream");
 const { Pool } = require("pg");
 const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
 const registerPublicEventsRoute = require("./events");
 const { registerGoogleCalendarRoutes, getGoogleCalendarBusy } = require("./google-calendar");
 const { getPublicMarketBenchmarks } = require("./external-estimators");
@@ -3843,11 +3844,16 @@ async function ensureSellerAccountsTable(){
     id TEXT PRIMARY KEY,
     seller_space_token TEXT UNIQUE NOT NULL,
     email TEXT NOT NULL,
-    password_salt TEXT NOT NULL,
-    password_hash TEXT NOT NULL,
+    password_salt TEXT,
+    password_hash TEXT,
+    google_sub TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`);
+  await db("ALTER TABLE jml_seller_accounts ADD COLUMN IF NOT EXISTS google_sub TEXT");
+  await db("ALTER TABLE jml_seller_accounts ALTER COLUMN password_salt DROP NOT NULL").catch(()=>{});
+  await db("ALTER TABLE jml_seller_accounts ALTER COLUMN password_hash DROP NOT NULL").catch(()=>{});
+  await db("CREATE UNIQUE INDEX IF NOT EXISTS idx_jml_seller_accounts_google_sub ON jml_seller_accounts(google_sub) WHERE google_sub IS NOT NULL");
 }
 async function sendSellerAccountEmail(email,name,spaceUrl){
   const apiKey=String(process.env.RESEND_API_KEY||"").trim(),from=String(process.env.RESEND_FROM||"").trim();
@@ -3912,6 +3918,90 @@ app.post("/api/seller-account/login", async (req,res)=>{
     sellerAuthSessions.set(sessionToken,{sellerSpaceToken:token,email,expiresAt:Date.now()+SELLER_SESSION_TTL_MS});setSellerSessionCookie(res,req,sessionToken);
     res.json({ok:true,spaceUrl:"/espace-vendeur/"+encodeURIComponent(token)});
   }catch(e){console.error("JML seller account login:",e);return unexpected(res,"JML-AUTH-S09","Connexion à votre espace indisponible.",e);}
+});
+
+const sellerGoogleStates = new Map();
+const SELLER_GOOGLE_STATE_TTL_MS = 10 * 60 * 1000;
+
+function sellerPublicBaseUrl(req){
+  return String(process.env.PUBLIC_APP_URL||((req.secure||String(req.headers["x-forwarded-proto"]||"").split(",")[0].trim()==="https")?"https":"http")+"://"+req.get("host")).replace(/\/$/,"");
+}
+function sellerGoogleRedirectUri(req){ return sellerPublicBaseUrl(req)+"/api/seller-account/google/callback"; }
+function sellerGoogleConfig(){ return {clientId:String(process.env.GOOGLE_CLIENT_ID||"").trim(),clientSecret:String(process.env.GOOGLE_CLIENT_SECRET||"").trim()}; }
+function sellerGoogleError(res,code){ return res.redirect(302,"/mon-espace-vendeur?google_error="+encodeURIComponent(code)); }
+
+app.get("/api/seller-account/google/start",(req,res)=>{
+  const {clientId,clientSecret}=sellerGoogleConfig();
+  if(!clientId||!clientSecret) return sellerGoogleError(res,"not_configured");
+  const state=crypto.randomBytes(32).toString("hex");
+  sellerGoogleStates.set(state,{expiresAt:Date.now()+SELLER_GOOGLE_STATE_TTL_MS});
+  const oauth=new OAuth2Client(clientId,clientSecret,sellerGoogleRedirectUri(req));
+  const url=oauth.generateAuthUrl({access_type:"online",scope:["openid","email","profile"],state,prompt:"select_account"});
+  return res.redirect(302,url);
+});
+
+app.get("/api/seller-account/google/callback",async (req,res)=>{
+  const state=String(req.query?.state||"");
+  const saved=sellerGoogleStates.get(state); sellerGoogleStates.delete(state);
+  if(!saved||saved.expiresAt<Date.now()) return sellerGoogleError(res,"state_expired");
+  const code=String(req.query?.code||"");
+  if(!code) return sellerGoogleError(res,"cancelled");
+  const {clientId,clientSecret}=sellerGoogleConfig();
+  if(!clientId||!clientSecret) return sellerGoogleError(res,"not_configured");
+  try{
+    const oauth=new OAuth2Client(clientId,clientSecret,sellerGoogleRedirectUri(req));
+    const {tokens}=await oauth.getToken(code);
+    if(!tokens.id_token) return sellerGoogleError(res,"missing_token");
+    const ticket=await oauth.verifyIdToken({idToken:tokens.id_token,audience:clientId});
+    const payload=ticket.getPayload()||{};
+    const googleSub=clean(payload.sub,200),email=cleanEmail(payload.email),name=clean(payload.name||payload.given_name||"Vendeur",160);
+    if(!googleSub||!validEmail(email)||payload.email_verified!==true) return sellerGoogleError(res,"invalid_account");
+    await ensureSellerAccountsTable();
+    let account=null;
+    if(pool){
+      const byGoogle=await db("SELECT * FROM jml_seller_accounts WHERE google_sub=$1 LIMIT 1",[googleSub]);
+      if(byGoogle.rowCount) account=byGoogle.rows[0];
+      if(!account){
+        const byEmail=await db("SELECT * FROM jml_seller_accounts WHERE LOWER(email)=LOWER($1) LIMIT 1",[email]);
+        if(byEmail.rowCount) account=byEmail.rows[0];
+      }
+    }else if(memory.sellerAccounts){
+      account=[...memory.sellerAccounts.values()].find(x=>String(x.googleSub||x.google_sub||"")===googleSub||String(x.email||"").toLowerCase()===email.toLowerCase())||null;
+    }
+    let token=account?.seller_space_token||account?.sellerSpaceToken||"";
+    if(account){
+      if(pool) await db("UPDATE jml_seller_accounts SET google_sub=$2,email=$3,updated_at=NOW() WHERE id=$1",[account.id,googleSub,email]);
+      else {account.googleSub=googleSub;account.email=email;}
+    }else{
+      let spaceRow=null;
+      if(pool){
+        const q=await db("SELECT ss.*,p.name AS prospect_name,p.email AS prospect_email FROM jml_seller_spaces ss LEFT JOIN jml_prospects p ON p.id=ss.prospect_id WHERE LOWER(p.email)=LOWER($1) ORDER BY ss.updated_at DESC NULLS LAST,ss.created_at DESC NULLS LAST LIMIT 1",[email]);
+        if(q.rowCount) spaceRow=q.rows[0];
+      }else{
+        spaceRow=[...memory.sellerSpaces.values()].find(x=>String(x.email||"").toLowerCase()===email.toLowerCase())||null;
+      }
+      if(spaceRow) token=spaceRow.access_token||spaceRow.accessToken;
+      else{
+        const prospectId=newId(),createdAt=now();
+        const prospect={id:prospectId,name:name||"Vendeur",city:"",phone:"",email,property_type:"Maison",horizon:"unknown",source:"Inscription Google",status:"À qualifier",contact_basis:"Inscription demandée par la personne",contact_consent:true,consent_at:createdAt,notes:"Compte vendeur créé via Google.",score:0,priority:"À qualifier",reasons:[],next_action:"Compléter les informations du bien",next_action_at:null,last_contact_at:null,contact_count:0,created_at:createdAt,updated_at:createdAt};
+        if(pool){
+          await db("INSERT INTO jml_prospects (id,name,city,phone,email,property_type,horizon,source,status,contact_basis,contact_consent,consent_at,notes,score,priority,reasons,next_action,next_action_at,last_contact_at,contact_count,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22)",[prospect.id,prospect.name,null,null,prospect.email,prospect.property_type,prospect.horizon,prospect.source,prospect.status,prospect.contact_basis,true,prospect.consent_at,prospect.notes,0,prospect.priority,JSON.stringify(prospect.reasons),prospect.next_action,null,null,0,prospect.created_at,prospect.updated_at]);
+        }else memory.prospects.set(prospectId,prospect);
+        const created=await createSellerSpace({city:"",address:"",propertyType:"Maison",horizon:"unknown",surface:"",rooms:"",dpe:"",terrain:"",conditionData:{}},prospectId);
+        token=created.accessToken;
+      }
+      const id=newId(),salt=crypto.randomBytes(16).toString("hex"),temporaryPassword=crypto.randomBytes(32).toString("hex");
+      if(pool) await db("INSERT INTO jml_seller_accounts(id,seller_space_token,email,password_salt,password_hash,google_sub) VALUES($1,$2,$3,$4,$5,$6)",[id,token,email,salt,hashSellerPassword(temporaryPassword,salt),googleSub]);
+      else {if(!memory.sellerAccounts) memory.sellerAccounts=new Map();memory.sellerAccounts.set(token,{id,sellerSpaceToken:token,email,googleSub,passwordSalt:salt,passwordHash:hashSellerPassword(temporaryPassword,salt)});}
+    }
+    const sessionToken=newSellerSessionToken();
+    sellerAuthSessions.set(sessionToken,{sellerSpaceToken:token,email,expiresAt:Date.now()+SELLER_SESSION_TTL_MS});
+    setSellerSessionCookie(res,req,sessionToken);
+    return res.redirect(302,"/espace-vendeur/"+encodeURIComponent(token));
+  }catch(e){
+    console.error("JML Google seller auth:",e);
+    return sellerGoogleError(res,"server_error");
+  }
 });
 
 app.post("/api/seller-account/logout",(req,res)=>{const raw=String(req.headers.cookie||"");const part=raw.split(";").map(x=>x.trim()).find(x=>x.startsWith("jml_seller_session="));if(part)sellerAuthSessions.delete(decodeURIComponent(part.slice("jml_seller_session=".length)));clearSellerSessionCookie(res,req);res.json({ok:true})});
