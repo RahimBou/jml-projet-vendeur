@@ -3696,6 +3696,7 @@ async function startListingResearchForSpace(space){
     }else if(memory.sellerSpaces.has(space.accessToken)){
       memory.sellerSpaces.get(space.accessToken).listingResearch=done;
     }
+    refreshSellerValuationAnalysis(space.accessToken).catch(()=>{});
   }catch(error){
     const failed={status:"error",listings:[],error:String(error?.message||error),updatedAt:now()};
     if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=jsonb_set(COALESCE(estimator_agent_data,'{}'::jsonb),'{listingResearch}',$2::jsonb,true),updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(failed)]).catch(()=>{});
@@ -3729,8 +3730,9 @@ async function startEstimatorAgentForSpace(space){
       sites:["pap","seloger","meilleursagents","century21","laforet"]
     });
     const done={status:"completed",results:Array.isArray(result?.results)?result.results:[],completedAt:now(),updatedAt:now()};
-    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
-    else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent=done;
+    if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=jsonb_set(COALESCE(estimator_agent_data,'{}'::jsonb),'{estimatorAgent}',$2::jsonb,true),updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(done)]);
+    else if(memory.sellerSpaces.has(space.accessToken)) memory.sellerSpaces.get(space.accessToken).estimatorAgent={...(memory.sellerSpaces.get(space.accessToken).estimatorAgent||{}),estimatorAgent:done};
+    refreshSellerValuationAnalysis(space.accessToken).catch(()=>{});
   }catch(error){
     const failed={status:"retry",results:[],error:String(error?.message||error),updatedAt:now()};
     if(pool) await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[space.accessToken,JSON.stringify(failed)]).catch(()=>{});
@@ -3873,12 +3875,18 @@ app.patch("/api/seller-space/:token", async (req,res)=>{
         checklist=COALESCE($15::jsonb,checklist),condition_data=$16::jsonb,updated_at=NOW() WHERE access_token=$1 RETURNING *`,
         [token,fields.city||null,fields.address||null,fields.propertyType||null,fields.horizon||"unknown",fields.surface||null,fields.rooms||null,fields.dpe||null,fields.terrain||null,JSON.stringify(fields.ownerData),fields.expectedPrice||null,fields.saleReason||null,fields.alreadyEstimated,fields.alreadyProfessional,checklist?JSON.stringify(checklist):null,JSON.stringify(fields.conditionData)]);
       if(!q.rowCount) return apiError(res,404,"JML-S004","Espace vendeur introuvable.");
-      return res.json({ok:true,space:sellerSpacePublic(q.rows[0])});
+      const updatedSpace=sellerSpacePublic(q.rows[0]);
+      await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[token,JSON.stringify({status:"pending",results:[],listingResearch:{status:"pending",listings:[]},updatedAt:now()})]);
+      setTimeout(()=>{startEstimatorAgentForSpace(updatedSpace).catch(()=>{});startListingResearchForSpace(updatedSpace).catch(()=>{});},0);
+      return res.json({ok:true,space:sellerSpacePublic({...q.rows[0],estimator_agent_data:{status:"pending",results:[],listingResearch:{status:"pending",listings:[]}}})});
     }
     const space=memory.sellerSpaces.get(token);
     if(!space) return apiError(res,404,"JML-S004","Espace vendeur introuvable.");
-    Object.assign(space,{...fields,dpe:fields.dpe||space.dpe||"",ownerData:fields.ownerData,expectedPrice:fields.expectedPrice,saleReason:fields.saleReason,alreadyEstimated:fields.alreadyEstimated,alreadyProfessional:fields.alreadyProfessional,conditionData:fields.conditionData}); if(checklist) space.checklist=checklist; space.updatedAt=now(); memory.sellerSpaces.set(token,space);
-    return res.json({ok:true,space:sellerSpacePublic(space)});
+    Object.assign(space,{...fields,dpe:fields.dpe||space.dpe||"",ownerData:fields.ownerData,expectedPrice:fields.expectedPrice,saleReason:fields.saleReason,alreadyEstimated:fields.alreadyEstimated,alreadyProfessional:fields.alreadyProfessional,conditionData:fields.conditionData}); if(checklist) space.checklist=checklist; space.updatedAt=now();
+    space.estimatorAgent={status:"pending",results:[],listingResearch:{status:"pending",listings:[]},updatedAt:space.updatedAt}; memory.sellerSpaces.set(token,space);
+    const updatedSpace=sellerSpacePublic(space);
+    setTimeout(()=>{startEstimatorAgentForSpace(updatedSpace).catch(()=>{});startListingResearchForSpace(updatedSpace).catch(()=>{});},0);
+    return res.json({ok:true,space:updatedSpace});
   }catch(e){return unexpected(res,"JML-S005","Mise à jour de votre espace vendeur indisponible.",e);}
 });
 
