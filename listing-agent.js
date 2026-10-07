@@ -129,6 +129,27 @@ function scoreListing(item,input){
   }
   return score;
 }
+function detectFeature(text, patterns){
+  const t=String(text||"");
+  return patterns.some(re=>re.test(t));
+}
+function extractListingFeatures(text){
+  const t=String(text||"").replace(/\s+/g," ");
+  const garage=detectFeature(t,[/\bgarage\b/i,/garage\s+(?:double|simple|box)/i,/box\s+ferm[ée]/i]);
+  const parking=detectFeature(t,[/\bparking\b/i,/place\s+de\s+stationnement/i,/stationnement\s+priv[ée]/i]);
+  const renovated=detectFeature(t,[/r[ée]nov[ée]|r[ée]novation|refait[ea]?\s+(?:à\s+neuf|r[ée]cemment)/i,/entièrement\s+r[ée]nov/i,/sans\s+travaux/i]);
+  const needsWork=detectFeature(t,[/travaux\s+(?:à\s+pr[ée]voir|[ée] prévoir)/i,/à\s+r[ée]nover/i,/à\s+rafra[iî]chir/i,/gros\s+travaux/i]);
+  const garden=detectFeature(t,[/\bjardin\b/i,/terrain\s+clos/i,/espace\s+vert/i]);
+  const terrace=detectFeature(t,[/\bterrasse\b/i,/\bbalcon\b/i]);
+  return {
+    garage:garage||null,
+    parking:parking||null,
+    renovated:renovated||null,
+    needsWork:needsWork||null,
+    garden:garden||null,
+    terrace:terrace||null
+  };
+}
 function parseListing(r){
   const text=(r.title+" "+r.snippet).replace(/\s+/g," ").trim();
   const price=moneyFromText(text);
@@ -136,8 +157,9 @@ function parseListing(r){
   const rooms=roomsFromText(text);
   const terrain=terrainFromText(text);
   const type=inferType(text);
+  const features=extractListingFeatures(text);
   const priceM2=price&&surface?Math.round(price/surface):null;
-  return {...r,price,surface,rooms,terrain,type,priceM2};
+  return {...r,price,surface,rooms,terrain,type,priceM2,features};
 }
 async function enrichListing(item){
   if(item.price&&item.surface) return item;
@@ -198,7 +220,8 @@ async function collectComparableListings(input={}){
       title:clean(x.title,180),url:x.url,source:new URL(x.url).hostname.replace(/^www\./,""),
       price:Math.round(x.price),surface:Number(x.surface),rooms:x.rooms,terrain:x.terrain||null,
       priceM2:Math.round(x.priceM2),score:Math.max(0,Math.min(100,Math.round(x.score))),
-      type:x.type||type
+      type:x.type||type,
+      features:x.features||extractListingFeatures((x.title||"")+" "+(x.snippet||"")+" "+(x.pageText||""))
     });
     if(unique.length>=10) break;
   }
