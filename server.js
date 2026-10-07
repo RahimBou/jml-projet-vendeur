@@ -43,8 +43,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.9.9";
-const BUILD_MARKER = "dvf-postgres-comparables-robust-v12-dpe03existant-multifulltext-v14-roads-v15-ai-v16-google-calendar-v17-temporal-revaluation-v18-independent-control-v19-hybrid-external-market";
+const VERSION = "3.10.0";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v20";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -3640,6 +3640,27 @@ async function createSellerSpace(data, prospectId, transactionClient = null){
   return space;
 }
 
+
+function medianNumber(values){const a=(values||[]).map(Number).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
+function sellerAdjustment(factor,pct,count,confidence,note,baseline){return {factor,effectPct:Number(pct.toFixed(1)),effectEur:Math.round(baseline?baseline*pct/100:0),evidenceCount:count||0,confidence,note};}
+function buildSellerCharacteristicAnalysis(space,comp,listingsData){
+ const surface=Number(space?.surface),baseM2=Number(comp?.weightedPriceM2),baseline=Number.isFinite(surface)&&surface>0&&Number.isFinite(baseM2)&&baseM2>0?Math.round(surface*baseM2):null;
+ const sales=Array.isArray(comp?.valuationSales)&&comp.valuationSales.length?comp.valuationSales:(Array.isArray(comp?.sales)?comp.sales:[]),listings=Array.isArray(listingsData?.listings)?listingsData.listings:[],adjustments=[],dpe=String(space?.dpe||"").toUpperCase().trim();
+ const dpeRows=sales.filter(x=>/^[A-G]$/.test(String(x.dpe||"").toUpperCase())&&Number.isFinite(Number(x.pricePerM2)));let total=0;
+ if(dpe&&dpe!=="JE NE SAIS PAS"){
+  if(dpe==="D")adjustments.push(sellerAdjustment("DPE",0,dpeRows.length,"Neutre","D est la classe de référence.",baseline));
+  else{const a=dpeRows.filter(x=>String(x.dpe).toUpperCase()===dpe).map(x=>Number(x.pricePerM2)),ref=dpeRows.filter(x=>String(x.dpe).toUpperCase()==="D").map(x=>Number(x.pricePerM2));if(a.length>=3&&ref.length>=3){let pct=((medianNumber(a)/medianNumber(ref))-1)*100;pct=Math.max(-15,Math.min(15,pct));total+=pct;adjustments.push(sellerAdjustment("DPE",pct,a.length+ref.length,"Bonne","Écart observé sur des ventes comparables avec DPE ADEME.",baseline));}else adjustments.push(sellerAdjustment("DPE",0,a.length+ref.length,"Non mesurable","Pas assez de comparables locaux avec DPE exploitable.",baseline));}
+ }
+ const gr=listings.filter(x=>x?.features&&typeof x.features.garage==="boolean"&&Number.isFinite(Number(x.priceM2))),gy=gr.filter(x=>x.features.garage).map(x=>Number(x.priceM2)),gn=gr.filter(x=>!x.features.garage).map(x=>Number(x.priceM2));
+ if(gy.length>=3&&gn.length>=3){let pct=((medianNumber(gy)/medianNumber(gn))-1)*100;pct=Math.max(-8,Math.min(8,pct));total+=pct;adjustments.push(sellerAdjustment("Garage",pct,gr.length,"Indicatif","Écart observé sur des annonces comparables ; signal de positionnement et non transaction DVF.",baseline));}
+ else if(/garage|dépendances/i.test(String(space?.conditionData?.extras||"")))adjustments.push(sellerAdjustment("Garage",0,gr.length,"Non mesurable","Pas assez d'annonces comparables documentées pour isoler sa valeur.",baseline));
+ adjustments.push(sellerAdjustment("Surface / pièces / terrain",0,sales.length,sales.length>=5?"Intégré":"Insuffisant","Déjà intégrés dans la sélection et la pondération DVF ; aucun double ajustement.",baseline));
+ total=Math.max(-15,Math.min(15,total));const value=baseline?Math.round(baseline*(1+total/100)):null;
+ const low=value&&Number(comp?.rangeLow)?Math.round(Number(comp.rangeLow)*surface*(1+total/100)):null,high=value&&Number(comp?.rangeHigh)?Math.round(Number(comp.rangeHigh)*surface*(1+total/100)):null;
+ const measured=adjustments.filter(x=>x.effectPct!==0).length;
+ return {version:"seller-characteristics-v1",generatedAt:new Date().toISOString(),baseline:{value,m2:Number.isFinite(baseM2)?Math.round(baseM2):null,source:"DVF comparables"},adjustments,positioning:{value,low,high,adjustmentPct:Number(total.toFixed(1)),confidence:baseline?(measured>=1&&comp?.confidence==="Bonne"?"Bonne":comp?.confidence||"Faible"):"Faible"},evidence:{dvfComparables:sales.length,sameStreet:Array.isArray(comp?.sameStreet)?comp.sameStreet.length:0,dpeComparableCount:dpeRows.length,listingsComparableCount:listings.length,garageListings:gr.length},explanation:baseline?(measured?"Les corrections affichées viennent uniquement d'écarts observés dans les données locales disponibles. Une caractéristique insuffisamment documentée reste neutre.":"Le repère DVF est conservé : les données locales ne permettent pas d'isoler un effet supplémentaire avec assez de fiabilité."):"Pas assez de comparables DVF pour produire une valeur ajustée."};
+}
+async function refreshSellerValuationAnalysis(accessToken){if(!accessToken)return;try{let row=null;if(pool){const q=await db("SELECT * FROM jml_seller_spaces WHERE access_token=$1 LIMIT 1",[accessToken]);if(!q.rowCount)return;row=q.rows[0];}else row=memory.sellerSpaces.get(accessToken);if(!row)return;const space=sellerSpacePublic(row),city=clean(space.city,100);const comp=await buildComparableSales({city,recentSales:[]},{city,address:space.address,propertyType:space.propertyType,surface:space.surface,rooms:space.rooms,landSurface:space.terrain,terrain:space.terrain,dpe:space.dpe});const analysis=buildSellerCharacteristicAnalysis(space,comp,space.listingResearch),current=row.estimator_agent_data&&typeof row.estimator_agent_data==="object"?row.estimator_agent_data:{},next={...current,valuationAnalysis:analysis};if(pool)await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[accessToken,JSON.stringify(next)]);else if(memory.sellerSpaces.has(accessToken))memory.sellerSpaces.get(accessToken).estimatorAgent=next;}catch(error){console.warn("JML characteristic analysis:",String(error?.message||error));}}
 async function startListingResearchForSpace(space){
   if(!space?.accessToken) return;
   const startedAt=now();
