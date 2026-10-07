@@ -1079,6 +1079,190 @@ document.getElementById('form').onsubmit=async function(ev){
   <a href="https://fr.linkedin.com/in/abderrahim-boujnikh-7a401b104" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn Abderrahim Boujnikh">in&nbsp; LinkedIn</a>
   <div class="jml-agency-link"><span>Site de l'agence</span><a href="https://www.jml-immobilier.fr/" target="_blank" rel="noopener noreferrer">JML Immobilier</a></div>
 </div>
+<style id="jml-lower-coherence-v1">
+/* Harmonisation de la partie basse : même langage visuel que le bandeau, les cartes et l'estimateur. */
+.pro-value-note,
+.pro-agent,
+.pro-legal,
+.feats,
+.jml-follow-block{
+  max-width:1100px!important;
+  margin-left:auto!important;
+  margin-right:auto!important;
+  box-sizing:border-box!important;
+}
+
+/* Repère de valeur : carte éditoriale légère, plus cohérente avec "Comment ça fonctionne". */
+.pro-value-note{
+  margin-top:22px!important;
+  padding:18px 22px!important;
+  border:1px solid #e4dccd!important;
+  border-left:4px solid #c79a3b!important;
+  border-radius:14px!important;
+  background:#fffdf8!important;
+  box-shadow:0 8px 24px rgba(23,51,44,.045)!important;
+  color:#5d6862!important;
+  font-size:11px!important;
+  line-height:1.6!important;
+}
+.pro-value-note b:first-child{
+  display:inline-block!important;
+  margin-bottom:4px!important;
+  color:#173b31!important;
+  font:700 15px/1.2 Georgia,"Times New Roman",serif!important;
+}
+
+/* Présentation de l'agent : même crème/blanc, vert profond et or. */
+.pro-agent{
+  margin-top:18px!important;
+  padding:20px 22px!important;
+  border:1px solid #e1d8c9!important;
+  border-radius:16px!important;
+  background:linear-gradient(135deg,#fffdf8 0%,#f6efe2 100%)!important;
+  box-shadow:0 8px 24px rgba(23,51,44,.045)!important;
+}
+.pro-agent-badge{
+  width:58px!important;height:58px!important;
+  background:#173b32!important;color:#e9c677!important;
+  border:2px solid #c79a3b!important;
+}
+.pro-agent h3{
+  font-size:21px!important;
+}
+.pro-agent strong{
+  color:#53605a!important;
+  font-size:11px!important;
+}
+.pro-agent p{color:#435149!important}
+.pro-agent small{color:#778079!important}
+
+/* Mentions légales : bandeau sobre, dans la continuité du vert du site. */
+.pro-legal{
+  margin-top:10px!important;
+  padding:11px 18px!important;
+  border-radius:10px!important;
+  background:#173b32!important;
+  color:#dce7e1!important;
+  font-size:8.5px!important;
+  line-height:1.5!important;
+  border-top:2px solid #c79a3b!important;
+}
+.pro-legal b{color:#e9c677!important}
+
+/* 4 arguments : vraie bande de réassurance, alignée et respirante. */
+.feats{
+  margin-top:18px!important;
+  padding:20px 0!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,1fr)!important;
+  gap:0!important;
+  border-top:1px solid #e3dacb!important;
+  border-bottom:1px solid #e3dacb!important;
+}
+.feats .ft{
+  min-height:58px!important;
+  padding:0 22px!important;
+  gap:12px!important;
+  align-items:center!important;
+  border-right:1px solid #e0d7c8!important;
+}
+.feats .ft:first-child{padding-left:8px!important}
+.feats .ft:last-child{border-right:0!important;padding-right:8px!important}
+.feats .ft .ico{
+  width:40px!important;height:40px!important;
+  flex:0 0 40px!important;
+  background:#f8edda!important;
+  border:1px solid #d7b56b!important;
+  color:#a27b2d!important;
+}
+.feats .ft strong{color:#173b31!important;font-size:11px!important}
+.feats .ft small{color:#727b75!important;font-size:9.5px!important;line-height:1.4!important}
+
+/* Réseaux sociaux : véritable pied de page premium, sans casser la hiérarchie. */
+.jml-follow-block{
+  margin-top:0!important;
+  padding:22px 24px 17px!important;
+  border-radius:0 0 16px 16px!important;
+  background:#12372e!important;
+  border-top:3px solid #c79a3b!important;
+  color:#fff!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  flex-wrap:wrap!important;
+  gap:9px!important;
+  box-sizing:border-box!important;
+}
+.jml-follow-name{
+  width:100%!important;
+  text-align:center!important;
+  margin-bottom:4px!important;
+  color:#f3eee2!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  letter-spacing:.02em!important;
+}
+.jml-follow-name small{
+  color:#d8bc78!important;
+  font-size:8px!important;
+  letter-spacing:.18em!important;
+}
+.jml-follow-block>a{
+  min-width:92px!important;
+  padding:8px 12px!important;
+  border:1px solid rgba(231,201,125,.35)!important;
+  border-radius:999px!important;
+  background:rgba(255,255,255,.06)!important;
+  color:#fff!important;
+  text-decoration:none!important;
+  text-align:center!important;
+  font-size:9px!important;
+  font-weight:700!important;
+  transition:.18s ease!important;
+}
+.jml-follow-block>a:hover{
+  background:#e9c677!important;
+  color:#153b32!important;
+}
+.jml-agency-link{
+  width:100%!important;
+  margin-top:7px!important;
+  padding-top:12px!important;
+  border-top:1px solid rgba(255,255,255,.12)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:9px!important;
+}
+.jml-agency-link span{
+  color:#d4dfda!important;
+  font-size:8px!important;
+}
+.jml-agency-link a{
+  padding:7px 15px!important;
+  border-radius:999px!important;
+  background:#e9c677!important;
+  color:#153b32!important;
+  text-decoration:none!important;
+  font-size:9px!important;
+  font-weight:900!important;
+}
+@media(max-width:900px){
+  .pro-value-note,.pro-agent,.pro-legal,.feats,.jml-follow-block{max-width:none!important;margin-left:14px!important;margin-right:14px!important}
+  .feats{grid-template-columns:1fr 1fr!important}
+  .feats .ft:nth-child(2){border-right:0!important}
+  .feats .ft{margin-bottom:12px!important}
+}
+@media(max-width:560px){
+  .pro-value-note,.pro-agent,.pro-legal{margin-left:10px!important;margin-right:10px!important}
+  .pro-value-note{padding:16px 17px!important}
+  .pro-agent{padding:17px!important}
+  .feats{margin-left:10px!important;margin-right:10px!important;grid-template-columns:1fr!important;padding:8px 0!important}
+  .feats .ft,.feats .ft:first-child,.feats .ft:last-child{border-right:0!important;border-bottom:1px solid #e0d7c8!important;padding:11px 8px!important;margin:0!important}
+  .feats .ft:last-child{border-bottom:0!important}
+  .jml-follow-block{margin-left:10px!important;margin-right:10px!important;border-radius:14px!important}
+}
+</style>
 <style id="jml-autofill-final">
 /* Empêche Chrome/Android de teinter les champs remplis automatiquement en bleu. */
 #form input:-webkit-autofill,
