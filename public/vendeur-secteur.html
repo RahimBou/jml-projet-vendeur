@@ -1172,7 +1172,8 @@ function renderReference(ref){
    '<div class="ref-row"><b>Fiabilité</b><span>'+esc(r.confidence||"Faible")+'</span></div>'+
    '<div class="ref-row"><b>Source</b><span>DVF+ · Cerema</span></div>'+
  '</div>';
- renderSellerReading(r);\n renderSellerNextStep();
+ renderSellerReading(r);
+ renderSellerNextStep();
 }
 function renderSellerReading(r){
  const el=$("#sellerReading"); if(!el)return;
@@ -1838,7 +1839,8 @@ async function pollListingResearch(token){
      if(r.ok&&j.ok&&j.space){
        pageData.space={...pageData.space,...j.space};
        renderListingResearch(j.space.listingResearch);
-       renderCharacteristicAnalysis(j.space.estimatorAgent?.valuationAnalysis||null);\n       renderSellerNextStep();
+       renderCharacteristicAnalysis(j.space.estimatorAgent?.valuationAnalysis||null);
+       renderSellerNextStep();
        if(j.space.listingResearch?.status==="running"||j.space.listingResearch?.status==="pending"||j.space.estimatorAgent?.status==="running"||j.space.estimatorAgent?.status==="pending") setTimeout(tick,8000);
      }else if(tries<12) setTimeout(tick,8000);
    }catch(_){ if(tries<12)setTimeout(tick,8000); }
