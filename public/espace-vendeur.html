@@ -865,7 +865,9 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--green);outline-offs
 .fb-appointment{margin:32px 0 0!important;padding:28px 0 20px!important;border:0!important;border-top:2px solid #b8944e!important}.fb-appointment h3{margin:0 0 7px!important}.fb-appointment-grid{margin-top:18px!important}
 @media(max-width:760px){.seller-guide-grid,.seller-v2-grid,.seller-v2-guide-grid{grid-template-columns:1fr!important}.seller-guide-grid a{height:125px!important;min-height:125px!important;grid-template-columns:82px minmax(0,1fr)!important}.seller-guide-grid a+a,.seller-v2-card+.seller-v2-card,.seller-v2-guide+.seller-v2-guide{border-left:0!important;border-top:1px solid #e4ded2!important}.seller-guide-grid a:before{width:82px!important;height:105px!important;margin:10px 0!important}.seller-appointment-preview{display:block!important}.seller-appointment-preview .primary{display:inline-block!important;margin-top:12px!important}}
 </style>
-</head>
+<style id="seller-account-ui">
+.seller-account-modal{display:none;position:fixed;inset:0;z-index:9999}.seller-account-modal.open{display:block}.seller-account-backdrop{position:absolute;inset:0;background:rgba(11,31,27,.62);backdrop-filter:blur(3px)}.seller-account-dialog{position:relative;width:min(470px,calc(100% - 28px));margin:8vh auto 0;background:#fffdf8;border:1px solid #d9ccb3;border-radius:20px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.22)}.seller-account-close{position:absolute;right:12px;top:10px;border:0;background:transparent;font-size:27px;color:#60706a;cursor:pointer}.seller-account-dialog h3{margin:7px 35px 7px 0;color:#173b32;font:700 25px Georgia,serif}.seller-account-dialog>p{margin:0 0 17px;color:#66736d;font-size:11px;line-height:1.5}.seller-account-dialog label{display:block;margin:11px 0 0;color:#36564d;font-size:9px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.seller-account-dialog input{display:block;width:100%;margin-top:6px;padding:12px;border:1px solid #d9d1c1;border-radius:10px;background:#fff;font-size:14px}.seller-account-submit{width:100%;margin-top:15px;padding:13px;border:0;border-radius:10px;background:linear-gradient(135deg,#b88b3f,#d4ae60);color:#173b32;font-weight:900;cursor:pointer}.seller-account-msg{display:none;margin-top:11px;padding:10px;border-radius:10px;background:#f5efdf;border:1px solid #d0b477;font-size:11px;line-height:1.45}.seller-account-note{margin-top:11px!important;font-size:9px!important}
+</style></head>
 <body>
 <div class="fb-wrap">
 <section class="fb-card">
@@ -899,7 +901,7 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--green);outline-offs
 
     <div class="seller-status">
       <div class="seller-status-copy"><strong>Votre projet est enregistré</strong><span>Vous gardez la main sur la suite. JML vous accompagne à chaque étape.</span></div>
-      <div class="seller-status-steps"><div class="done"><b>1</b><span>Demande<br><small>Enregistrée</small></span></div><div><b>2</b><span>Confirmation<br><small>Par e-mail</small></span></div><div><b>3</b><span>Prochaine étape<br><small>Échange avec JML</small></span></div></div><div class="seller-access-actions"><a class="secondary" id="sellerOpenLink" href="#" target="_self">Ouvrir mon espace</a><button type="button" class="secondary" id="sellerCopyLink">Copier mon accès</button></div>
+      <div class="seller-status-steps"><div class="done"><b>1</b><span>Demande<br><small>Enregistrée</small></span></div><div><b>2</b><span>Confirmation<br><small>Par e-mail</small></span></div><div><b>3</b><span>Prochaine étape<br><small>Échange avec JML</small></span></div></div><div class="seller-access-actions"><a class="secondary" id="sellerOpenLink" href="#" target="_self">Enregistrer mon espace</a><button type="button" class="secondary" id="sellerCopyLink">Copier mon accès</button></div>
     </div>
 
     <div class="seller-next-action" id="sellerNextAction">
@@ -1699,5 +1701,38 @@ function updateSellerProjectSummary(d){
  .jml-follow-block>a{min-width:82px!important;font-size:8px!important}
 }
 </style>
-</body>
+<div id="sellerAccountModal" class="seller-account-modal" aria-hidden="true">
+ <div class="seller-account-backdrop" data-close-account></div>
+ <div class="seller-account-dialog" role="dialog" aria-modal="true" aria-labelledby="sellerAccountTitle">
+  <button type="button" class="seller-account-close" data-close-account aria-label="Fermer">×</button>
+  <div class="seller-panel-kicker">🔐 VOTRE ESPACE PERSONNEL</div>
+  <h3 id="sellerAccountTitle">Enregistrez votre espace</h3>
+  <p>Votre espace est déjà créé. Ajoutez simplement un mot de passe pour pouvoir le retrouver facilement depuis la page JML Immobilier.</p>
+  <form id="sellerAccountForm">
+   <label>Votre adresse e-mail<input id="sellerAccountEmail" type="email" autocomplete="email" readonly></label>
+   <label>Créer votre mot de passe<input id="sellerAccountPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="8 caractères minimum"></label>
+   <label>Confirmer le mot de passe<input id="sellerAccountPassword2" type="password" autocomplete="new-password" minlength="8" required placeholder="Retapez votre mot de passe"></label>
+   <button type="submit" class="seller-account-submit">Enregistrer mon espace →</button>
+   <div id="sellerAccountMsg" class="seller-account-msg" role="status"></div>
+  </form>
+  <p class="seller-account-note">Un e-mail de confirmation vous sera envoyé après l’enregistrement.</p>
+ </div>
+</div><script id="seller-account-script">
+(function(){
+ const modal=document.getElementById("sellerAccountModal"),open=document.getElementById("sellerOpenLink"),form=document.getElementById("sellerAccountForm");
+ const email=document.getElementById("sellerAccountEmail"),msg=document.getElementById("sellerAccountMsg"),submit=form?.querySelector("button");
+ function getCurrentSeller(){try{return typeof getSellerSpace==="function"?getSellerSpace():null}catch(_){return null}}
+ function show(){const d=getCurrentSeller()||{};const lead=window.publicLead||{};const e=lead.email||d.email||"";if(!e){window.location.href="/mon-espace-vendeur";return}email.value=e;msg.style.display="none";form.reset();email.value=e;modal.classList.add("open");modal.setAttribute("aria-hidden","false");setTimeout(()=>document.getElementById("sellerAccountPassword")?.focus(),50)}
+ function close(){modal.classList.remove("open");modal.setAttribute("aria-hidden","true")}
+ open?.addEventListener("click",function(e){e.preventDefault();show()});
+ modal?.querySelectorAll("[data-close-account]").forEach(x=>x.addEventListener("click",close));
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close()});
+ form?.addEventListener("submit",async function(e){
+  e.preventDefault();const d=getCurrentSeller()||{};const token=d.token||d.accessToken||new URL(location.href).pathname.split("/").filter(Boolean).pop();const p=document.getElementById("sellerAccountPassword").value,p2=document.getElementById("sellerAccountPassword2").value;
+  if(!token){msg.textContent="Votre espace n’a pas pu être identifié. Utilisez le lien reçu par e-mail.";msg.style.display="block";return}
+  submit.disabled=true;submit.textContent="Enregistrement…";msg.style.display="none";
+  try{const r=await fetch("/api/seller-account/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,email:email.value.trim(),password:p,confirmation:p2})});const d2=await r.json();if(!r.ok)throw new Error(d2.error||"Impossible d’enregistrer votre espace.");msg.textContent="Votre espace est enregistré. Un e-mail de confirmation vient d’être envoyé.";msg.style.display="block";submit.textContent="Espace enregistré ✓";setTimeout(()=>{close();},1400)}catch(err){msg.textContent=err.message||"Une erreur est survenue.";msg.style.display="block";submit.disabled=false;submit.textContent="Enregistrer mon espace →"}
+ });
+})();
+</script></body>
 </html>
