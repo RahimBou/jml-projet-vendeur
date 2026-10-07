@@ -1263,6 +1263,20 @@ document.getElementById('form').onsubmit=async function(ev){
   .jml-follow-block{margin-left:10px!important;margin-right:10px!important;border-radius:14px!important}
 }
 </style>
+<style id="jml-lower-spacing-v2">
+/* Partie basse plus compacte : éviter les grands blancs entre les blocs. */
+.pro-value-note{margin-top:10px!important}
+.pro-agent{margin-top:10px!important}
+.pro-legal{margin-top:6px!important}
+.feats{margin-top:8px!important;padding-top:14px!important;padding-bottom:14px!important}
+.jml-follow-block{margin-top:0!important}
+@media(max-width:900px){
+ .pro-value-note{margin-top:10px!important}
+ .pro-agent{margin-top:10px!important}
+ .pro-legal{margin-top:6px!important}
+ .feats{margin-top:8px!important}
+}
+</style>
 <style id="jml-autofill-final">
 /* Empêche Chrome/Android de teinter les champs remplis automatiquement en bleu. */
 #form input:-webkit-autofill,
