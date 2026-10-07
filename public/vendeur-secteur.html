@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jml-version" content="2026-10-07-place-ducale-clean-hero-v8">
+<meta name="jml-version" content="2026-10-07-place-ducale-clean-hero-v9">
 <title>JML Immobilier — Mon secteur</title>
 <style id="vendeur-final-css">
 /* JML — CSS vendeur simplifié
@@ -827,6 +827,20 @@ section:has(.method-card){
 .primary-btn{border:1px solid #c9a85b;background:#173b32;color:#fff}
 @media(max-width:760px){.project-actions{align-items:stretch}.edit-property-btn{width:100%}.property-modal{padding:8px}.property-modal-dialog{padding:20px 14px;border-radius:16px;max-height:95vh}.property-form-grid{grid-template-columns:1fr}.property-form-grid label.full{grid-column:auto}.property-modal-dialog h2{font-size:23px}.property-modal-actions{position:sticky;bottom:0;background:#fffdf8;padding-top:8px}}
 </style>
+<style id="comparable-proof-ui">
+.comparable-proof{margin-top:13px;padding:13px 14px;border:1px solid #d9d0bf;border-radius:14px;background:#fffdf8;box-shadow:0 5px 14px rgba(23,59,50,.05)}
+.comparable-proof-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:9px}
+.comparable-proof-head span{display:block;color:#98753a;font-size:8px;font-weight:900;letter-spacing:.13em}
+.comparable-proof-head b{display:block;margin-top:3px;color:#173b32;font:700 15px Georgia,serif}
+.comparable-proof-head small{color:#6a756f;font-size:8px;white-space:nowrap}
+.mini-comparable{display:grid;grid-template-columns:1.5fr auto auto;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #eee8dd}
+.mini-comparable b{display:block;color:#263a32;font-size:9px}
+.mini-comparable small{display:block;margin-top:2px;color:#737c77;font-size:7.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.mini-comparable strong{color:#173b32;font-size:10px;white-space:nowrap}
+.mini-comparable span{color:#66736d;font-size:8px;white-space:nowrap}
+.comparable-proof>p{margin:8px 0 0;color:#69756f;font-size:8px;line-height:1.4}
+@media(max-width:760px){.comparable-proof-head{display:block}.comparable-proof-head small{display:block;margin-top:5px}.mini-comparable{grid-template-columns:1fr auto}.mini-comparable span{grid-column:1/-1}.mini-comparable small{max-width:200px}}
+</style>
 </style></head>
 <body>
 <main class="wrap">
@@ -1327,6 +1341,14 @@ function renderSellerReading(r){
    ?"Le repère communal des "+communalTypeLabel+" est de "+Math.round(communalM2).toLocaleString("fr-FR")+" €/m². Le repère des comparables est de "+baseText+" : cet écart est un indicateur de marché, pas une correction automatique du prix."
    :"Le repère communal sert de contexte général et ne remplace pas les ventes comparables.";
  const externalText=ceiling!=null?"Le repère haut externe disponible atteint "+eur(ceiling)+". Il sert uniquement à contre-vérifier le positionnement.":"Aucun repère haut externe exploitable n’a été récupéré pour cette adresse.";
+ const comparableSales=Array.isArray(pageData.comparables?.sales)?pageData.comparables.sales:[];
+ const comparableRows=comparableSales.slice(0,3).map(s=>{
+   const p=n(s.price), sm=n(s.surface), pm=n(s.pricePerM2);
+   return '<div class="mini-comparable"><div><b>'+esc(s.type||"Bien")+'</b><small>'+esc(s.address||"Secteur proche")+'</small></div><strong>'+esc(p!=null?eur(p):"—")+'</strong><span>'+esc(sm!=null?Math.round(sm)+" m²":"—")+(pm!=null?" · "+Math.round(pm).toLocaleString("fr-FR")+" €/m²":"")+'</span></div>';
+ }).join("");
+ const comparableBlock=comparableRows
+   ? '<div class="comparable-proof"><div class="comparable-proof-head"><div><span>VENTES COMPARABLES RETENUES</span><b>Des ventes réelles proches de votre bien</b></div><small>'+(pageData.comparables.matchCount||comparableSales.length)+" ventes analysées</small></div>"+comparableRows+'<p>Les ventes les plus proches et les plus similaires pèsent davantage dans le calcul du repère.</p></div>'
+   : '<div class="comparable-proof"><div class="comparable-proof-head"><div><span>VENTES COMPARABLES</span><b>Les ventes utilisées pour le repère</b></div></div><p>Les données comparables apparaîtront ici dès qu’elles sont disponibles.</p></div>';
  const factorsUp='<div class="factor-card up"><b>Ce qui peut faire augmenter la valeur</b><ul><li>Très bon état ou rénovation récente</li><li>DPE performant et équipements récents</li><li>Emplacement, environnement et accessibilité recherchés</li><li>Luminosité, exposition et vue dégagée</li><li>Terrain, jardin, terrasse, garage ou dépendances</li><li>Qualité des prestations et absence de travaux importants</li></ul></div>';
  const factorsDown='<div class="factor-card down"><b>Ce qui peut faire baisser la valeur</b><ul><li>Travaux importants ou rénovation à prévoir</li><li>DPE faible, isolation ou chauffage à revoir</li><li>Nuisances, vis-à-vis ou mauvaise exposition</li><li>Manque de stationnement</li><li>Contraintes du terrain ou du bâtiment</li><li>Emplacement moins recherché</li></ul></div>';
  el.querySelector(".seller-reading-grid").innerHTML=
@@ -1336,7 +1358,7 @@ function renderSellerReading(r){
  '<div class="reading-step"><b>3</b><span><strong>Pondération des ventes</strong><small>Les ventes les plus proches et les plus similaires pèsent davantage.</small></span></div>'+
  (temporal?.available?'<div class="reading-step"><b>4</b><span><strong>Actualisation dans le temps</strong><small>Les ventes anciennes sont revalorisées selon le marché local de référence.</small></span></div>':'')+
  '<div class="reading-step"><b>'+(temporal?.available?"5":"4")+'</b><span><strong>Repère au m²</strong><small>Le moteur obtient <b>'+esc(baseText)+'</b> à partir des ventes retenues.</small></span></div>'+
- '<div class="reading-result"><span>Application à la surface</span><strong>'+esc(calcText)+'</strong><em>Prix repère médian : '+esc(eur(r.referenceValue))+'</em></div></div></div>'+
+ '<div class="reading-result"><span>Application à la surface</span><strong>'+esc(calcText)+'</strong><em>Prix repère médian : '+esc(eur(r.referenceValue))+'</em></div>'+comparableBlock+'</div></div>'+
  '<div class="reading-panel reading-panel-why"><div class="reading-number gold">2</div><p class="reading-title">POURQUOI LE PRIX PEUT VARIER</p><h3>Le marché + la réalité du bien</h3><p>Deux biens proches peuvent avoir des valeurs différentes. L’état, les prestations, l’emplacement et les contraintes doivent être analysés avant de fixer le prix de commercialisation.</p>'+
  '<div class="reading-range"><strong>🔴 Prix minimum conseillé : '+esc(floor!=null?eur(floor):"À déterminer")+'</strong><span>Ce niveau est un repère de travail et un garde-fou de positionnement. Il ne constitue ni une garantie de vente ni un prix définitif.</span></div>'+
  '<div class="reading-range"><strong>🟡 Zone de travail : '+esc(floor!=null&&ceiling!=null?eur(floor)+" à "+eur(ceiling):"à affiner")+'</strong><span>La zone doit être affinée avec l’analyse du bien et les conditions réelles du marché.</span></div>'+
