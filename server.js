@@ -3871,7 +3871,7 @@ app.patch("/api/seller-space/:token", async (req,res)=>{
   try{
     if(pool){
       const q=await db(`UPDATE jml_seller_spaces SET city=$2,address=$3,property_type=$4,horizon=$5,surface=$6,rooms=$7,
-        dpe=COALESCE(NULLIF($8,''),dpe),terrain=$9,owner_data=$10::jsonb,expected_price=$11,sale_reason=$12,already_estimated=$13,already_professional=$14,
+        dpe=$8,terrain=$9,owner_data=$10::jsonb,expected_price=$11,sale_reason=$12,already_estimated=$13,already_professional=$14,
         checklist=COALESCE($15::jsonb,checklist),condition_data=$16::jsonb,updated_at=NOW() WHERE access_token=$1 RETURNING *`,
         [token,fields.city||null,fields.address||null,fields.propertyType||null,fields.horizon||"unknown",fields.surface||null,fields.rooms||null,fields.dpe||null,fields.terrain||null,JSON.stringify(fields.ownerData),fields.expectedPrice||null,fields.saleReason||null,fields.alreadyEstimated,fields.alreadyProfessional,checklist?JSON.stringify(checklist):null,JSON.stringify(fields.conditionData)]);
       if(!q.rowCount) return apiError(res,404,"JML-S004","Espace vendeur introuvable.");
