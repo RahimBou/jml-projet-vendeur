@@ -1852,6 +1852,14 @@ async function run(){
   }
   renderComps(comps);
 
+  // Le repère vendeur doit provenir du même jeu de comparables que celui affiché.
+  // Aucun estimateur externe : le prix au m² et la valeur sont calculés ici à partir du DVF.
+  const compM2=Number(comps.weightedPriceM2);
+  const referenceM2=Number.isFinite(compM2)&&compM2>0?compM2:null;
+  const surf=Number(d.surface);
+  const referenceValue=referenceM2!=null&&Number.isFinite(surf)&&surf>0
+    ?Math.round(referenceM2*surf)
+    :null;
   const confidence=compM2!=null&&compM2>0
     ?(comps.matchCount>=10?"Bonne":comps.matchCount>=5?"Intermédiaire":"Faible")
     :"Faible";
