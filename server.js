@@ -190,7 +190,7 @@ registerGoogleCalendarRoutes(app, { pool, isAdminAuthenticated }).catch(error =>
   console.warn("JML Google Calendar routes init:", error?.message || error);
 });
 
-const memory = { prospects: new Map(), leads: new Map(), sellerSpaces: new Map() };
+const memory = { prospects: new Map(), leads: new Map(), sellerSpaces: new Map(), sellerAccounts: new Map() };
 const clean = (v, max = 500) => String(v ?? "").trim().slice(0, max);
 function stripHtml(value){
   let s=String(value||"");
@@ -3813,6 +3813,108 @@ app.post("/api/seller-access", async (req,res)=>{
     return res.json(generic);
   }
 });
+
+// --- Seller account authentication (password + email confirmation) ---
+const sellerAuthSessions = new Map();
+const SELLER_SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+function hashSellerPassword(password, saltHex){
+  const salt=Buffer.from(saltHex,"hex");
+  return crypto.scryptSync(String(password),salt,64).toString("hex");
+}
+function newSellerSessionToken(){return crypto.randomBytes(32).toString("hex");}
+function getSellerSession(req){
+  const raw=String(req.headers.cookie||"");
+  const part=raw.split(";").map(x=>x.trim()).find(x=>x.startsWith("jml_seller_session="));
+  if(!part)return null;
+  const token=decodeURIComponent(part.slice("jml_seller_session=".length));
+  const s=sellerAuthSessions.get(token);
+  if(!s||s.expiresAt<Date.now()){if(s)sellerAuthSessions.delete(token);return null;}
+  return s;
+}
+function setSellerSessionCookie(res,req,token,maxAge=Math.floor(SELLER_SESSION_TTL_MS/1000)){
+  const parts=["jml_seller_session="+encodeURIComponent(token),"Path=/","HttpOnly","SameSite=Lax","Max-Age="+maxAge];
+  if(isSecureRequest(req))parts.push("Secure");
+  res.setHeader("Set-Cookie",parts.join("; "));
+}
+function clearSellerSessionCookie(res,req){setSellerSessionCookie(res,req,"",0);}
+async function ensureSellerAccountsTable(){
+  if(!pool)return;
+  await db(`CREATE TABLE IF NOT EXISTS jml_seller_accounts (
+    id TEXT PRIMARY KEY,
+    seller_space_token TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`);
+}
+async function sendSellerAccountEmail(email,name,spaceUrl){
+  const apiKey=String(process.env.RESEND_API_KEY||"").trim(),from=String(process.env.RESEND_FROM||"").trim();
+  if(!apiKey||!from)return {sent:false,reason:"email-provider-not-configured"};
+  const firstName=clean(name,120).split(/\\s+/)[0]||"Bonjour";
+  const safeName=firstName.replace(/[&<>"]/g,""),safeUrl=String(spaceUrl).replace(/[&<>"]/g,"");
+  const subject="Votre espace vendeur JML Immobilier est activé";
+  const text="Bonjour "+firstName+",\\n\\nVotre espace vendeur JML Immobilier est maintenant sécurisé par votre mot de passe.\\n\\nAccéder à votre espace : "+spaceUrl+"\\n\\nÀ bientôt,\\nJML Immobilier";
+  const html='<!doctype html><html lang="fr"><body style="margin:0;background:#f5f1e8;font-family:Arial,sans-serif;color:#26352f"><div style="max-width:620px;margin:30px auto;padding:0 16px"><div style="background:#173b32;padding:22px 24px;border-radius:12px 12px 0 0;color:#fff"><b style="font-size:22px">JML Immobilier</b><div style="margin-top:5px;color:#d9bd72;font-size:13px">VOTRE PROJET, NOTRE ENGAGEMENT</div></div><div style="background:#fff;padding:28px 24px;border-radius:0 0 12px 12px"><p>Bonjour '+safeName+',</p><p>Votre espace vendeur est maintenant sécurisé. Vous pourrez le retrouver avec votre adresse e-mail et votre mot de passe.</p><p style="margin:22px 0"><a href="'+safeUrl+'" style="display:inline-block;padding:12px 18px;background:#d8bb7a;color:#173b32;text-decoration:none;border-radius:8px;font-weight:700">Accéder à mon espace vendeur →</a></p><p>À bientôt,<br><strong>JML Immobilier</strong></p></div></div></body></html>';
+  const response=await fetch("https://api.resend.com/emails",{method:"POST",headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},body:JSON.stringify({from,to:[email],subject,text,html})});
+  if(!response.ok)throw new Error("Resend "+response.status+": "+(await response.text()).slice(0,500));
+  const result=await response.json();return {sent:true,id:result.id||null};
+}
+
+app.post("/api/seller-account/register", async (req,res)=>{
+  const token=clean(req.body?.token,100),email=cleanEmail(req.body?.email),password=String(req.body?.password||""),confirmation=String(req.body?.confirmation||"");
+  if(!token||!validEmail(email))return apiError(res,400,"JML-AUTH-S01","Informations de compte invalides.");
+  if(password.length<8)return apiError(res,400,"JML-AUTH-S02","Le mot de passe doit contenir au moins 8 caractères.");
+  if(password!==confirmation)return apiError(res,400,"JML-AUTH-S03","Les deux mots de passe ne correspondent pas.");
+  try{
+    await ensureSellerAccountsTable();
+    let row=null;
+    if(pool){
+      const q=await db(`SELECT ss.*,p.name AS prospect_name,p.email AS prospect_email FROM jml_seller_spaces ss LEFT JOIN jml_prospects p ON p.id=ss.prospect_id WHERE ss.access_token=$1 LIMIT 1`,[token]);
+      if(!q.rowCount)return apiError(res,404,"JML-AUTH-S04","Espace vendeur introuvable.");
+      row=q.rows[0];
+    }else{
+      row=memory.sellerSpaces.get(token);
+      if(!row)return apiError(res,404,"JML-AUTH-S04","Espace vendeur introuvable.");
+    }
+    const expected=cleanEmail(row.prospect_email||row.email||"");
+    if(!expected||expected!==email)return apiError(res,403,"JML-AUTH-S05","L’adresse e-mail ne correspond pas à cet espace vendeur.");
+    const salt=crypto.randomBytes(16).toString("hex"),hash=hashSellerPassword(password,salt),id=newId();
+    if(pool){
+      await db(`INSERT INTO jml_seller_accounts(id,seller_space_token,email,password_salt,password_hash) VALUES($1,$2,$3,$4,$5) ON CONFLICT(seller_space_token) DO UPDATE SET email=EXCLUDED.email,password_salt=EXCLUDED.password_salt,password_hash=EXCLUDED.password_hash,updated_at=NOW()`,[id,token,email,salt,hash]);
+    }else{
+      if(!memory.sellerAccounts)memory.sellerAccounts=new Map();
+      memory.sellerAccounts.set(token,{id,sellerSpaceToken:token,email,passwordSalt:salt,passwordHash:hash});
+    }
+    const spaceUrl=(process.env.PUBLIC_APP_URL||((req.secure||String(req.headers["x-forwarded-proto"]||"").split(",")[0].trim()==="https")?"https":"http")+"://"+req.get("host"))+"/espace-vendeur/"+encodeURIComponent(token);
+    let emailSent={sent:false,reason:"not-attempted"};try{emailSent=await sendSellerAccountEmail(email,row.prospect_name||"Bonjour",spaceUrl)}catch(e){console.error("JML seller account email:",e);emailSent={sent:false,reason:"send-failed"}}
+    const sessionToken=newSellerSessionToken();sellerAuthSessions.set(sessionToken,{sellerSpaceToken:token,email,expiresAt:Date.now()+SELLER_SESSION_TTL_MS});setSellerSessionCookie(res,req,sessionToken);
+    return res.json({ok:true,spaceUrl,emailSent});
+  }catch(e){console.error("JML seller account register:",e);return unexpected(res,"JML-AUTH-S06","Création de votre compte indisponible.",e);}
+});
+
+app.post("/api/seller-account/login", async (req,res)=>{
+  const email=cleanEmail(req.body?.email),password=String(req.body?.password||"");
+  if(!validEmail(email)||!password)return apiError(res,400,"JML-AUTH-S07","E-mail et mot de passe requis.");
+  try{
+    await ensureSellerAccountsTable();
+    let row=null;
+    if(pool){
+      const q=await db("SELECT * FROM jml_seller_accounts WHERE LOWER(email)=LOWER($1) LIMIT 1",[email]);if(q.rowCount)row=q.rows[0];
+    }else if(memory.sellerAccounts){
+      row=[...memory.sellerAccounts.values()].find(x=>x.email.toLowerCase()===email.toLowerCase())||null;
+    }
+    if(!row)return apiError(res,401,"JML-AUTH-S08","E-mail ou mot de passe incorrect.");
+    const hash=hashSellerPassword(password,row.password_salt||row.passwordSalt);
+    if(!crypto.timingSafeEqual(Buffer.from(hash,"hex"),Buffer.from(row.password_hash||row.passwordHash,"hex")))return apiError(res,401,"JML-AUTH-S08","E-mail ou mot de passe incorrect.");
+    const token=row.seller_space_token||row.sellerSpaceToken,sessionToken=newSellerSessionToken();
+    sellerAuthSessions.set(sessionToken,{sellerSpaceToken:token,email,expiresAt:Date.now()+SELLER_SESSION_TTL_MS});setSellerSessionCookie(res,req,sessionToken);
+    res.json({ok:true,spaceUrl:"/espace-vendeur/"+encodeURIComponent(token)});
+  }catch(e){console.error("JML seller account login:",e);return unexpected(res,"JML-AUTH-S09","Connexion à votre espace indisponible.",e);}
+});
+
+app.post("/api/seller-account/logout",(req,res)=>{const raw=String(req.headers.cookie||"");const part=raw.split(";").map(x=>x.trim()).find(x=>x.startsWith("jml_seller_session="));if(part)sellerAuthSessions.delete(decodeURIComponent(part.slice("jml_seller_session=".length)));clearSellerSessionCookie(res,req);res.json({ok:true})});
 
 app.get("/api/seller-space/:token", async (req,res)=>{
   const token=clean(req.params.token,100);
