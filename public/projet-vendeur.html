@@ -632,7 +632,7 @@ h1 span{color:var(--gold2);display:block}
 /* Corrections finales — formulaire vendeur */
 .extra{display:none!important;grid-column:1/-1;grid-template-columns:1fr 1fr;gap:12px;padding:12px;background:#faf9f6;border:1px solid #dedbd4;border-radius:9px}
 .extra.on{display:grid!important}
-.extra-field label{display:block;font-size:11px;font-weight:700;margin:0 0 5px;color:#34463f}
+.extra-section-title{grid-column:1/-1;padding:8px 0 2px;margin-top:4px;border-bottom:1px solid #e5dfd3;color:#9b762e;font-size:10px;font-weight:800;letter-spacing:.12em}.extra-field label{display:block;font-size:11px;font-weight:700;margin:0 0 5px;color:#34463f}
 .extra-field .in{height:42px}.full-extra{grid-column:1/-1}
 .bottom{grid-column:1/-1}
 .chk{align-items:flex-start}
@@ -789,17 +789,21 @@ h1 span{color:var(--gold2);display:block}
     <div class="f"><span class="n">04</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
     <div class="f"><span class="n">05</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
     <div class="f"><span class="n">06</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
-    <button type="button" class="opt" id="opt" aria-expanded="false"><b>+</b>Ajouter quelques caractéristiques du bien <em>(facultatif)</em></button>
+    <button type="button" class="opt" id="opt" aria-expanded="false"><b>+</b>Ajouter les caractéristiques utiles à l’analyse <em>(facultatif)</em></button>
     <div class="extra" id="extra" aria-hidden="true">
+  <div class="extra-section-title full-extra">01 · LOCALISATION & DIMENSIONS</div>
   <div class="extra-field full-extra"><label for="adresse">Adresse du bien</label><div class="in"><input id="adresse" type="text" autocomplete="street-address" placeholder="Numéro et rue"></div></div>
   <div class="extra-field" id="surfaceField"><label for="surface">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div>
   <div class="extra-field" id="terrainField"><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div>
   <div class="extra-field" id="piecesField"><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div>
-  <div class="extra-field" id="dpeField"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
+  <div class="extra-section-title full-extra">02 · ÉNERGIE & ÉTAT</div>
+  <div class="extra-field"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
   <div class="extra-field"><label for="generalState">État général</label><div class="in"><select id="generalState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></div></div>
   <div class="extra-field"><label for="works">Travaux à prévoir</label><div class="in"><select id="works"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></div></div>
+  <div class="extra-field"><label for="garage">Garage / stationnement</label><div class="in"><select id="garage"><option value="">Non renseigné</option><option>Garage</option><option>Parking / stationnement</option><option>Garage + stationnement</option><option>Sans garage / stationnement</option><option>Ne sait pas</option></select></div></div>
   <div class="extra-field"><label for="roof">Toiture</label><div class="in"><select id="roof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></div></div>
   <div class="extra-field"><label for="renovation">Rénovation récente</label><div class="in"><select id="renovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></div></div>
+  <div class="extra-section-title full-extra">03 · ÉQUIPEMENTS & PRESTATIONS</div>
   <div class="extra-field"><label for="electricity">Électricité</label><div class="in"><select id="electricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></div></div>
   <div class="extra-field"><label for="insulation">Isolation</label><div class="in"><select id="insulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></div></div>
   <div class="extra-field"><label for="heating">Chauffage</label><div class="in"><select id="heating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
@@ -807,8 +811,9 @@ h1 span{color:var(--gold2);display:block}
   <div class="extra-field"><label for="kitchen">Cuisine</label><div class="in"><select id="kitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
   <div class="extra-field"><label for="bathrooms">Salle(s) de bains</label><div class="in"><select id="bathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
   <div class="extra-field"><label for="facade">Façade</label><div class="in"><select id="facade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></div></div>
-  <div class="extra-field"><label for="extras">Terrain / garage / dépendances</label><div class="in"><select id="extras"><option value="">Non renseigné</option><option>Très bon atout</option><option>Bon atout</option><option>Présents</option><option>À améliorer</option><option>Aucun</option></select></div></div>
-  <div class="extra-field full-extra"><label for="conditionNotes">Précisions utiles sur l'état du bien</label><div class="in"><input id="conditionNotes" type="text" maxlength="300" placeholder="Ex. toiture refaite en 2023, électricité à prévoir…"></div></div>
+  <div class="extra-field"><label for="extras">Extérieurs / dépendances</label><div class="in"><select id="extras"><option value="">Non renseigné</option><option>Jardin / terrain</option><option>Terrasse</option><option>Dépendances</option><option>Jardin + dépendances</option><option>Aucun</option></select></div></div>
+  <div class="extra-section-title full-extra">04 · PRÉCISIONS</div>
+  <div class="extra-field full-extra"><label for="conditionNotes">Précisions utiles sur l’état du bien</label><div class="in"><input id="conditionNotes" type="text" maxlength="300" placeholder="Ex. toiture refaite en 2023, garage double, électricité à prévoir…"></div></div>
 </div>
     <div class="bottom"><label class="chk"><input type="checkbox" required>J'accepte que JML Immobilier utilise ces informations pour me recontacter au sujet de mon projet immobilier. J’ai pris connaissance du caractère facultatif des informations non nécessaires à la prise de contact.</label><button class="btn" type="submit">Échanger sur mon projet →</button></div>
     <div class="ok" id="ok">Merci ! Je vous recontacte très prochainement.</div>
@@ -875,7 +880,7 @@ async function loadEditSellerSpace(){
     document.getElementById('terrain').value=d.terrain||"";
     document.getElementById('dpe').value=d.dpe||"";
     var cd=d.conditionData||{};
-    ["generalState","works","roof","renovation","electricity","insulation","heating","windows","kitchen","bathrooms","facade","extras"].forEach(function(id){var el=document.getElementById(id);if(el)el.value=cd[id]||"";});
+    ["generalState","works","garage","roof","renovation","electricity","insulation","heating","windows","kitchen","bathrooms","facade","extras"].forEach(function(id){var el=document.getElementById(id);if(el)el.value=cd[id]||"";});
     document.getElementById('conditionNotes').value=cd.notes||"";
     document.getElementById('opt').click();
     var button=document.querySelector('#form .btn'); if(button)button.textContent='Enregistrer mes modifications →';
@@ -934,6 +939,7 @@ document.getElementById('form').onsubmit=async function(ev){
       bathrooms:document.getElementById('bathrooms').value,
       facade:document.getElementById('facade').value,
       extras:document.getElementById('extras').value,
+      garage:document.getElementById('garage').value,
       notes:document.getElementById('conditionNotes').value.trim()
     },
     source:"Page projet vendeur",
