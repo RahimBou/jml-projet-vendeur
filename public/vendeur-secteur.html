@@ -809,7 +809,7 @@ section:has(.method-card){
 .property-modal-dialog{position:relative;z-index:1;width:min(880px,100%);max-height:92vh;overflow:auto;background:#fffdf8;border:1px solid #d7c49a;border-radius:20px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.28)}
 .property-modal-dialog h2{margin:5px 0 7px;color:#173b32;font:700 28px Georgia,serif}
 .property-modal-intro{margin:0 0 16px;color:#56645e;font-size:11px;line-height:1.5}
-.property-modal-close{position:absolute;right:14px;top:12px;width:34px;height:34px;border:0;border-radius:50%;background:#edf1ed;color:#173b32;font-size:22px;cursor:pointer}
+.property-modal-close{position:absolute;right:14px;top:12px;z-index:5;width:34px;height:34px;border:0;border-radius:50%;background:#edf1ed;color:#173b32;font-size:22px;cursor:pointer;pointer-events:auto}
 .property-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .property-form-section{grid-column:1/-1;padding:8px 0 2px;margin-top:4px;border-bottom:1px solid #e7dfd2;color:#98753a;font-size:8px;font-weight:900;letter-spacing:.12em}.property-form-grid label{display:block;color:#365149;font-size:9px;font-weight:900}
 .property-form-grid label.full{grid-column:1/-1}
@@ -1863,6 +1863,7 @@ async function pollListingResearch(token){
    modal.classList.add("open");modal.setAttribute("aria-hidden","false");
  });
  modal.querySelectorAll("[data-close-property]").forEach(x=>x.addEventListener("click",close));
+ modal.addEventListener("click",e=>{if(e.target.closest("[data-close-property]"))close();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close()});
  const reset=$("#resetAddedCharacteristics");
  reset?.addEventListener("click",async()=>{
