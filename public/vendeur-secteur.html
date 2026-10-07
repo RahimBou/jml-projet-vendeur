@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jml-version" content="2026-10-07-place-ducale-clean-hero-v7">
+<meta name="jml-version" content="2026-10-07-place-ducale-clean-hero-v8">
 <title>JML Immobilier — Mon secteur</title>
 <style id="vendeur-final-css">
 /* JML — CSS vendeur simplifié
@@ -979,30 +979,20 @@ section:has(.method-card){
   <div class="property-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="propertyModalTitle">
     <button type="button" class="property-modal-close" data-close-property aria-label="Fermer">×</button>
     <div class="eyebrow">MISE À JOUR DU DOSSIER</div>
-    <h2 id="propertyModalTitle">Corriger les informations du bien</h2>
-    <p class="property-modal-intro">Corrigez les données si quelque chose a changé ou si une information était incomplète. Le nouveau repère sera recalculé avec les données corrigées.</p>
+    <h2 id="propertyModalTitle">Modifier votre bien</h2>
+    <p class="property-modal-intro">Une information est incorrecte ? Corrigez-la simplement. Le repère de marché sera recalculé avec les nouvelles données.</p>
     <div class="property-form-grid">
       <label>Type de bien<select id="editPropertyType"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></label>
-      <label>Adresse<input id="editAddress" type="text" autocomplete="street-address"></label>
-      <label>Surface habitable (m²)<input id="editSurface" type="number" min="0" step="0.1"></label>
+      <label>Surface (m²)<input id="editSurface" type="number" min="0" step="0.1"></label>
       <label>Nombre de pièces<input id="editRooms" type="number" min="0" step="1"></label>
       <label>Terrain (m²)<input id="editTerrain" type="number" min="0" step="1"></label>
       <label>DPE<select id="editDpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></label>
       <label>État général<select id="editGeneralState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></label>
       <label>Travaux à prévoir<select id="editWorks"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></label>
-      <label>Toiture<select id="editRoof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></label>
-      <label>Rénovation récente<select id="editRenovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></label>
-      <label>Électricité<select id="editElectricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></label>
-      <label>Isolation<select id="editInsulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></label>
-      <label>Chauffage<select id="editHeating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
-      <label>Fenêtres<select id="editWindows"><option value="">Non renseigné</option><option>Récentes</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
-      <label>Cuisine<select id="editKitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
-      <label>Salle(s) de bains<select id="editBathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
-      <label>Façade<select id="editFacade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></label>
-      <label>Terrain / garage / dépendances<select id="editExtras"><option value="">Non renseigné</option><option>Très bon atout</option><option>Bon atout</option><option>Présents</option><option>À améliorer</option><option>Aucun</option></select></label>
-      <label class="full">Précisions utiles<textarea id="editConditionNotes" maxlength="500" placeholder="Ex. toiture refaite en 2023, chaudière récente, garage double, vue dégagée…"></textarea></label>
+      <label>Garage / dépendances<select id="editExtras"><option value="">Non renseigné</option><option>Très bon atout</option><option>Bon atout</option><option>Présents</option><option>Aucun</option></select></label>
+      <label class="full">Précisions utiles<textarea id="editConditionNotes" maxlength="500" placeholder="Ex. garage double, travaux récents, jardin, vue dégagée…"></textarea></label>
     </div>
-    <div class="property-modal-note">Les corrections sont enregistrées dans ce navigateur pour ce dossier. Elles permettent d'affiner le calcul sans modifier les données administratives de votre demande initiale.</div>
+    <div class="property-modal-note">Ces corrections servent uniquement à affiner le repère de marché du bien.</div>
     <div class="property-modal-actions"><button type="button" class="secondary-btn" data-close-property>Annuler</button><button type="button" class="primary-btn" id="savePropertyEdits">Enregistrer et recalculer</button></div>
   </div>
 </div>
@@ -1927,34 +1917,34 @@ async function pollListingResearch(token){
 }
 
 
-// Édition locale du dossier vendeur
+// Édition simple du dossier vendeur
 (function(){
  const modal=$("#propertyModal"), open=$("#editPropertyBtn"), save=$("#savePropertyEdits");
  if(!modal||!open||!save)return;
  const close=()=>{modal.classList.remove("open");modal.setAttribute("aria-hidden","true")};
- const ids=["PropertyType","Address","Surface","Rooms","Terrain","Dpe","GeneralState","Works","Roof","Renovation","Electricity","Insulation","Heating","Windows","Kitchen","Bathrooms","Facade","Extras","ConditionNotes"];
  const set=(id,v)=>{const el=$("#edit"+id);if(el)el.value=v||""};
  const get=(id)=>($("#edit"+id)?.value||"").trim();
  open.addEventListener("click",()=>{
    const d=pageData.space||getSpace(), cd=d.conditionData||{};
-   set("PropertyType",d.propertyType);set("Address",d.address);set("Surface",d.surface);set("Rooms",d.rooms);set("Terrain",d.terrain);set("Dpe",d.dpe);
-   ids.slice(6).forEach(k=>set(k,cd[k.charAt(0).toLowerCase()+k.slice(1)]||""));
+   set("PropertyType",d.propertyType);set("Surface",d.surface);set("Rooms",d.rooms);set("Terrain",d.terrain);set("Dpe",d.dpe);
+   set("GeneralState",cd.generalState);set("Works",cd.works);set("Extras",cd.extras);set("ConditionNotes",cd.conditionNotes);
    modal.classList.add("open");modal.setAttribute("aria-hidden","false");
  });
  modal.querySelectorAll("[data-close-property]").forEach(x=>x.addEventListener("click",close));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close()});
  save.addEventListener("click",()=>{
-   const conditionData={};
-   ["GeneralState","Works","Roof","Renovation","Electricity","Insulation","Heating","Windows","Kitchen","Bathrooms","Facade","Extras","ConditionNotes"].forEach(k=>conditionData[k.charAt(0).toLowerCase()+k.slice(1)]=get(k));
-   const overrides={
-     propertyType:get("PropertyType"),address:get("Address"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData
+   const conditionData={
+     generalState:get("GeneralState"),
+     works:get("Works"),
+     extras:get("Extras"),
+     conditionNotes:get("ConditionNotes")
    };
+   const overrides={propertyType:get("PropertyType"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData};
    try{localStorage.setItem(getSellerOverrideKey(),JSON.stringify(overrides));}catch(e){}
    close();
    location.reload();
  });
 })();
-
 async function run(){
  try{
   const d=await loadServerSpace();
