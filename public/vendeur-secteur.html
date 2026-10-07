@@ -1760,6 +1760,30 @@ function renderListingResearch(research){
    '<div style="margin-top:6px;color:#5c6a66">L’agent compare le type, la surface, les pièces, le terrain et la localisation. Les prix affichés sont des <b>prix demandés</b>, pas des prix de vente signés.</div>'+
    (cards||'<div style="margin-top:8px">Aucune annonce assez proche pour l’instant.</div>');
 }
+function renderCharacteristicAnalysis(analysis){
+ const el=$("#sellerReading"); if(!el)return;
+ const a=analysis||null;
+ if(!a){el.insertAdjacentHTML("afterbegin",'<div class="agent-adjustment"><div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Analyse des ajustements en cours…</b></div><p>Le moteur termine l’analyse locale du DPE, du garage et des autres caractéristiques documentées.</p></div>');return;}
+ const p=a.positioning||{},base=a.baseline||{},rows=Array.isArray(a.adjustments)?a.adjustments:[];
+ const rowHtml=rows.map(x=>{
+   const pct=Number(x.effectPct||0), eurv=Number(x.effectEur||0);
+   const cls=pct>0?"up":pct<0?"down":"neutral";
+   const amount=pct===0?"Neutre":(pct>0?"+":"")+Math.round(pct*10)/10+" % · "+(eurv>0?"+":"")+Math.round(eurv).toLocaleString("fr-FR")+" €";
+   return '<div class="agent-adjustment-row"><div><b>'+esc(x.factor)+'</b><small>'+esc(x.note||"")+'</small></div><strong class="'+cls+'">'+esc(amount)+'</strong><em>'+esc(x.confidence||"")+'</em></div>';
+ }).join("");
+ const low=p.low!=null?eur(p.low):"—",high=p.high!=null?eur(p.high):"—";
+ const value=p.value!=null?eur(p.value):"—";
+ el.innerHTML='<div class="agent-adjustment">'+
+ '<div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Le DVF reste la base · les écarts sont mesurés localement</b></div>'+
+ '<div class="agent-adjustment-grid">'+
+ '<div><small>REPÈRE DVF</small><strong>'+esc(eur(base.value))+'</strong><span>'+esc((base.m2||"—").toLocaleString?Math.round(base.m2).toLocaleString("fr-FR")+" €/m²": "—")+'</span></div>'+
+ '<div><small>POSITIONNEMENT INDICATIF</small><strong>'+esc(value)+'</strong><span>Fourchette '+esc(low)+' → '+esc(high)+'</span></div>'+
+ '</div>'+
+ '<div class="agent-adjustment-rows">'+rowHtml+'</div>'+
+ '<p class="agent-adjustment-note">'+esc(a.explanation||"")+'</p>'+
+ '<div class="agent-adjustment-meta">Confiance : <b>'+esc(p.confidence||"Faible")+'</b> · '+esc(String(a.evidence?.dvfComparables||0))+' ventes DVF · '+esc(String(a.evidence?.listingsComparableCount||0))+' annonces comparables · '+esc(String(a.evidence?.sameStreet||0))+' même rue</div>'+
+ '</div>';
+}
 async function pollListingResearch(token){
  if(!token)return;
  let tries=0;
@@ -1771,7 +1795,8 @@ async function pollListingResearch(token){
      if(r.ok&&j.ok&&j.space){
        pageData.space={...pageData.space,...j.space};
        renderListingResearch(j.space.listingResearch);
-       if(j.space.listingResearch?.status==="running"||j.space.listingResearch?.status==="pending") setTimeout(tick,8000);
+       renderCharacteristicAnalysis(j.space.estimatorAgent?.valuationAnalysis||null);
+       if(j.space.listingResearch?.status==="running"||j.space.listingResearch?.status==="pending"||j.space.estimatorAgent?.status==="running"||j.space.estimatorAgent?.status==="pending") setTimeout(tick,8000);
      }else if(tries<12) setTimeout(tick,8000);
    }catch(_){ if(tries<12)setTimeout(tick,8000); }
  };
@@ -1794,17 +1819,36 @@ async function pollListingResearch(token){
  });
  modal.querySelectorAll("[data-close-property]").forEach(x=>x.addEventListener("click",close));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close()});
- save.addEventListener("click",()=>{
+ save.addEventListener("click",async()=>{
+   const d=pageData.space||getSpace(), oldCd=d.conditionData&&typeof d.conditionData==="object"?d.conditionData:{};
    const conditionData={
+     ...oldCd,
      generalState:get("GeneralState"),
      works:get("Works"),
      extras:get("Extras"),
-     conditionNotes:get("ConditionNotes")
+     notes:get("ConditionNotes")
    };
    const overrides={propertyType:get("PropertyType"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData};
    try{localStorage.setItem(getSellerOverrideKey(),JSON.stringify(overrides));}catch(e){}
-   close();
-   location.reload();
+   save.disabled=true;save.textContent="Enregistrement…";
+   try{
+     const token=new URLSearchParams(location.search).get("token")||d.token;
+     if(!token)throw new Error("Lien vendeur invalide.");
+     const response=await fetch("/api/seller-space/"+encodeURIComponent(token),{
+       method:"PATCH",headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({city:d.city,address:d.address,propertyType:get("PropertyType"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData})
+     });
+     const data=await response.json().catch(()=>({}));
+     if(!response.ok)throw new Error(data.error||"Impossible d’enregistrer les modifications.");
+     pageData.space=data.space||pageData.space;
+     try{localStorage.removeItem(getSellerOverrideKey());}catch(_e){}
+     close();
+     renderCharacteristicAnalysis(null);
+     setTimeout(()=>location.reload(),250);
+   }catch(error){
+     save.disabled=false;save.textContent="Enregistrer et recalculer";
+     alert(error.message||"Impossible d’enregistrer les modifications.");
+   }
  });
 })();
 async function run(){
@@ -2055,5 +2099,13 @@ run();
 .attract-label{margin-top:9px;font-size:7px;font-weight:800;letter-spacing:.08em;color:#7a827d}.attract-card strong{margin-top:4px;font-family:Georgia,"Times New Roman",serif;font-size:12px;line-height:1.2;color:var(--g)}.attract-distance{margin-top:auto;padding-top:8px;font-size:12px;font-weight:900;color:#8a6c2e}
 @media(max-width:900px){.attract-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:430px){.attract-grid{grid-template-columns:1fr 1fr}.attract-card{min-height:115px}.attract-card strong{font-size:11px}}
-</style></body>
+</style><style id="seller-characteristic-agent-v1">
+.agent-adjustment{margin-top:12px;padding:16px;border:1px solid #d9e4dc;border-radius:16px;background:linear-gradient(135deg,#fbfffc,#f2f7f3)}
+.agent-adjustment-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+.agent-adjustment-head span{font-size:11px;letter-spacing:.12em;font-weight:800;color:#1e6b47}.agent-adjustment-head b{font-size:14px}
+.agent-adjustment-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.agent-adjustment-grid>div{padding:12px;background:#fff;border-radius:12px;border:1px solid #e2ebe5}.agent-adjustment-grid small{display:block;font-size:10px;font-weight:800;letter-spacing:.08em}.agent-adjustment-grid strong{display:block;font-size:25px;margin:3px 0}.agent-adjustment-grid span{font-size:12px;color:#65736d}
+.agent-adjustment-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #e2ebe5}.agent-adjustment-row small{display:block;color:#68756f;font-size:11px;margin-top:2px}.agent-adjustment-row strong{white-space:nowrap}.agent-adjustment-row strong.up{color:#167447}.agent-adjustment-row strong.down{color:#a94b35}.agent-adjustment-row strong.neutral{color:#5f6b66}.agent-adjustment-row em{font-style:normal;font-size:10px;color:#69756f}.agent-adjustment-note{font-size:12px;color:#56645e;margin:10px 0}.agent-adjustment-meta{font-size:11px;color:#66736d}
+@media(max-width:650px){.agent-adjustment-head{display:block}.agent-adjustment-grid{grid-template-columns:1fr}.agent-adjustment-row{grid-template-columns:1fr auto}.agent-adjustment-row em{grid-column:2}.agent-adjustment-grid strong{font-size:22px}}
+</style>
+</body>
 </html>
