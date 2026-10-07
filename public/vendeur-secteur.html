@@ -811,7 +811,7 @@ section:has(.method-card){
 .property-modal-intro{margin:0 0 16px;color:#56645e;font-size:11px;line-height:1.5}
 .property-modal-close{position:absolute;right:14px;top:12px;width:34px;height:34px;border:0;border-radius:50%;background:#edf1ed;color:#173b32;font-size:22px;cursor:pointer}
 .property-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.property-form-grid label{display:block;color:#365149;font-size:9px;font-weight:900}
+.property-form-section{grid-column:1/-1;padding:8px 0 2px;margin-top:4px;border-bottom:1px solid #e7dfd2;color:#98753a;font-size:8px;font-weight:900;letter-spacing:.12em}.property-form-grid label{display:block;color:#365149;font-size:9px;font-weight:900}
 .property-form-grid label.full{grid-column:1/-1}
 .property-form-grid input,.property-form-grid select,.property-form-grid textarea{width:100%;box-sizing:border-box;margin-top:5px;padding:10px 11px;border:1px solid #d9d1c3;border-radius:10px;background:#fff;color:#263a32;font:500 11px Arial,sans-serif}
 .property-form-grid textarea{min-height:72px;resize:vertical}
@@ -969,15 +969,29 @@ section:has(.method-card){
     <h2 id="propertyModalTitle">Modifier votre bien</h2>
     <p class="property-modal-intro">Une information est incorrecte ? Corrigez-la simplement. Le repère de marché sera recalculé avec les nouvelles données.</p>
     <div class="property-form-grid">
+      <div class="property-form-section">01 · LOCALISATION & DIMENSIONS</div>
       <label>Type de bien<select id="editPropertyType"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></label>
-      <label>Surface (m²)<input id="editSurface" type="number" min="0" step="0.1"></label>
+      <label>Surface habitable (m²)<input id="editSurface" type="number" min="0" step="0.1"></label>
       <label>Nombre de pièces<input id="editRooms" type="number" min="0" step="1"></label>
-      <label>Terrain (m²)<input id="editTerrain" type="number" min="0" step="1"></label>
-      <label>DPE<select id="editDpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option></select></label>
+      <label>Surface du terrain (m²)<input id="editTerrain" type="number" min="0" step="1"></label>
+      <div class="property-form-section">02 · ÉNERGIE & ÉTAT</div>
+      <label>DPE<select id="editDpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></label>
       <label>État général<select id="editGeneralState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></label>
       <label>Travaux à prévoir<select id="editWorks"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></label>
-      <label>Garage / dépendances<select id="editExtras"><option value="">Non renseigné</option><option>Très bon atout</option><option>Bon atout</option><option>Présents</option><option>Aucun</option></select></label>
-      <label class="full">Précisions utiles<textarea id="editConditionNotes" maxlength="500" placeholder="Ex. garage double, travaux récents, jardin, vue dégagée…"></textarea></label>
+      <label>Garage / stationnement<select id="editGarage"><option value="">Non renseigné</option><option>Garage</option><option>Parking / stationnement</option><option>Garage + stationnement</option><option>Sans garage / stationnement</option><option>Ne sait pas</option></select></label>
+      <label>Toiture<select id="editRoof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></label>
+      <label>Rénovation récente<select id="editRenovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></label>
+      <div class="property-form-section">03 · ÉQUIPEMENTS & PRESTATIONS</div>
+      <label>Électricité<select id="editElectricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></label>
+      <label>Isolation<select id="editInsulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></label>
+      <label>Chauffage<select id="editHeating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
+      <label>Fenêtres<select id="editWindows"><option value="">Non renseigné</option><option>Récentes</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
+      <label>Cuisine<select id="editKitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
+      <label>Salle(s) de bains<select id="editBathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
+      <label>Façade<select id="editFacade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></label>
+      <label>Extérieurs / dépendances<select id="editExtras"><option value="">Non renseigné</option><option>Jardin / terrain</option><option>Terrasse</option><option>Dépendances</option><option>Jardin + dépendances</option><option>Aucun</option></select></label>
+      <div class="property-form-section">04 · PRÉCISIONS</div>
+      <label class="full">Précisions utiles<textarea id="editConditionNotes" maxlength="300" placeholder="Ex. toiture refaite en 2023, garage double, électricité à prévoir…"></textarea></label>
     </div>
     <div class="property-modal-note">Ces corrections servent uniquement à affiner le repère de marché du bien.</div>
     <div class="property-modal-actions"><button type="button" class="secondary-btn" data-close-property>Annuler</button><button type="button" class="primary-btn" id="savePropertyEdits">Enregistrer et recalculer</button></div>
@@ -1814,7 +1828,7 @@ async function pollListingResearch(token){
  open.addEventListener("click",()=>{
    const d=pageData.space||getSpace(), cd=d.conditionData||{};
    set("PropertyType",d.propertyType);set("Surface",d.surface);set("Rooms",d.rooms);set("Terrain",d.terrain);set("Dpe",d.dpe);
-   set("GeneralState",cd.generalState);set("Works",cd.works);set("Extras",cd.extras);set("ConditionNotes",cd.notes);
+   set("GeneralState",cd.generalState);set("Works",cd.works);set("Garage",cd.garage);set("Roof",cd.roof);set("Renovation",cd.renovation);set("Electricity",cd.electricity);set("Insulation",cd.insulation);set("Heating",cd.heating);set("Windows",cd.windows);set("Kitchen",cd.kitchen);set("Bathrooms",cd.bathrooms);set("Facade",cd.facade);set("Extras",cd.extras);set("ConditionNotes",cd.notes);
    modal.classList.add("open");modal.setAttribute("aria-hidden","false");
  });
  modal.querySelectorAll("[data-close-property]").forEach(x=>x.addEventListener("click",close));
@@ -1825,6 +1839,16 @@ async function pollListingResearch(token){
      ...oldCd,
      generalState:get("GeneralState"),
      works:get("Works"),
+     garage:get("Garage"),
+     roof:get("Roof"),
+     renovation:get("Renovation"),
+     electricity:get("Electricity"),
+     insulation:get("Insulation"),
+     heating:get("Heating"),
+     windows:get("Windows"),
+     kitchen:get("Kitchen"),
+     bathrooms:get("Bathrooms"),
+     facade:get("Facade"),
      extras:get("Extras"),
      notes:get("ConditionNotes")
    };
