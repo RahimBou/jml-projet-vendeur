@@ -1438,7 +1438,7 @@ function renderStreetView(data){
  maps.href=data.mapsUrl||"https://www.google.com/maps";
 }
 
-async function loadStreetView(d){
+async async function loadStreetView(d){
  try{
   const params=new URLSearchParams({city:d?.city||"",address:d?.address||""});
   const lat=Number(d?.lat),lon=Number(d?.lon);
