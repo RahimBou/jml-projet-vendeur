@@ -420,22 +420,38 @@ async function runPAPFlow(page,input){
 
   // PAP peut afficher le résultat sans e-mail. On tente donc toujours la soumission
   // avec le champ e-mail laissé vide si aucune adresse professionnelle n'est configurée.
+  const finalLabels=[
+    "Obtenir mon estimation",
+    "Voir mon estimation",
+    "Découvrir mon estimation",
+    "Calculer mon estimation",
+    "Estimer"
+  ];
   let finalClicked=false;
-  for(let i=0;i<3;i++){
-    if(await clickButtonText(page,[
-      "Obtenir mon estimation",
-      "Voir mon estimation",
-      "Découvrir mon estimation",
-      "Calculer mon estimation",
-      "Estimer"
-    ])){
+
+  for(let i=0;i<5;i++){
+    if(await clickButtonText(page,finalLabels)){
       finalClicked=true;
-      await page.waitForTimeout(3500);
+      break;
+    }
+    // Certaines versions de PAP rendent l'action finale comme un élément
+    // cliquable plutôt qu'un <button>.
+    if(await clickChoice(page,finalLabels)){
+      finalClicked=true;
       break;
     }
     const next=await clickButtonText(page,["Continuer","Poursuivre","Suivant"]);
     if(!next) break;
     await page.waitForTimeout(1000);
+  }
+
+  if(finalClicked){
+    const end=Date.now()+15000;
+    while(Date.now()<end){
+      const body=(await page.locator("body").innerText().catch(()=>"")).replace(/\s+/g," ");
+      if(moneyValues(body).length || /votre estimation est prête|estimation est prête/i.test(body)) break;
+      await page.waitForTimeout(700);
+    }
   }
 
   return {...adapter,finalClicked};
