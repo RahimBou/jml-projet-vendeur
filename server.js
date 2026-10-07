@@ -766,7 +766,7 @@ async function getCommuneMarketData(city,code){
 
   const empty={
     city:cleanCity,found:false,
-    source:"DVF local JML / PostgreSQL",
+    source:"DVF+ Cerema / DVF local JML",
     sourceUrl:"https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres/",
     message:"Aucune transaction DVF disponible pour cette commune.",
     recentSales:[],recentSalesSource:"DVF",
@@ -1654,7 +1654,10 @@ async function getFreshDvfPlusComparables(origin,property,communeCode=""){
   const half=0.009; // bbox < 0.02° imposé par l'API DVF+ ; environ 1 km autour du bien
   const url=new URL("https://apidf.cerema.fr/dvf_opendata/geomutations/");
   url.searchParams.set("in_bbox",[lon-half,lat-half,lon+half,lat+half].join(","));
-  url.searchParams.set("anneemut_min",String(new Date().getFullYear()-1));
+  // DVF+ est notre source officielle géolocalisée. On garde 48 mois pour
+  // retrouver des ventes réellement comparables même lorsqu'il n'y a pas
+  // eu de mutation récente dans la rue.
+  url.searchParams.set("anneemut_min",String(new Date().getFullYear()-4));
   url.searchParams.set("codtypbien",type==="Maison"?"111":"121");
   url.searchParams.set("fields","all");
   url.searchParams.set("page_size","500");
@@ -1669,13 +1672,13 @@ async function getFreshDvfPlusComparables(origin,property,communeCode=""){
     const raw=Array.isArray(payload?.features)?payload.features:
       Array.isArray(payload?.results)?payload.results:
       Array.isArray(payload?.data)?payload.data:[];
-    const cutoff=Date.now()-365*24*60*60*1000;
+    const cutoff=Date.now()-4*365*24*60*60*1000;
     const rows=raw.map(x=>normalizeDvfPlusRow(x,property?.city||"")).filter(Boolean).filter(x=>{
       const d=parseSaleDate(x.date);
       return d&&d.getTime()>=cutoff;
     });
     dvfPlusFreshCache.set(key,{expiresAt:Date.now()+60*60*1000,rows});
-    console.log("JML DVF+ récent:",type,rows.length,"transactions <12 mois");
+    console.log("JML Agent DVF+:",type,rows.length,"transactions géolocalisées <48 mois");
     return rows;
   }catch(error){
     console.warn("JML DVF+ récent indisponible:",String(error?.message||error));
@@ -1900,8 +1903,9 @@ async function buildComparableSales(market,property){
 
   const recentSales12m=candidates.filter(s=>s.fresh12m).sort((a,b)=>a.ageMonths-b.ageMonths);
   const exactRecentSale=recentSales12m.find(s=>s.sameAddress&&s.surfaceGap!==null&&s.surfaceGap<=0.15)||null;
+  const sameStreetSales=top40.filter(s=>s.sameStreet);
   return {
-    sales:top40,valuationSales,sameStreet:top40.filter(s=>s.sameStreet),
+    sales:top40,valuationSales,sameStreet:sameStreetSales,
     recentSales12m,exactRecentSale,
     median:median!=null?Math.round(median):null,
     weightedPriceM2:centralPriceM2!=null?Math.round(centralPriceM2):null,
