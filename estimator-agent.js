@@ -300,17 +300,57 @@ async function chooseOption(page,names){
   return false;
 }
 
+async function setSelectOrText(page,labels,value){
+  if(value===undefined||value===null||String(value).trim()==="") return false;
+  const v=String(value).trim();
+  for(const label of labels){
+    try{
+      const loc=page.getByLabel(new RegExp(label,"i")).first();
+      if(await loc.count() && await loc.isVisible({timeout:700})){
+        const tag=await loc.evaluate(el=>el.tagName.toLowerCase()).catch(()=>"");
+        if(tag==="select"){
+          await loc.selectOption({label:v}).catch(async()=>{ await loc.selectOption(v).catch(()=>{}); });
+          return true;
+        }
+        await loc.fill(v).catch(()=>{});
+        if(await loc.inputValue().catch(()=>"")===v) return true;
+      }
+    }catch(_){}
+  }
+  return await fillLabel(page,labels,value);
+}
+
+async function clickChoice(page,patterns){
+  for(const p of patterns){
+    const loc=typeof p==="string"
+      ? page.getByText(p,{exact:true}).first()
+      : page.getByText(p).first();
+    try{
+      if(await loc.count() && await loc.isVisible({timeout:700})){
+        await loc.click({timeout:2500});
+        return true;
+      }
+    }catch(_){}
+  }
+  return false;
+}
+
 async function runPAPAdapter(page,input){
   const full=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
-  const okAddress=await fillLabel(page,["Adresse du bien","Adresse"],full);
+  const okAddress=await fillLabel(page,["Adresse du bien","Adresse"],full||input.address);
   if(!okAddress) return {status:"form_not_found",reason:"Champ adresse PAP introuvable"};
-  await page.waitForTimeout(1200);
+
+  await page.waitForTimeout(900);
   const options=page.locator('[role="option"],li,[class*="autocomplete"],[class*="suggest"],[class*="address"]');
   const count=await options.count().catch(()=>0);
   let selected=false;
-  for(let i=0;i<Math.min(count,20);i++){
-    const o=options.nth(i), txt=(await o.innerText().catch(()=>"" )).trim().toLowerCase();
-    if(txt && ((input.city&&txt.includes(String(input.city).toLowerCase()))||(input.postalCode&&txt.includes(String(input.postalCode)))||(input.address&&txt.includes(String(input.address).toLowerCase())))){
+  for(let i=0;i<Math.min(count,30);i++){
+    const o=options.nth(i);
+    const txt=(await o.innerText().catch(()=>"" )).trim().toLowerCase();
+    if(!txt) continue;
+    if((input.postalCode&&txt.includes(String(input.postalCode))) ||
+       (input.city&&txt.includes(String(input.city).toLowerCase())) ||
+       (input.address&&txt.includes(String(input.address).toLowerCase()))){
       await o.click({timeout:2500}).catch(()=>{});
       selected=true;
       break;
@@ -320,12 +360,83 @@ async function runPAPAdapter(page,input){
     await page.keyboard.press("ArrowDown").catch(()=>{});
     await page.keyboard.press("Enter").catch(()=>{});
   }
-  const isHouse=/maison/i.test(String(input.propertyType||""));
-  await chooseOption(page,[isHouse?"Maison":"Appartement"]);
+
+  await chooseOption(page,[/maison/i.test(String(input.propertyType||""))?"Maison":"Appartement"]);
   await fillLabel(page,["Surface du bien","Surface","m²","m2"],input.surface);
-  await fillLabel(page,["Nombre de pièces","Pièces","pieces"],input.rooms);
-  await fillLabel(page,["Terrain","Surface du terrain"],input.terrain);
-  return {status:"form_filled"};
+
+  // Étape 1 : le bouton PAP "Continuer" doit être déclenché ici.
+  const firstNext=await clickButtonText(page,["Continuer","Poursuivre","Suivant"]);
+  if(firstNext) await page.waitForTimeout(900);
+
+  // Étape 2 : caractéristiques avancées vues dans le formulaire PAP.
+  await chooseOption(page,[String(input.rooms)>=6?"6+":String(input.rooms||"")]);
+  if(input.rooms && Number(input.rooms)<6){
+    await clickChoice(page,[String(Math.max(1,Math.round(Number(input.rooms))))]);
+  }
+  await fillLabel(page,["Surface du terrain","Terrain"],input.terrain);
+  await fillLabel(page,["Année de construction","Année","Construction"],input.year);
+
+  if(input.dpe){
+    await clickChoice(page,[String(input.dpe).toUpperCase()]);
+  }else{
+    await clickChoice(page,["Je ne sais pas"]);
+  }
+
+  if(input.heating) await setSelectOrText(page,["Type de chauffage","Chauffage"],input.heating);
+  if(input.exposure) await setSelectOrText(page,["Exposition du bien","Exposition"],input.exposure);
+  if(input.view) await setSelectOrText(page,["Type de vue","Vue"],input.view);
+
+  if(input.features){
+    const f=input.features;
+    if(f.garage) await clickChoice(page,["Garage"]);
+    if(f.cave) await clickChoice(page,["Cave"]);
+    if(f.veranda) await clickChoice(page,["Veranda","Véranda"]);
+    if(f.pool) await clickChoice(page,["Piscine"]);
+  }
+
+  if(input.condition) await clickChoice(page,[input.condition]);
+  if(input.relative) await clickChoice(page,[input.relative]);
+
+  const secondNext=await clickButtonText(page,["Continuer","Poursuivre","Suivant"]);
+  if(secondNext) await page.waitForTimeout(1000);
+
+  // Étape 3 : PAP demande le contexte du projet puis l'e-mail avant l'affichage du résultat.
+  await clickChoice(page,["Je réfléchis à vendre mon bien","Je souhaite mettre en vente rapidement"]);
+  const email=String(input.email||process.env.PAP_ESTIMATOR_EMAIL||"").trim();
+  if(email) await fillLabel(page,["Adresse e-mail","Email","E-mail","e-mail"],email);
+
+  return {
+    status:"form_filled",
+    emailConfigured:Boolean(email),
+    note:email
+      ? "Formulaire PAP avancé rempli, y compris l'étape de contact."
+      : "Formulaire PAP avancé rempli ; e-mail PAP non configuré."
+  };
+}
+
+async function runPAPFlow(page,input){
+  const adapter=await runPAPAdapter(page,input);
+  if(adapter.status!=="form_filled") return adapter;
+
+  // Le premier appel peut déjà avoir franchi les deux premiers écrans.
+  // On termine avec le bouton final "Obtenir mon estimation".
+  for(let i=0;i<3;i++){
+    if(await clickButtonText(page,[
+      "Obtenir mon estimation",
+      "Voir mon estimation",
+      "Découvrir mon estimation",
+      "Calculer mon estimation",
+      "Estimer"
+    ])){
+      await page.waitForTimeout(2500);
+      break;
+    }
+    const next=await clickButtonText(page,["Continuer","Poursuivre","Suivant"]);
+    if(!next) break;
+    await page.waitForTimeout(1000);
+  }
+
+  return adapter;
 }
 
 async function runSeLogerAdapter(page,input){
@@ -402,13 +513,28 @@ async function runEstimatorAgent(input={}){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA détecté",url:page.url(),elapsedMs:Date.now()-started};
         }
 
-        const adapter=await runSpecificAdapter(page,id,input);
-        if(adapter.status==="form_not_found"){
-          return {id,name:site.name,status:adapter.status,reason:adapter.reason,url:page.url(),elapsedMs:Date.now()-started};
+        let adapter;
+        if(id==="pap"){
+          adapter=await runPAPFlow(page,input);
+          if(adapter.status==="form_not_found"){
+            return {id,name:site.name,status:adapter.status,reason:adapter.reason,url:page.url(),elapsedMs:Date.now()-started};
+          }
+          if(adapter.status==="form_filled" && !adapter.emailConfigured){
+            return {
+              id,name:site.name,status:"manual_required",
+              reason:"PAP demande un e-mail à l'étape finale. Configurez PAP_ESTIMATOR_EMAIL sur Render pour automatiser cette dernière étape.",
+              url:page.url(),elapsedMs:Date.now()-started,excerpt:adapter.note
+            };
+          }
+        }else{
+          adapter=await runSpecificAdapter(page,id,input);
+          if(adapter.status==="form_not_found"){
+            return {id,name:site.name,status:adapter.status,reason:adapter.reason,url:page.url(),elapsedMs:Date.now()-started};
+          }
+          if(adapter.status==="generic") await prepareSiteForm(page,id,input);
         }
-        if(adapter.status==="generic") await prepareSiteForm(page,id,input);
 
-        for(let step=0;step<4;step++){
+        if(id!=="pap") for(let step=0;step<4;step++){
           const next=await firstLocator(page,[
             'button:has-text("Suivant")',
             'button:has-text("Continuer")',
