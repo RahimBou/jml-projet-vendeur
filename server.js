@@ -1731,11 +1731,19 @@ async function buildComparableSales(market,property){
 
   const seen=new Set(),candidates=[];
   const now=Date.now();
-  const streetKey=v=>{
-    let x=normalizeAddress(v)
-      .replace(/\b\d{5}\b/g," ")
-      .replace(/\b\d+\b/g," ")
-      .replace(/[.,;:/\\-]+/g," ")
+  // Normalisation robuste de la voie : DVF+ expose parfois la rue dans
+  // un champ dédié (street) et parfois uniquement dans l'adresse complète.
+  // On retire le numéro, le code postal et la commune pour comparer la voie.
+  const streetKey=(value,cityName="")=>{
+    let x=normalizeAddress(value);
+    if(!x)return "";
+    x=x.replace(/\b\d{5}\b/g," ")
+      .replace(/^\s*\d+[A-Za-z]?\s*(?:bis|ter|quater)?\s+/i," ");
+    if(cityName){
+      const cityKey=normalizeAddress(cityName);
+      if(cityKey)x=x.split(cityKey).join(" ");
+    }
+    x=x.replace(/[.,;:/\\-]+/g," ")
       .replace(/\b(r|ruee?)\b/g,"rue")
       .replace(/\b(av|av\.|avenuee?)\b/g,"avenue")
       .replace(/\b(bd|bd\.|boulevardd?)\b/g,"boulevard")
@@ -1745,6 +1753,7 @@ async function buildComparableSales(market,property){
       .trim();
     return x;
   };
+  const propertyStreetKey=streetKey(property?.address,city);
   const ageMonths=v=>{const d=parseSaleDate(v);return d?Math.max(0,(now-d.getTime())/(30.4375*86400000)):99;};
   const clamp01=v=>Math.max(0,Math.min(1,v));
   const expSim=(diff,scale)=>Math.exp(-Math.abs(diff)/Math.max(0.0001,scale));
@@ -1794,7 +1803,12 @@ async function buildComparableSales(market,property){
     // Sous 100 m² renseignés, on neutralise le terrain dans le score :
     // il est trop sensible à la façon dont la parcelle a été déclarée dans DVF.
     const landSim=isLand?1:(landSurface!==null&&landSurface<100?0.65:(landRatio===null?0.65:expSim(landRatio,0.55)));
-    const sameStreet=streetKey(sale.address)===streetKey(property?.address);
+    const saleStreetKey=streetKey(sale.street||sale.address,city);
+    const sameStreet=!!saleStreetKey&&!!propertyStreetKey&&(
+      saleStreetKey===propertyStreetKey ||
+      saleStreetKey.includes(propertyStreetKey) ||
+      propertyStreetKey.includes(saleStreetKey)
+    );
 
     const freshBonus=fresh12m?6:0;
     const exactBonus=sameAddress&&fresh12m&&surfaceRatio!==null&&surfaceRatio<=0.15?12:0;
