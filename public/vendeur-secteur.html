@@ -836,6 +836,17 @@ section:has(.method-card){
 .comparable-proof>p{margin:8px 0 0;color:#69756f;font-size:8px;line-height:1.4}
 @media(max-width:760px){.comparable-proof-head{display:block}.comparable-proof-head small{display:block;margin-top:5px}.mini-comparable{grid-template-columns:1fr auto}.mini-comparable span{grid-column:1/-1}.mini-comparable small{max-width:200px}}
 </style>
+</style><style id="seller-next-step-ui">
+.seller-next-step{margin-top:12px;padding:18px 18px 16px;border:1px solid #d8c28e;border-radius:16px;background:linear-gradient(135deg,#fffdf8,#f5efe1);box-shadow:0 8px 22px rgba(23,59,50,.06)}
+.seller-next-step .eyebrow{color:#9a7638;font-size:8px;font-weight:900;letter-spacing:.15em}
+.seller-next-step h3{margin:5px 0 5px;color:#173b32;font:700 20px Georgia,serif}
+.seller-next-step p{margin:0;color:#59665f;font-size:10px;line-height:1.5}
+.seller-next-step-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.seller-missing{padding:10px;border:1px solid #e4dccd;border-radius:11px;background:#fff}
+.seller-missing b{display:block;color:#173b32;font-size:10px}.seller-missing span{display:block;margin-top:3px;color:#78827d;font-size:8.5px}
+.seller-next-step button{border:0;border-radius:999px;padding:11px 17px;background:#173b32;color:#fff;font-weight:800;font-size:10px;cursor:pointer}
+.seller-next-step small{margin-left:8px;color:#7b817d;font-size:8px}
+@media(max-width:760px){.seller-next-step-grid{grid-template-columns:1fr 1fr}.seller-next-step button{width:100%}.seller-next-step small{display:block;margin:7px 0 0}}
 </style></head>
 <body>
 <main class="wrap">
@@ -1767,7 +1778,8 @@ function renderSellerNextStep(){
  el.style.display="block";
  el.innerHTML='<div class="eyebrow">AFFINER VOTRE REPÈRE</div><h3>Votre premier repère est prêt.</h3><p>Vous pouvez maintenant l’affiner avec quelques informations supplémentaires. Chaque donnée ajoutée permet à l’Agent de mieux situer votre bien.</p><div class="seller-next-step-grid">'+shown.map(x=>'<div class="seller-missing"><b>'+esc(x[0])+'</b><span>'+esc(x[1])+'</span></div>').join("")+'</div><button type="button" id="refinePropertyBtn">Affiner mon estimation →</button><small>Vous choisissez les informations à ajouter.</small>';
  $("#refinePropertyBtn").onclick=()=>$("#editPropertyBtn")?.click();
-}\nfunction renderListingResearch(research){
+}
+function renderListingResearch(research){
  const el=$("#listingResearchStatus");
  if(!el)return;
  const x=research||{};
