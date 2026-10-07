@@ -1814,7 +1814,7 @@ async function pollListingResearch(token){
  open.addEventListener("click",()=>{
    const d=pageData.space||getSpace(), cd=d.conditionData||{};
    set("PropertyType",d.propertyType);set("Surface",d.surface);set("Rooms",d.rooms);set("Terrain",d.terrain);set("Dpe",d.dpe);
-   set("GeneralState",cd.generalState);set("Works",cd.works);set("Extras",cd.extras);set("ConditionNotes",cd.conditionNotes);
+   set("GeneralState",cd.generalState);set("Works",cd.works);set("Extras",cd.extras);set("ConditionNotes",cd.notes);
    modal.classList.add("open");modal.setAttribute("aria-hidden","false");
  });
  modal.querySelectorAll("[data-close-property]").forEach(x=>x.addEventListener("click",close));
