@@ -960,7 +960,7 @@ section:has(.method-card){
 </section>
 
 <section class="section">
- <div class="head"><div><div class="eyebrow">05 · AUTOUR DE L'ADRESSE</div><h2>Les ventes qui ressemblent à votre bien</h2></div><div class="source">Moteur JML</div></div>
+ <div class="head"><div><div class="eyebrow">05 · COMPARABLES OFFICIELS</div><h2>Les ventes qui ressemblent à votre bien</h2></div><div class="source">DVF+ · Cerema</div></div>
  <div class="card">
   <div class="reference" id="compSummary"><div class="ref-main"><h3>Recherche locale</h3><div class="ref-value">—</div><p>Le moteur recherche d'abord les ventes proches, puis élargit progressivement si nécessaire.</p></div><div class="ref-list"><div class="ref-row"><b>Adresse géolocalisée</b><span>—</span></div><div class="ref-row"><b>Périmètre</b><span>—</span></div><div class="ref-row"><b>Ventes retenues</b><span>—</span></div></div></div>
   <div style="margin-top:10px"><div class="comps" id="comps"><div class="loading">Recherche des comparables…</div></div></div>
@@ -1397,7 +1397,9 @@ function renderComps(c){
  '<div class="ref-row"><b>Médiane des comparables</b><span>'+esc(c.median!=null?m2(c.median):"—")+'</span></div>'+
  '<div class="ref-row"><b>Dispersion des ventes</b><span>'+esc(c.q1!=null&&c.q3!=null?"Zone centrale : "+m2(c.q1)+" à "+m2(c.q3)+(c.spreadPct!=null?" · "+String(c.spreadPct).replace(".",",")+" % d’écart":""):"—")+'</span></div>'+
  '<div class="ref-row"><b>DPE des comparables</b><span>'+esc(dpeChecked?dpeFound+" / "+dpeChecked+" retrouvé"+(dpeFound>1?"s":"")+" via ADEME":"Recherche ADEME non concluante")+'</span></div>'+
- '<div class="ref-row"><b>Très proches</b><span>'+esc(c.closeCount??"0")+'</span></div></div>';
+ '<div class="ref-row"><b>Très proches</b><span>'+esc(c.closeCount??"0")+'</span></div>'+
+ '<div class="ref-row"><b>Même rue</b><span>'+esc(Array.isArray(c.sameStreet)?c.sameStreet.length:"0")+'</span></div>'+
+ '<div class="ref-row"><b>Source officielle</b><span>DVF+ · Cerema</span></div></div>';
  const rows=Array.isArray(c.sales)?c.sales:[];
  if(!rows.length){$("#comps").innerHTML='<div class="empty">Aucun comparable exploitable dans le délai disponible. Les chiffres communaux restent affichés séparément.</div>';return}
  const renderCompRows=(list)=>list.map(s=>{
