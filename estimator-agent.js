@@ -304,17 +304,25 @@ async function runPAPAdapter(page,input){
   const full=[input.address,input.postalCode,input.city].filter(Boolean).join(", ");
   const okAddress=await fillLabel(page,["Adresse du bien","Adresse"],full);
   if(!okAddress) return {status:"form_not_found",reason:"Champ adresse PAP introuvable"};
-  await page.waitForTimeout(1000);
-  const options=page.locator('[role="option"],li,[class*="autocomplete"],[class*="suggest"]');
+  await page.waitForTimeout(1200);
+  const options=page.locator('[role="option"],li,[class*="autocomplete"],[class*="suggest"],[class*="address"]');
   const count=await options.count().catch(()=>0);
-  for(let i=0;i<Math.min(count,12);i++){
-    const o=options.nth(i), txt=(await o.innerText().catch(()=>"")).trim().toLowerCase();
-    if(txt && ((input.city&&txt.includes(String(input.city).toLowerCase()))||(input.postalCode&&txt.includes(String(input.postalCode))))){
-      await o.click({timeout:2000}).catch(()=>{}); break;
+  let selected=false;
+  for(let i=0;i<Math.min(count,20);i++){
+    const o=options.nth(i), txt=(await o.innerText().catch(()=>"" )).trim().toLowerCase();
+    if(txt && ((input.city&&txt.includes(String(input.city).toLowerCase()))||(input.postalCode&&txt.includes(String(input.postalCode)))||(input.address&&txt.includes(String(input.address).toLowerCase())))){
+      await o.click({timeout:2500}).catch(()=>{});
+      selected=true;
+      break;
     }
   }
-  await chooseOption(page,[/maison/i.test(String(input.propertyType||""))?"Maison":"Appartement"]);
-  await fillLabel(page,["Surface du bien","Surface"],input.surface);
+  if(!selected){
+    await page.keyboard.press("ArrowDown").catch(()=>{});
+    await page.keyboard.press("Enter").catch(()=>{});
+  }
+  const isHouse=/maison/i.test(String(input.propertyType||""));
+  await chooseOption(page,[isHouse?"Maison":"Appartement"]);
+  await fillLabel(page,["Surface du bien","Surface","m²","m2"],input.surface);
   await fillLabel(page,["Nombre de pièces","Pièces","pieces"],input.rooms);
   await fillLabel(page,["Terrain","Surface du terrain"],input.terrain);
   return {status:"form_filled"};
