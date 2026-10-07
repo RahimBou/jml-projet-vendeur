@@ -2,6 +2,7 @@
 
 process.env.PLAYWRIGHT_BROWSERS_PATH=process.env.PLAYWRIGHT_BROWSERS_PATH||"0";
 const { chromium } = require("playwright");
+// JML estimator agent v2: adapters robustes + exécution parallèle + extraction renforcée
 const { execFileSync } = require("child_process");
 
 let chromiumReady=false;
@@ -411,6 +412,10 @@ async function runEstimatorAgent(input={}){
             'button:has-text("Obtenir")',
             'button:has-text("Calculer")',
             'button:has-text("Voir mon estimation")',
+            'button:has-text("Obtenir mon estimation")',
+            'button:has-text("Voir l\'estimation")',
+            'button:has-text("Découvrir mon estimation")',
+            'button:has-text("Calculer mon estimation")',
             'button[type="submit"]',
             'input[type="submit"]'
           ]);
@@ -424,13 +429,17 @@ async function runEstimatorAgent(input={}){
           if(await detectCaptcha(page)) break;
         }
 
-        await waitForResult(page,8000);
-        await page.waitForTimeout(1200);
+        await waitForResult(page,20000);
+        await page.waitForTimeout(1800);
         if(await detectCaptcha(page)){
           return {id,name:site.name,status:"manual_required",reason:"CAPTCHA après soumission",url:page.url(),elapsedMs:Date.now()-started};
         }
 
-        const text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+        let text=(await page.locator("body").innerText().catch(()=>"" )).slice(0,30000);
+        try{
+          const frameTexts=await Promise.all(page.frames().map(fr=>fr.locator("body").innerText().catch(()=>"" )));
+          text=[text,...frameTexts].filter(Boolean).join(" ").replace(/\s+/g," ").slice(0,50000);
+        }catch(_){}
         const values=moneyValues(text);
         const domEstimate=extractEstimate(text) || extractEstimateFromCandidates(values,text);
         const networkEstimate=networkEstimates.length ? networkEstimates[networkEstimates.length-1] : null;
@@ -450,8 +459,7 @@ async function runEstimatorAgent(input={}){
         await context.close().catch(()=>{});
       }
     };
-    const results=[];
-    for(const id of requested){ results.push(await runOne(id)); }
+    const results=await Promise.all(requested.map(id=>runOne(id)));
     return {ok:true,results};
   }finally{
     await browser.close().catch(()=>{});
