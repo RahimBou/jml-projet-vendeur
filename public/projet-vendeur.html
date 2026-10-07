@@ -52,7 +52,7 @@ form{display:grid;grid-template-columns:1fr;gap:18px 40px}
 .opt{grid-column:1/-1;display:flex;align-items:center;gap:10px;background:#f1eee8;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:600;border:0;font-family:inherit;color:var(--ink);cursor:pointer;text-align:left}
 .opt b{width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;display:grid;place-items:center}
 .opt em{font-weight:400;font-style:normal}
-.extra{grid-column:1/-1;display:none;gap:12px;grid-template-columns:1fr 1fr}
+.extra{grid-column:1/-1;display:none;gap:12px;grid-template-columns:1fr 1fr}.edit-only-extra{display:none}.edit-mode .edit-only-extra{display:grid}
 .extra.on{display:grid}
 .bottom{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
 .chk{display:flex;gap:10px;font-size:12px;color:#4a524c;max-width:560px}
@@ -789,21 +789,18 @@ h1 span{color:var(--gold2);display:block}
     <div class="f"><span class="n">04</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
     <div class="f"><span class="n">05</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
     <div class="f"><span class="n">06</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
-    <button type="button" class="opt" id="opt" aria-expanded="false"><b>+</b>Ajouter les caractéristiques utiles à l’analyse <em>(facultatif)</em></button>
-    <div class="extra" id="extra" aria-hidden="true">
-  <div class="extra-section-title full-extra">01 · LOCALISATION & DIMENSIONS</div>
+    <div class="f compact-property"><span class="n">07</span><div><label for="surface" id="surfaceLabel">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div></div>
+    <div class="f compact-property"><span class="n">08</span><div><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div></div>
+    <div class="f compact-property" id="terrainField"><span class="n">09</span><div><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div></div>
+    <div class="extra edit-only-extra" id="extra" aria-hidden="true">
+  <div class="extra-section-title full-extra">INFORMATIONS COMPLÉMENTAIRES — MODIFICATION</div>
   <div class="extra-field full-extra"><label for="adresse">Adresse du bien</label><div class="in"><input id="adresse" type="text" autocomplete="street-address" placeholder="Numéro et rue"></div></div>
-  <div class="extra-field" id="surfaceField"><label for="surface">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div>
-  <div class="extra-field" id="terrainField"><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div>
-  <div class="extra-field" id="piecesField"><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div>
-  <div class="extra-section-title full-extra">02 · ÉNERGIE & ÉTAT</div>
-  <div class="extra-field"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
+  <div class="extra-field" id="dpeField"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
   <div class="extra-field"><label for="generalState">État général</label><div class="in"><select id="generalState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></div></div>
   <div class="extra-field"><label for="works">Travaux à prévoir</label><div class="in"><select id="works"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></div></div>
   <div class="extra-field"><label for="garage">Garage / stationnement</label><div class="in"><select id="garage"><option value="">Non renseigné</option><option>Garage</option><option>Parking / stationnement</option><option>Garage + stationnement</option><option>Sans garage / stationnement</option><option>Ne sait pas</option></select></div></div>
   <div class="extra-field"><label for="roof">Toiture</label><div class="in"><select id="roof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></div></div>
   <div class="extra-field"><label for="renovation">Rénovation récente</label><div class="in"><select id="renovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></div></div>
-  <div class="extra-section-title full-extra">03 · ÉQUIPEMENTS & PRESTATIONS</div>
   <div class="extra-field"><label for="electricity">Électricité</label><div class="in"><select id="electricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></div></div>
   <div class="extra-field"><label for="insulation">Isolation</label><div class="in"><select id="insulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></div></div>
   <div class="extra-field"><label for="heating">Chauffage</label><div class="in"><select id="heating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></div></div>
@@ -812,7 +809,6 @@ h1 span{color:var(--gold2);display:block}
   <div class="extra-field"><label for="bathrooms">Salle(s) de bains</label><div class="in"><select id="bathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></div></div>
   <div class="extra-field"><label for="facade">Façade</label><div class="in"><select id="facade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></div></div>
   <div class="extra-field"><label for="extras">Extérieurs / dépendances</label><div class="in"><select id="extras"><option value="">Non renseigné</option><option>Jardin / terrain</option><option>Terrasse</option><option>Dépendances</option><option>Jardin + dépendances</option><option>Aucun</option></select></div></div>
-  <div class="extra-section-title full-extra">04 · PRÉCISIONS</div>
   <div class="extra-field full-extra"><label for="conditionNotes">Précisions utiles sur l’état du bien</label><div class="in"><input id="conditionNotes" type="text" maxlength="300" placeholder="Ex. toiture refaite en 2023, garage double, électricité à prévoir…"></div></div>
 </div>
     <div class="bottom"><label class="chk"><input type="checkbox" required>J'accepte que JML Immobilier utilise ces informations pour me recontacter au sujet de mon projet immobilier. J’ai pris connaissance du caractère facultatif des informations non nécessaires à la prise de contact.</label><button class="btn" type="submit">Échanger sur mon projet →</button></div>
@@ -855,11 +851,7 @@ Lorsque les informations sur votre bien sont suffisamment complètes, le repère
   }
   if(typeEl){typeEl.addEventListener('change',adaptPropertyFields);adaptPropertyFields();}
 })();
-document.getElementById('opt').onclick=function(){
-  var e=document.getElementById('extra'),o=e.classList.toggle('on');
-  this.setAttribute('aria-expanded',o);
-  e.setAttribute('aria-hidden',!o);
-};
+
 const editParams=new URLSearchParams(location.search);
 const editToken=editParams.get("editToken")||"";
 async function loadEditSellerSpace(){
@@ -882,7 +874,7 @@ async function loadEditSellerSpace(){
     var cd=d.conditionData||{};
     ["generalState","works","garage","roof","renovation","electricity","insulation","heating","windows","kitchen","bathrooms","facade","extras"].forEach(function(id){var el=document.getElementById(id);if(el)el.value=cd[id]||"";});
     document.getElementById('conditionNotes').value=cd.notes||"";
-    document.getElementById('opt').click();
+    var extraEdit=document.getElementById('extra'); if(extraEdit){extraEdit.classList.add('on');extraEdit.setAttribute('aria-hidden','false');}
     var button=document.querySelector('#form .btn'); if(button)button.textContent='Enregistrer mes modifications →';
     var ok=document.getElementById('ok'); if(ok){ok.style.display='block';ok.textContent='Vos informations sont chargées. Vous pouvez les corriger puis les enregistrer.';}
     var nom=document.getElementById('nom'); if(nom)nom.value="";
@@ -891,6 +883,7 @@ async function loadEditSellerSpace(){
     var ok=document.getElementById('ok'); if(ok){ok.style.display='block';ok.textContent=error.message||'Impossible de charger votre espace vendeur.';}
   }
 }
+if(editToken){document.body.classList.add("edit-mode");}
 loadEditSellerSpace();
 
 document.getElementById('form').onsubmit=async function(ev){
