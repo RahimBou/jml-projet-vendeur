@@ -602,6 +602,17 @@ h1,h2,h3{
   color:#24685b!important;
   border-color:#cfe1d8!important;
 }
+.comp.same-street{
+  border:2px solid #2d7a68;
+  box-shadow:0 7px 20px rgba(45,122,104,.14);
+}
+.pill.same-street-pill{
+  background:#dff1e8!important;
+  color:#1d6b57!important;
+  border:1px solid #9ccfb9!important;
+  font-size:7.5px;
+  padding:5px 9px;
+}
 .comp-sector{
   background:#f3f0e8!important;
   color:#6d654f!important;
@@ -1227,8 +1238,9 @@ function renderComps(c){
   const roomsClose=Number.isFinite(rooms)&&Number.isFinite(subjectRooms)&&subjectRooms>0?Math.abs(rooms-subjectRooms)<=1:false;
   const sameStreet=!!s.sameStreet;
   const veryClose=Number.isFinite(distance)&&distance<=0.5;
-  const proximity=sameStreet?"Même rue":(veryClose?"Très proche":"Secteur proche");
-  const proximityClass=sameStreet||veryClose?"comp-strong":"comp-sector";
+  const proximity=sameStreet?"★ MÊME RUE":(veryClose?"Très proche":"Secteur proche");
+  const proximityClass=sameStreet?"comp-strong same-street-pill":(veryClose?"comp-strong":"comp-sector");
+  const articleClass=sameStreet?"comp same-street":"comp";
   const finalPrice=Number.isFinite(Number(s.price))&&Number(s.price)>0?eur(s.price):"Prix non disponible";
   const roomsText=Number.isFinite(rooms)&&rooms>0?String(Math.round(rooms))+" pièces":"";
   const dpeText=s.dpe?String(s.dpe).toUpperCase():"";
@@ -1255,7 +1267,7 @@ function renderComps(c){
     reasonTitle="Repère de secteur";
     reasonText="Vente plus éloignée, conservée pour compléter la lecture du marché local.";
   }
-  return '<article class="comp">'+
+  return '<article class="'+articleClass+'">'+
     '<div class="comp-top"><div><b>'+esc(s.type||"Bien")+'</b><span class="comp-source">VENTE RÉELLE</span></div><span class="pill '+proximityClass+'">'+esc(proximity)+'</span></div>'+
     '<div class="comp-price"><span>PRIX DE VENTE FINAL</span><strong>'+esc(finalPrice)+'</strong></div>'+
     '<div class="comp-address">'+esc(s.address||"Adresse non renseignée")+'</div>'+
