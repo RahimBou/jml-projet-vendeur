@@ -1776,7 +1776,7 @@ function renderCharacteristicAnalysis(analysis){
  el.innerHTML='<div class="agent-adjustment">'+
  '<div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Le DVF reste la base · les écarts sont mesurés localement</b></div>'+
  '<div class="agent-adjustment-grid">'+
- '<div><small>REPÈRE DVF</small><strong>'+esc(eur(base.value))+'</strong><span>'+esc((base.m2||"—").toLocaleString?Math.round(base.m2).toLocaleString("fr-FR")+" €/m²": "—")+'</span></div>'+
+ '<div><small>REPÈRE DVF</small><strong>'+esc(eur(base.value))+'</strong><span>'+esc(Number.isFinite(Number(base.m2))?Math.round(Number(base.m2)).toLocaleString("fr-FR")+" €/m²":"—")+'</span></div>'+
  '<div><small>POSITIONNEMENT INDICATIF</small><strong>'+esc(value)+'</strong><span>Fourchette '+esc(low)+' → '+esc(high)+'</span></div>'+
  '</div>'+
  '<div class="agent-adjustment-rows">'+rowHtml+'</div>'+
@@ -1858,6 +1858,7 @@ async function run(){
   pageData.space=d;
   setProject(d);
   renderListingResearch(d.listingResearch);
+  renderCharacteristicAnalysis(d.estimatorAgent?.valuationAnalysis||null);
   pollListingResearch(d.token||new URLSearchParams(location.search).get("token"));
  addDiag("Page / navigateur","JML-D001",PAGE_BUILD+" · données du projet récupérées depuis l’espace vendeur / URL");
  $("#status").textContent="Dossier chargé · recherche des données locales…";
