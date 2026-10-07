@@ -1019,8 +1019,12 @@ const eur=v=>n(v)!=null?Math.round(Number(v)).toLocaleString("fr-FR")+" €":"�
 const m2=v=>n(v)!=null?Math.round(Number(v)).toLocaleString("fr-FR")+" €/m²":"—";
 const fmtDate=v=>v?String(v).slice(0,10):"—";
 
+function getSellerOverrideKey(){
+ const token=new URLSearchParams(location.search).get("token");
+ return "jml-seller-overrides-v1:"+((token||"local").trim()||"local");
+}
 function getSellerOverrides(){
- try{return JSON.parse(localStorage.getItem("jml-seller-overrides-v1")||"{}")}catch(e){return {}}
+ try{return JSON.parse(localStorage.getItem(getSellerOverrideKey())||"{}")}catch(e){return {}}
 }
 function mergeSellerOverrides(space){
  const o=getSellerOverrides();
@@ -1945,7 +1949,7 @@ async function pollListingResearch(token){
    const overrides={
      propertyType:get("PropertyType"),address:get("Address"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData
    };
-   try{localStorage.setItem("jml-seller-overrides-v1",JSON.stringify(overrides));}catch(e){}
+   try{localStorage.setItem(getSellerOverrideKey(),JSON.stringify(overrides));}catch(e){}
    close();
    location.reload();
  });
