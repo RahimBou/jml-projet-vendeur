@@ -3652,8 +3652,9 @@ function buildSellerCharacteristicAnalysis(space,comp,listingsData){
   else{const a=dpeRows.filter(x=>String(x.dpe).toUpperCase()===dpe).map(x=>Number(x.pricePerM2)),ref=dpeRows.filter(x=>String(x.dpe).toUpperCase()==="D").map(x=>Number(x.pricePerM2));if(a.length>=3&&ref.length>=3){let pct=((medianNumber(a)/medianNumber(ref))-1)*100;pct=Math.max(-15,Math.min(15,pct));total+=pct;adjustments.push(sellerAdjustment("DPE",pct,a.length+ref.length,"Bonne","Écart observé sur des ventes comparables avec DPE ADEME.",baseline));}else adjustments.push(sellerAdjustment("DPE",0,a.length+ref.length,"Non mesurable","Pas assez de comparables locaux avec DPE exploitable.",baseline));}
  }
  const declaredGarage=String(space?.conditionData?.garage||"").toLowerCase();
+ const garageRelevant=declaredGarage.includes("garage")||declaredGarage.includes("sans garage");
  const gr=listings.filter(x=>x?.features&&typeof x.features.garage==="boolean"&&Number.isFinite(Number(x.priceM2))),gy=gr.filter(x=>x.features.garage).map(x=>Number(x.priceM2)),gn=gr.filter(x=>!x.features.garage).map(x=>Number(x.priceM2));
- if(declaredGarage&&declaredGarage!=="non renseigné"&&declaredGarage!=="ne sait pas"){
+ if(garageRelevant&&declaredGarage!=="non renseigné"&&declaredGarage!=="ne sait pas"){
   if(gy.length>=3&&gn.length>=3){let pct=((medianNumber(gy)/medianNumber(gn))-1)*100;pct=Math.max(-8,Math.min(8,pct));if(declaredGarage.includes("sans")||declaredGarage.includes("non"))pct=-pct;total+=pct;adjustments.push(sellerAdjustment("Garage",pct,gr.length,"Indicatif","Écart observé sur des annonces comparables ; signal de positionnement et non transaction DVF.",baseline));}
   else adjustments.push(sellerAdjustment("Garage",0,gr.length,"Non mesurable","Pas assez d'annonces comparables documentées pour isoler sa valeur.",baseline));
  }
