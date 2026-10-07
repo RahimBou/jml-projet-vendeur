@@ -418,8 +418,9 @@ async function runPAPFlow(page,input){
   const adapter=await runPAPAdapter(page,input);
   if(adapter.status!=="form_filled") return adapter;
 
-  // Le premier appel peut déjà avoir franchi les deux premiers écrans.
-  // On termine avec le bouton final "Obtenir mon estimation".
+  // PAP peut afficher le résultat sans e-mail. On tente donc toujours la soumission
+  // avec le champ e-mail laissé vide si aucune adresse professionnelle n'est configurée.
+  let finalClicked=false;
   for(let i=0;i<3;i++){
     if(await clickButtonText(page,[
       "Obtenir mon estimation",
@@ -428,7 +429,8 @@ async function runPAPFlow(page,input){
       "Calculer mon estimation",
       "Estimer"
     ])){
-      await page.waitForTimeout(2500);
+      finalClicked=true;
+      await page.waitForTimeout(3500);
       break;
     }
     const next=await clickButtonText(page,["Continuer","Poursuivre","Suivant"]);
@@ -436,7 +438,7 @@ async function runPAPFlow(page,input){
     await page.waitForTimeout(1000);
   }
 
-  return adapter;
+  return {...adapter,finalClicked};
 }
 
 async function runSeLogerAdapter(page,input){
@@ -519,13 +521,9 @@ async function runEstimatorAgent(input={}){
           if(adapter.status==="form_not_found"){
             return {id,name:site.name,status:adapter.status,reason:adapter.reason,url:page.url(),elapsedMs:Date.now()-started};
           }
-          if(adapter.status==="form_filled" && !adapter.emailConfigured){
-            return {
-              id,name:site.name,status:"manual_required",
-              reason:"PAP demande un e-mail à l'étape finale. Configurez PAP_ESTIMATOR_EMAIL sur Render pour automatiser cette dernière étape.",
-              url:page.url(),elapsedMs:Date.now()-started,excerpt:adapter.note
-            };
-          }
+          // Ne pas bloquer l'agent si aucun e-mail n'est configuré :
+          // PAP peut fournir le résultat directement sans inscription.
+          // Si PAP exige réellement un e-mail, l'analyse finale ci-dessous le détectera.
         }else{
           adapter=await runSpecificAdapter(page,id,input);
           if(adapter.status==="form_not_found"){
@@ -578,6 +576,14 @@ async function runEstimatorAgent(input={}){
         const domEstimate=extractEstimate(text) || extractEstimateFromCandidates(values,text);
         const networkEstimate=networkEstimates.length ? networkEstimates[networkEstimates.length-1] : null;
         const estimate=networkEstimate || domEstimate;
+        if(id==="pap" && !estimate && !adapter.emailConfigured &&
+           /adresse e-mail|e-mail|email/i.test(text)){
+          return {
+            id,name:site.name,status:"manual_required",
+            reason:"PAP a bloqué l'affichage du résultat et demande un e-mail. Aucun e-mail n'a été envoyé automatiquement.",
+            url:page.url(),elapsedMs:Date.now()-started,excerpt:text.slice(0,1200)
+          };
+        }
         return {
           id,name:site.name,
           status:estimate?"value_found":values.length?"candidates_found":"no_value",
