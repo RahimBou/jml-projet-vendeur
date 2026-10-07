@@ -847,7 +847,7 @@ section:has(.method-card){
 .seller-next-step button{border:0;border-radius:999px;padding:11px 17px;background:#173b32;color:#fff;font-weight:800;font-size:10px;cursor:pointer}
 .seller-next-step small{margin-left:8px;color:#7b817d;font-size:8px}
 @media(max-width:760px){.seller-next-step-grid{grid-template-columns:1fr 1fr}.seller-next-step button{width:100%}.seller-next-step small{display:block;margin:7px 0 0}}
-</style></head>
+<style id="property-reset-ui">.property-modal-actions{flex-wrap:wrap}.property-reset-btn{color:#6b5b3d;border-color:#d8c7a5;background:#fbf7ed}.property-reset-btn:hover{background:#f4ead6}</style></style></head>
 <body>
 <main class="wrap">
 <section class="hero jml-architecture jml-architecture ardenne-visual">
@@ -1006,7 +1006,7 @@ section:has(.method-card){
       <label class="full">Précisions utiles<textarea id="editConditionNotes" maxlength="300" placeholder="Ex. toiture refaite en 2023, garage double, électricité à prévoir…"></textarea></label>
     </div>
     <div class="property-modal-note">Ces corrections servent uniquement à affiner le repère de marché du bien.</div>
-    <div class="property-modal-actions"><button type="button" class="secondary-btn" data-close-property>Annuler</button><button type="button" class="primary-btn" id="savePropertyEdits">Enregistrer et recalculer</button></div>
+    <div class="property-modal-actions"><button type="button" class="secondary-btn" data-close-property>Annuler</button><button type="button" class="secondary-btn property-reset-btn" id="resetAddedCharacteristics" title="Effacer les caractéristiques ajoutées après le premier repère">↻ Réinitialiser les caractéristiques</button><button type="button" class="primary-btn" id="savePropertyEdits">Enregistrer et recalculer</button></div>
   </div>
 </div>
 
@@ -1864,6 +1864,31 @@ async function pollListingResearch(token){
  });
  modal.querySelectorAll("[data-close-property]").forEach(x=>x.addEventListener("click",close));
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close()});
+ const reset=$("#resetAddedCharacteristics");
+ reset?.addEventListener("click",async()=>{
+   const d=pageData.space||getSpace(),token=new URLSearchParams(location.search).get("token")||d.token;
+   if(!token){alert("Lien vendeur invalide.");return;}
+   if(!confirm("Effacer les caractéristiques ajoutées et revenir à votre repère de départ ?"))return;
+   const original=reset.textContent;reset.disabled=true;reset.textContent="Réinitialisation…";
+   try{
+     const response=await fetch("/api/seller-space/"+encodeURIComponent(token),{
+       method:"PATCH",headers:{"Content-Type":"application/json"},
+       body:JSON.stringify({
+         city:d.city,address:d.address,propertyType:d.propertyType,surface:d.surface,rooms:d.rooms,
+         terrain:d.terrain,dpe:d.dpe,conditionData:{}
+       })
+     });
+     const data=await response.json().catch(()=>({}));
+     if(!response.ok)throw new Error(data.error||"Impossible de réinitialiser les caractéristiques.");
+     try{localStorage.removeItem(getSellerOverrideKey());}catch(_e){}
+     pageData.space=data.space||{...d,conditionData:{}};
+     close();
+     location.reload();
+   }catch(error){
+     reset.disabled=false;reset.textContent=original;
+     alert(error.message||"Impossible de réinitialiser les caractéristiques.");
+   }
+ });
  save.addEventListener("click",async()=>{
    const d=pageData.space||getSpace(), oldCd=d.conditionData&&typeof d.conditionData==="object"?d.conditionData:{};
    const conditionData={
