@@ -744,33 +744,6 @@ section:has(.method-card){
   #sellerReading{padding:13px}
 }
 .jml-follow-block{position:relative;width:100%;max-width:none;margin:17px auto 10px;padding:16px 20px 13px;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;column-gap:9px;row-gap:9px;box-sizing:border-box;border:1px solid rgba(184,148,78,.32);border-radius:17px;background:var(--g);box-shadow:0 8px 20px rgba(23,59,50,.10);overflow:hidden}.jml-follow-block:before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,transparent,#d7b45b 22%,#f0d68e 50%,#d7b45b 78%,transparent)}.jml-follow-block:after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% -35%,rgba(255,255,255,.09),transparent 46%)}.jml-follow-name{position:relative;z-index:1;flex-basis:100%;line-height:1.2;text-align:center;font-size:13px;letter-spacing:.015em;color:#fff;font-weight:900}.jml-follow-name small{display:inline-block;margin-top:4px;font-size:8px;letter-spacing:.12em;color:#ead28f;font-weight:800}.jml-follow-block>a{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;min-width:94px;padding:8px 12px;border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.11);color:#fff;text-decoration:none;font-size:8.5px;font-weight:900;letter-spacing:.01em}.jml-agency-link{position:relative;z-index:1;flex-basis:100%;display:flex;justify-content:center;align-items:center;gap:8px;margin:1px 0 0;padding-top:9px;border-top:1px solid rgba(255,255,255,.16)}.jml-agency-link span{font-size:8px;color:#d3ded9}.jml-agency-link a{font-weight:900;color:#173b32;text-decoration:none;font-size:9px;padding:7px 13px;border-radius:999px;background:#f0d68e;box-shadow:0 3px 8px rgba(0,0,0,.10)}@media(max-width:520px){ .jml-follow-block{width:100%;margin-top:18px;padding:16px 12px 13px;column-gap:6px}.jml-follow-name{font-size:11px}.jml-follow-block>a{min-width:82px;padding:8px;font-size:7.5px}.jml-agency-link{padding-top:9px}}
-/* SYNTHÈSE AUTOMATIQUE DES REPÈRES DE MARCHÉ */
-.external-bench-card{display:grid;grid-template-columns:1.15fr .85fr;gap:12px}
-.external-summary{background:var(--g);color:#fff;border-radius:15px;padding:18px;border-left:4px solid var(--gold)}
-.external-summary .kicker{font-size:8px;font-weight:900;letter-spacing:.12em;color:var(--gold)}
-.external-summary h3{font:700 25px Georgia,serif;margin:6px 0}
-.external-summary .big{font:700 34px Georgia,serif;color:var(--gold);margin:8px 0}
-.external-summary p{font-size:9px;line-height:1.5;color:#dbe7e0;margin:0}
-.external-sources{display:grid;gap:8px}
-.external-source{background:#faf6ee;border:1px solid var(--line);border-radius:12px;padding:10px}
-.external-source-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.external-source b{font-size:10px;color:var(--g)}
-.external-source small{display:block;color:var(--muted);font-size:7.5px;margin-top:3px;line-height:1.3}
-.external-source a{font-size:8px;font-weight:900;color:var(--g);text-decoration:none;white-space:nowrap}
-.external-source-status{font-size:8px;font-weight:900;color:#53645b;margin-top:8px}
-.external-source-status strong{color:var(--g)}
-.external-note{margin-top:8px;padding:9px 10px;border-radius:9px;background:#f4f0e7;color:#66716b;font-size:8px;line-height:1.45}
-.external-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
-.external-stat{background:#fff;border:1px solid #e7dfd1;border-radius:10px;padding:9px}
-.external-stat span{display:block;color:#7a827d;font-size:7px;text-transform:uppercase;font-weight:900}
-.external-stat strong{display:block;color:var(--g);font-size:13px;margin-top:4px}
-.external-self-check{margin-top:10px;padding:10px 11px;border:1px solid #e5dbc9;border-radius:11px;background:#fffdf8}
-.external-self-check>b{display:block;color:var(--g);font-size:9px}
-.external-self-check>span{display:block;margin-top:3px;color:var(--muted);font-size:8px;line-height:1.4}
-.external-self-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.external-self-links a{display:inline-flex;padding:7px 9px;border-radius:999px;background:#eef2ed;color:var(--g);text-decoration:none;font-size:7.5px;font-weight:900}
-@media(max-width:760px){.external-bench-card{grid-template-columns:1fr}}
-
 </style>
 <style id="jml-condition-reading">
 .condition-reading{margin-top:12px;padding:12px;border:1px solid #e4dccd;border-radius:11px;background:#fbf8f0}
@@ -902,9 +875,9 @@ section:has(.method-card){
 </section>
 
 <section class="section">
- <div class="head"><div><div class="eyebrow">03 · REPÈRE VENDEUR</div><h2>Votre repère de marché</h2></div><div class="source">Indicatif · non certifié</div></div>
+ <div class="head"><div><div class="eyebrow">03 · AGENT DVF</div><h2>Agent DVF — ventes réelles</h2></div><div class="source">DVF+ · Cerema</div></div>
  <div class="card reference" id="reference">
-  <div class="ref-main"><h3>Valeur de référence</h3><div class="ref-value">—</div><p>—</p></div>
+  <div class="ref-main"><h3>Analyse automatique des ventes</h3><div class="ref-value">—</div><p>—</p></div>
   <div class="ref-list"><div class="ref-row"><b>Repère au m²</b><span>—</span></div><div class="ref-row"><b>Ventes prises en compte</b><span>—</span></div><div class="ref-row"><b>Nature du repère</b><span>—</span></div></div>
  </div>
  <div class="seller-reading" id="sellerReading">
@@ -922,37 +895,6 @@ section:has(.method-card){
  </div>
 </section>
 
-
-<section class="section" id="externalBenchmarks">
- <div class="head"><div><div class="eyebrow">04 · REPÈRE MARCHÉ</div><h2>Contre-vérification automatique</h2></div><div class="source">Sources publiques</div></div>
- <div class="card external-bench-card">
-  <div>
-   <div class="external-summary">
-    <div class="kicker">SYNTHÈSE JML + MARCHÉ</div>
-    <h3>Repère de valeur</h3>
-    <div class="big" id="externalConsensus">Analyse…</div>
-    <p id="externalConsensusText">Le logiciel compare automatiquement notre moteur JML avec les repères publics disponibles pour cette adresse. Le vendeur n'a rien à saisir.</p>
-    <div class="external-stats">
-      <div class="external-stat"><span>Notre moteur JML</span><strong id="externalJmlValue">—</strong></div>
-      <div class="external-stat"><span>Repères externes</span><strong id="externalCount">—</strong></div>
-      <div class="external-stat"><span>Médiane marché</span><strong id="externalMedian">—</strong></div>
-      <div class="external-stat"><span>Écart JML</span><strong id="externalGap">—</strong></div>
-    </div>
-   </div>
-   <div class="external-note" id="externalNote">Analyse automatique en cours à partir de sources publiques accessibles. Les résultats restent indicatifs et ne remplacent pas un avis de valeur professionnel.</div>
-  </div>
-  <div>
-   <div class="external-sources" id="externalSources"></div>
-   <div id="estimatorAgentStatus" style="margin:12px 0;padding:12px 14px;border:1px solid #dfe8e5;border-radius:12px;background:#f7faf9;font-size:13px;line-height:1.45;display:block"><b>🤖 Agent estimateur</b><br>Préparation…</div>
-   <div id="listingResearchStatus" style="margin:10px 0;padding:12px 14px;border:1px solid #e4ebe8;border-radius:12px;background:#fff;font-size:13px;line-height:1.45"><b>🔎 Agent marché</b><br>Recherche des annonces comparables…</div>
-   <div class="external-self-check">
-    <b>Vous souhaitez vérifier vous-même ?</b>
-    <span>Ces liens restent disponibles en option. Ils ne sont pas nécessaires pour obtenir le repère automatique.</span>
-    <div class="external-self-links" id="externalSelfLinks"></div>
-   </div>
-  </div>
- </div>
-</section>
 
 <section class="section">
  <div class="head"><div><div class="eyebrow">04 · TRANSACTIONS</div><h2>Ventes réelles dans la commune</h2></div><div class="source">DVF</div></div>
@@ -1148,139 +1090,6 @@ function renderSales(rows){
 }
 
 
-const EXTERNAL_ESTIMATORS=[
- {id:"meilleursagents",name:"Meilleurs Agents",url:"https://www.meilleursagents.com/estimation-immobiliere/"},
- {id:"seloger",name:"SeLoger",url:"https://www.seloger.com/estimation-immobiliere.html"},
- {id:"pap",name:"PAP",url:"https://www.pap.fr/vendeur/estimation-gratuite"},
- {id:"efficity",name:"efficity",url:"https://www.efficity.com/estimation-immobiliere/"},
- {id:"orpi",name:"Orpi",url:"https://www.orpi.com/prix-immobilier/"},
- {id:"georegistry",name:"GeoRegistry",url:"https://georegistry.fr/estimation"},
- {id:"bienici",name:"Bien'ici",url:"https://www.bienici.com/estimation"},
- {id:"century21",name:"CENTURY 21",url:"https://www.century21.fr/estimation-immobiliere"},
- {id:"laforet",name:"Laforêt",url:"https://www.laforet.com/estimer"},
- {id:"squarehabitat",name:"Square Habitat",url:"https://www.squarehabitat.fr/estimation"},
- {id:"logicimmo",name:"Logic-Immo",url:"https://www.logic-immo.com/estimation-immobiliere"}
-];
-
-function fmtEuroInput(v){return Number.isFinite(Number(v))?Math.round(Number(v)).toLocaleString("fr-FR")+" €":"—";}
-function renderExternalSelfLinks(){
- const el=$("#externalSelfLinks"); if(!el)return;
- el.innerHTML=EXTERNAL_ESTIMATORS.map(src=>'<a href="'+src.url+'" target="_blank" rel="noopener noreferrer">'+esc(src.name)+' ↗</a>').join("");
-}
-async function loadExternalBenchmarks(){
- const jml=Number(pageData.reference?.referenceValue);
- const d=pageData.space||{};
- $("#externalJmlValue").textContent=Number.isFinite(jml)&&jml>0?fmtEuroInput(jml):"—";
- $("#externalConsensus").textContent="Analyse…";
- $("#externalCount").textContent="—";
- $("#externalMedian").textContent="—";
- $("#externalGap").textContent="—";
- renderExternalSelfLinks();
- try{
-   const qs=new URLSearchParams({
-     city:d.city||"",
-     address:d.address||"",
-     propertyType:d.propertyType||"",
-     surface:d.surface||"",
-     rooms:d.rooms||"",
-     dpe:d.dpe||"",
-     terrain:d.terrain||"",
-     condition:(d.conditionData&&d.conditionData.general)||"",
-     jmlValue:Number.isFinite(jml)?String(jml):""
-   });
-   const data=pageData.externalBenchmarks||await getData("/api/external-market-benchmarks?"+qs.toString(),12000,"Repères externes");
-   pageData.externalBenchmarks=data;
-   let sources=Array.isArray(data.sources)?data.sources:[];
-   // Si les récupérations publiques classiques sont trop pauvres, l'agent
-   // ouvre les formulaires officiels et tente d'en récupérer la valeur personnalisée.
-   const sellerToken=pageData.space?.token||new URLSearchParams(location.search).get("token")||"";
-   if(sellerToken){
-     try{
-       const statusEl=document.getElementById("estimatorAgentStatus");
-       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>Ouverture des formulaires et récupération des valeurs…";}
-       $("#externalNote").textContent="Agent estimateur : récupération des valeurs personnalisées en cours…";
-       const controller=new AbortController(); const agentTimer=setTimeout(()=>controller.abort(),600000); let ar; try{ ar=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},signal:controller.signal}); } finally { clearTimeout(agentTimer); }
-       const aj=await ar.json().catch(()=>({}));
-       if(!ar.ok) throw new Error(aj.detail?((aj.error||"Erreur agent")+" — "+aj.detail):(aj.error||("HTTP "+ar.status)));
-       if(aj.status==="running"){
-         const statusEl=document.getElementById("estimatorAgentStatus");
-         if(statusEl) statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>⏳ Les formulaires sont traités en arrière-plan. Les résultats seront enregistrés automatiquement.";
-         setTimeout(async()=>{
-           try{
-             const poll=await fetch("/api/seller-space/"+encodeURIComponent(sellerToken)+"/estimator-agent",{method:"POST",headers:{"Content-Type":"application/json"},cache:"no-store"});
-             const pj=await poll.json().catch(()=>({}));
-             if(pj.status==="completed") location.reload();
-             else if(pj.status==="error"){
-               const se=document.getElementById("estimatorAgentStatus");
-               if(se) se.innerHTML="<b>🤖 Agent estimateur</b><br>❌ "+esc(pj.error||"Erreur de traitement.");
-             } else location.reload();
-           }catch(_pollError){ location.reload(); }
-         },8000);
-         return;
-       }
-       const agentRows=Array.isArray(aj.results)?aj.results:[];
-       const existing=new Set(sources.map(x=>String(x.id||"").toLowerCase()));
-       const statusNames={};
-       agentRows.forEach(x=>{statusNames[x.name||x.id]=x.status;});
-       if(statusEl){
-         statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>"+agentRows.map(x=>{
-           const label=x.status==="value_found"?"✅ "+esc(x.name)+" : "+fmtEuroInput(x.value):x.status==="manual_required"?"⚠️ "+esc(x.name)+" : "+esc(x.reason||"validation manuelle"):x.status==="candidates_found"?"🟡 "+esc(x.name)+" : valeurs trouvées mais estimation non identifiée":"❌ "+esc(x.name)+" : "+esc(x.error||"valeur non récupérée");
-           return label;
-         }).join("<br>")||"Aucun résultat retourné.";
-       }
-       agentRows.filter(x=>x.status==="value_found"&&Number.isFinite(Number(x.value))).forEach(x=>{
-         const id="agent_"+String(x.id||"").toLowerCase();
-         if(existing.has(id)) return;
-         sources.push({
-           id,name:x.name,level:"address",priceM2:Number(d.surface)>0?Math.round(Number(x.value)/Number(d.surface)):null,
-           value:Math.round(Number(x.value)),low:x.low||null,high:x.high||null,
-           lowM2:x.low&&Number(d.surface)>0?Math.round(Number(x.low)/Number(d.surface)):null,
-           highM2:x.high&&Number(d.surface)>0?Math.round(Number(x.high)/Number(d.surface)):null,
-           url:x.url||"#",quality:"browser_estimate",personalized:true,automatic:true,
-           note:"Valeur récupérée par l'agent JML depuis le formulaire public de l'estimateur."
-         });
-       });
-       const extVals=sources.map(x=>Number(x.value)).filter(v=>Number.isFinite(v)&&v>0).sort((a,b)=>a-b);
-       if(extVals.length){
-         data.externalMedian=extVals.length%2?extVals[(extVals.length-1)/2]:(extVals[extVals.length/2-1]+extVals[extVals.length/2])/2;
-         data.synthesizedValue=Number.isFinite(jml)?(jml+data.externalMedian)/2:data.externalMedian;
-         data.jmlGapPct=jml>0?((jml/data.externalMedian)-1)*100:null;
-       }
-       data.externalCount=sources.length;
-     }catch(agentError){
-       const statusEl=document.getElementById("estimatorAgentStatus");
-       if(statusEl){statusEl.style.display="block";statusEl.innerHTML="<b>🤖 Agent estimateur</b><br>❌ Erreur : "+esc(agentError?.message||"agent indisponible")+".";}
-       $("#externalNote").textContent="L'agent estimateur n'a pas pu terminer. Les repères publics déjà récupérés restent affichés.";
-     }
-   }
-   $("#externalCount").textContent=sources.length+" source"+(sources.length>1?"s":"")+" analysée"+(sources.length>1?"s":"");
-   $("#externalMedian").textContent=Number.isFinite(Number(data.externalMedian))?fmtEuroInput(data.externalMedian):"—";
-   $("#externalGap").textContent=Number.isFinite(Number(data.jmlGapPct))
-     ?((Number(data.jmlGapPct)>=0?"+":"")+Number(data.jmlGapPct).toFixed(1).replace(".",",")+" %")
-     :"—";
-   $("#externalConsensus").textContent=Number.isFinite(Number(data.synthesizedValue))?fmtEuroInput(data.synthesizedValue):"—";
-   $("#externalConsensusText").textContent=data.synthesizedValue
-     ?"Synthèse automatique du moteur JML et des repères publics accessibles. Le résultat sert à vérifier si notre estimation se situe dans le bon ordre de grandeur."
-     :"Le moteur JML reste affiché comme repère principal ; aucun repère externe public exploitable n'a été récupéré automatiquement pour cette adresse.";
-   $("#externalNote").textContent=data.note||"Repères publics indicatifs. Les estimateurs externes peuvent évoluer indépendamment.";
-   const el=$("#externalSources");
-   el.innerHTML=sources.length?sources.map(src=>
-     '<div class="external-source">'+
-       '<div class="external-source-top"><div><b>'+esc(src.name)+'</b><small>'+esc(src.automatic===true ? ((src.level==="address"||src.level==="adresse"||src.level==="exact_address")?"Valeur récupérée automatiquement à l'adresse":"Valeur récupérée automatiquement") : "Vérification externe")+'</small></div>'+
-       '<a href="'+esc(src.url||"#")+'" target="_blank" rel="noopener noreferrer">Voir la source ↗</a></div>'+
-       '<div class="external-source-status">'+esc(src.priceM2.toLocaleString("fr-FR"))+' €/m²'+
-       (src.value?' · soit environ <strong>'+esc(fmtEuroInput(src.value))+'</strong> pour ce bien':'')+
-       '</div>'+
-     '</div>'
-   ).join(""):'<div class="external-source"><b>Aucun repère externe disponible</b><small>Le moteur JML reste utilisé sans inventer de donnée externe.</small></div>';
- }catch(e){
-   $("#externalConsensus").textContent=Number.isFinite(jml)&&jml>0?fmtEuroInput(jml):"—";
-   $("#externalCount").textContent="Indisponible";
-   $("#externalNote").textContent="La contre-vérification externe n'a pas pu être chargée. Le repère JML reste inchangé.";
-   $("#externalSources").innerHTML='<div class="external-source"><b>Repères externes temporairement indisponibles</b><small>Les liens de vérification manuelle restent disponibles ci-dessous.</small></div>';
- }
-}
-
 function renderReference(ref){
  const r=ref||{};
  const value=r.referenceValue;
@@ -1289,36 +1098,35 @@ function renderReference(ref){
  const base=Number(r.basePriceM2);
  const formula=Number.isFinite(surface)&&surface>0&&Number.isFinite(base)&&base>0
    ?surface.toLocaleString("fr-FR")+" m² × "+Math.round(base).toLocaleString("fr-FR")+" €/m² = "+eur(value)
-   :"Repère construit à partir des ventes comparables disponibles";
+   :"Repère construit à partir des ventes DVF comparables";
  pageData.reference=r;
  const comparable=!!r.fromComparables;
  const txLabel=comparable?(r.transactions??"—"):"Contexte communal";
  const nature=r.referenceSource|| (comparable?"Ventes DVF comparables":"Repère communal de secours");
- const methodText=r.valuationBlend?.method||"Ventes comparables et données de marché disponibles";
- const floor=r.marketMinimumValue!=null?Number(r.marketMinimumValue):(r.sellerFloor!=null?Number(r.sellerFloor):null);
- const ceiling=r.marketMaximumValue!=null?Number(r.marketMaximumValue):null;
- const workLow=floor;
- const workHigh=ceiling;
- const workRange=workLow!=null&&workHigh!=null?eur(workLow)+" à "+eur(workHigh):(workLow!=null?eur(workLow)+" et à affiner":"À affiner après analyse du bien");
+ const methodText=r.valuationBlend?.method||"Ventes DVF comparables et données officielles disponibles";
+ const sameStreet=Array.isArray(pageData.comparables?.sameStreet)?pageData.comparables.sameStreet.length:0;
+ const candidateCount=Number(pageData.comparables?.diagnostics?.candidateCount||pageData.comparables?.totalCandidates||0);
+ const statusText=comparable
+   ?("🤖 Agent DVF · "+String(txLabel)+" ventes analysées · "+String(sameStreet)+" même rue · source officielle DVF+ Cerema")
+   :"🤖 Agent DVF · recherche officielle en cours ou données communales de secours";
  $("#reference").innerHTML=
  '<div class="ref-main seller-reference-main">'+
-   '<span class="reference-kicker">REPÈRE DE VALEUR JML</span>'+
-   '<h3>Prix repère médian du marché</h3>'+
+   '<span class="reference-kicker">🤖 AGENT DVF · SOURCE OFFICIELLE</span>'+
+   '<h3>Valeur calculée à partir des ventes réelles</h3>'+
    '<div class="ref-value">'+esc(eur(value))+'</div>'+
    '<div class="reference-formula">'+esc(formula)+'</div>'+
-   '<p class="reference-sub"><b>Ce montant n’est pas le prix final de votre bien.</b><br>Il constitue un point de départ issu des ventes comparables pour travailler son positionnement.</p>'+
+   '<p class="reference-sub"><b>'+esc(statusText)+'</b><br>Les ventes les plus proches et les plus similaires sont pondérées pour construire ce repère.</p>'+
    '<p class="reference-sub" style="margin-top:8px!important">'+esc(methodText)+'</p>'+
  '</div>'+
  '<div class="ref-list seller-reference-details">'+
-   '<div class="ref-row seller-floor-row"><b>🔴 Prix minimum conseillé</b><span>'+esc(floor!=null?eur(floor):"À déterminer")+'</span><small>Repère de travail, sans garantie de vente.</small></div>'+
-   '<div class="ref-row reference-work-row"><b>🟡 Zone de travail</b><span>'+esc(workRange)+'</span><small>À affiner selon l’état et les caractéristiques du bien.</small></div>'+
-   '<div class="ref-row"><b>🟢 Repère haut externe</b><span>'+esc(ceiling!=null?eur(ceiling):"Non disponible")+'</span><small>Contre-vérification uniquement, jamais une promesse de prix.</small></div>'+
-   '<div class="ref-row"><b>Fiabilité du repère</b><span>'+esc(r.confidence||"Faible")+'</span></div>'+
-   '<div class="ref-row"><b>Nature du repère</b><span>'+esc(nature)+'</span></div>'+
-   '<div class="ref-row"><b>Ventes analysées</b><span>'+esc(txLabel)+'</span></div>'+
+   '<div class="ref-row"><b>🤖 Agent DVF</b><span>'+esc(statusText)+'</span></div>'+
+   '<div class="ref-row"><b>Ventes compatibles</b><span>'+esc(candidateCount||"—")+'</span></div>'+
+   '<div class="ref-row"><b>Ventes utilisées pour la valeur</b><span>'+esc(txLabel)+'</span></div>'+
+   '<div class="ref-row"><b>Ventes même rue</b><span>'+esc(sameStreet)+'</span></div>'+
+   '<div class="ref-row"><b>Fiabilité</b><span>'+esc(r.confidence||"Faible")+'</span></div>'+
+   '<div class="ref-row"><b>Source</b><span>DVF+ · Cerema</span></div>'+
  '</div>';
  renderSellerReading(r);
- loadExternalBenchmarks();
 }
 function renderSellerReading(r){
  const el=$("#sellerReading"); if(!el)return;
@@ -1334,7 +1142,6 @@ function renderSellerReading(r){
  const calc=Number.isFinite(surface)&&surface>0&&Number.isFinite(base)&&base>0?Math.round(surface*base):null;
  const calcText=calc!=null?surface.toLocaleString("fr-FR")+" m² × "+Math.round(base).toLocaleString("fr-FR")+" €/m² = "+calc.toLocaleString("fr-FR")+" €":"Le calcul personnalisé sera affiché dès que la surface et le repère au m² seront disponibles.";
  const floor=r.marketMinimumValue!=null?Number(r.marketMinimumValue):(r.sellerFloor!=null?Number(r.sellerFloor):null);
- const ceiling=r.marketMaximumValue!=null?Number(r.marketMaximumValue):null;
  const conditionLabels={
   generalState:"État général",works:"Travaux",roof:"Toiture",renovation:"Rénovation",electricity:"Électricité",
   insulation:"Isolation",heating:"Chauffage",windows:"Fenêtres",kitchen:"Cuisine",bathrooms:"Salle(s) de bains",
@@ -1351,7 +1158,6 @@ function renderSellerReading(r){
  const evolution=Number.isFinite(communalM2)&&communalM2>0&&Number.isFinite(base)&&base>0
    ?"Le repère communal des "+communalTypeLabel+" est de "+Math.round(communalM2).toLocaleString("fr-FR")+" €/m². Le repère des comparables est de "+baseText+" : cet écart est un indicateur de marché, pas une correction automatique du prix."
    :"Le repère communal sert de contexte général et ne remplace pas les ventes comparables.";
- const externalText=ceiling!=null?"Le repère haut externe disponible atteint "+eur(ceiling)+". Il sert uniquement à contre-vérifier le positionnement.":"Aucun repère haut externe exploitable n’a été récupéré pour cette adresse.";
  const comparableSales=Array.isArray(pageData.comparables?.sales)?pageData.comparables.sales:[];
  const comparableRows=comparableSales.slice(0,3).map(s=>{
    const p=n(s.price), sm=n(s.surface), pm=n(s.pricePerM2);
@@ -1372,8 +1178,8 @@ function renderSellerReading(r){
  '<div class="reading-result"><span>Application à la surface</span><strong>'+esc(calcText)+'</strong><em>Prix repère médian : '+esc(eur(r.referenceValue))+'</em></div>'+comparableBlock+'</div></div>'+
  '<div class="reading-panel reading-panel-why"><div class="reading-number gold">2</div><p class="reading-title">POURQUOI LE PRIX PEUT VARIER</p><h3>Le marché + la réalité du bien</h3><p>Deux biens proches peuvent avoir des valeurs différentes. L’état, les prestations, l’emplacement et les contraintes doivent être analysés avant de fixer le prix de commercialisation.</p>'+
  '<div class="reading-range"><strong>🔴 Prix minimum conseillé : '+esc(floor!=null?eur(floor):"À déterminer")+'</strong><span>Ce niveau est un repère de travail et un garde-fou de positionnement. Il ne constitue ni une garantie de vente ni un prix définitif.</span></div>'+
- '<div class="reading-range"><strong>🟡 Zone de travail : '+esc(floor!=null&&ceiling!=null?eur(floor)+" à "+eur(ceiling):"à affiner")+'</strong><span>La zone doit être affinée avec l’analyse du bien et les conditions réelles du marché.</span></div>'+
- '<div class="reading-range"><strong>🟢 Repère haut externe : '+esc(ceiling!=null?eur(ceiling):"non disponible")+'</strong><span>'+esc(externalText)+'</span></div>'+
+ '<div class="reading-range"><strong>🟡 Repère DVF : '+esc(floor!=null?eur(floor):"À déterminer")+'</strong><span>Ce niveau provient des ventes réelles comparables et sert de base à l’analyse du positionnement.</span></div>'+
+ '<div class="reading-range"><strong>🟢 Même rue : '+esc(Array.isArray(c.sameStreet)?c.sameStreet.length:"0")+' vente(s)</strong><span>L’Agent DVF donne la priorité aux transactions de la même rue lorsqu’elles sont disponibles.</span></div>'+
  conditionBlock+
  '<div class="factors-grid">'+factorsUp+factorsDown+'</div>'+
  '<div class="reading-communal">'+esc(evolution)+'</div>'+
@@ -2037,59 +1843,6 @@ async function run(){
   }
   renderComps(comps);
 
-  // Repère vendeur hybride : DVF 50 % + micro-marché 30 % + estimateurs externes 20 %.
-  // L'appel externe est réutilisé par le bloc de contre-vérification plus bas.
-  const surf=n(d.surface);
-  const isHouse=/maison/i.test(d.propertyType||"");
-  const isApt=/appartement|studio|duplex|loft/i.test(d.propertyType||"");
-  const compM2=n(comps.weightedPriceM2);
-  const houseM2=n(pageData.market?.housePrice);
-  const apartmentM2=n(pageData.market?.apartmentPrice);
-  let externalData=null;
-  try{
-    externalData=await getData("/api/external-market-benchmarks?"+new URLSearchParams({
-      city:d.city||"",address:d.address||"",propertyType:d.propertyType||"",
-      surface:d.surface||"",jmlValue:compM2!=null&&surf?String(Math.round(compM2*surf)):""
-    }).toString(),12000,"Contrôle estimateurs");
-    pageData.externalBenchmarks=externalData;
-  }catch(e){
-    addDiag("Contrôle estimateurs",e.code||"JML-EXT-CLIENT",e.message||"Repères externes indisponibles");
-  }
-
-  const extSources=Array.isArray(externalData?.sources)?externalData.sources:[];
-  const benchmarkSources=extSources.filter(x=>x && x.level==="commune");
-  const microSource=extSources.find(x=>String(x.name||"").toLowerCase()==="flatway"&&x.level==="adresse");
-  const publicM2=extSources
-    .filter(x=>String(x.name||"").toLowerCase()!=="flatway")
-    .map(x=>n(x.priceM2)).filter(v=>v!=null&&v>0).sort((a,b)=>a-b);
-  const extMedianM2=publicM2.length
-    ?(publicM2.length%2?publicM2[(publicM2.length-1)/2]:(publicM2[publicM2.length/2-1]+publicM2[publicM2.length/2])/2)
-    :n(microSource?.priceM2);
-  const microM2=n(microSource?.priceM2);
-  // IMPORTANT : la valeur centrale reste calculée par le moteur JML comme avant.
-  // Les estimateurs externes et Flatway servent de contre-vérification, pas à remplacer
-  // la méthode historique des comparables DVF.
-  const referenceM2=compM2!=null&&compM2>0
-    ?compM2
-    :(isHouse?houseM2:isApt?apartmentM2:n(pageData.market?.communalPrice));
-  const referenceValue=referenceM2!=null&&surf?Math.round(referenceM2*surf):null;
-
-  // Le repère bas est une information séparée : minimum DVF des ventes comparables.
-  // Il ne doit JAMAIS devenir la valeur centrale.
-  // Nouvelle lecture vendeur : le repère JML devient le PRIX MINIMUM.
-  // Le plafond est constitué uniquement par les estimateurs externes > 300 000 €.
-  // Le prix de la vente DVF la moins chère reste une information technique,
-  // mais ne sert plus de plancher commercial.
-  const marketMinimumValue=referenceValue;
-  const externalHighValues=extSources
-    .filter(x=>x && (x.personalized===true || x.level==="address" || x.level==="exact_address" || x.level==="adresse" || x.quality==="address_exact"))
-    .map(x=>n(x.value))
-    .filter(v=>v!=null&&v>300000);
-  const marketMaximumValue=externalHighValues.length
-    ?Math.max(...externalHighValues)
-    :null;
-  const dvfFloorM2=n(comps.minPriceM2);
-  const dvfFloorValue=dvfFloorM2!=null&&dvfFloorM2>0&&surf?Math.round(dvfFloorM2*surf):null;
   const confidence=compM2!=null&&compM2>0
     ?(comps.matchCount>=10?"Bonne":comps.matchCount>=5?"Intermédiaire":"Faible")
     :"Faible";
@@ -2100,32 +1853,19 @@ async function run(){
     basePriceM2:referenceM2,
     surface:surf,
     referenceValue:referenceValue,
-    rangeLow:marketMinimumValue,
-    rangeHigh:marketMaximumValue,
-    marketMinimumValue,
-    marketMaximumValue,
     confidence,
     transactions:comps.matchCount||0,
     type:d.propertyType||"Bien",
     fromComparables:compM2!=null&&compM2>0,
     referenceSource,
     valuationBlend:{
-      method:"Méthode JML historique : ventes DVF comparables pondérées. Les estimateurs externes servent de contre-vérification.",
+      method:"Agent DVF : ventes réelles comparables pondérées selon la proximité, la surface, les pièces, la rue et la récence.",
       components:compM2!=null&&compM2>0?[{label:"DVF comparables",weight:1,m2:compM2}]:[]
     },
-    // Le prix minimum commercial est la valeur centrale JML.
-    sellerFloor:marketMinimumValue,
-    marketMinimumValue,
-    marketMaximumValue,
     // Conservé uniquement pour information technique interne.
-    dvfFloorM2:dvfFloorM2,
-    dvfFloorValue:dvfFloorValue,
-    microMarketPriceM2:microM2,
-    externalMedianPriceM2:extMedianM2,
-    externalSources:extSources,
     explanation:compM2!=null&&compM2>0
-      ?"La valeur centrale reste calculée par le moteur JML à partir des ventes DVF comparables pondérées. Le repère bas DVF est affiché séparément comme garde-fou de négociation."
-      :"Le moteur de comparables n'étant pas disponible, le prix communal est utilisé uniquement comme secours."
+      ?"L’Agent DVF calcule ce repère à partir des ventes réelles comparables et privilégie les transactions les plus proches, notamment celles de la même rue."
+      :"L’Agent DVF n’a pas obtenu assez de transactions comparables ; le prix communal est utilisé uniquement comme contexte de secours."
   });
   if(territory.ok!==false) $("#status").textContent="Données marché + comparables chargés";
   else $("#status").textContent="Marché communal chargé · comparables en mode dégradé";
