@@ -857,6 +857,22 @@ body.seller-modal-open{overflow:hidden}
   .seller-modal{width:calc(100vw - 20px)!important;max-height:94vh!important;border-radius:20px!important}
   .seller-modal-close{margin:10px 10px -46px 0!important}
 }
+</style><style id="seller-modal-intro-v2">
+.seller-modal-intro{padding:30px 34px 24px;background:#fffdf8;border-bottom:1px solid #e8e0d2}
+.seller-modal-kicker{font-size:10px;letter-spacing:.2em;font-weight:900;color:#b58a3d;margin-bottom:8px}
+.seller-modal-intro h2{margin:0;color:#173b31;font:700 clamp(24px,4vw,34px)/1.12 Georgia,"Times New Roman",serif;max-width:700px}
+.seller-modal-benefits{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0 18px}
+.seller-modal-benefits>div{padding:14px;border:1px solid #e4dccd;border-radius:14px;background:#fff}
+.seller-modal-benefits span{display:block;font-size:10px;font-weight:900;color:#b58a3d;margin-bottom:5px}
+.seller-modal-benefits strong{font-size:12px;color:#173b31}
+.seller-modal-continue{display:inline-flex;align-items:center;justify-content:center;gap:12px;padding:13px 20px;border-radius:12px;background:#173b31;color:#fff!important;text-decoration:none;font-weight:800;font-size:13px;box-shadow:0 8px 18px rgba(23,59,49,.16)}
+.seller-modal-continue span{color:#e9c677;font-size:17px}
+.seller-modal-intro p{margin:9px 0 0;font-size:10px;color:#69736d}
+@media(max-width:700px){
+ .seller-modal-intro{padding:24px 20px 20px}
+ .seller-modal-benefits{grid-template-columns:1fr;gap:8px;margin:16px 0 14px}
+ .seller-modal-benefits>div{padding:11px 13px}
+}
 </style></head>
 <body>
 <header class="hero">
@@ -918,7 +934,18 @@ body.seller-modal-open{overflow:hidden}
     <a href="#form">Commencer mon estimation →</a>
   </div>
 </section>
-<div class="seller-modal-overlay" id="sellerModal" hidden><div class="seller-modal" role="dialog" aria-modal="true" aria-labelledby="sellerModalTitle"><button type="button" class="seller-modal-close" id="sellerModalClose" aria-label="Fermer">×</button><main class="card">
+<div class="seller-modal-overlay" id="sellerModal" hidden><div class="seller-modal" role="dialog" aria-modal="true" aria-labelledby="sellerModalTitle"><button type="button" class="seller-modal-close" id="sellerModalClose" aria-label="Fermer">×</button><div class="seller-modal-intro" id="sellerModalTitle">
+  <div class="seller-modal-kicker">VOTRE ESPACE VENDEUR</div>
+  <h2>Après votre inscription, voici ce que vous allez obtenir</h2>
+  <div class="seller-modal-benefits">
+    <div><span>01</span><strong>Une première estimation</strong></div>
+    <div><span>02</span><strong>Une analyse personnalisée</strong></div>
+    <div><span>03</span><strong>Votre espace vendeur</strong></div>
+  </div>
+  <a class="seller-modal-continue" href="#form">Créer mon compte et continuer <span>→</span></a>
+  <p>Inscription gratuite et sans engagement.</p>
+</div>
+<main class="card">
   <div class="top">
     <div>
       <div class="tag">Votre premier repère commence ici</div>
