@@ -744,12 +744,12 @@ h1 span{color:var(--gold2);display:block}
 }
 </style>
 <style id="jml-seller-return-link">.seller-return-link{margin:18px 0 0}.seller-return-link a{display:inline-flex;align-items:center;gap:7px;padding:10px 14px;border:1px solid rgba(216,187,122,.55);border-radius:10px;color:#fff;text-decoration:none;background:rgba(15,43,34,.48);font-size:12px}.seller-return-link a strong{color:var(--gold2)}.seller-return-link a:hover{background:rgba(15,43,34,.72)}@media(max-width:600px){.seller-return-link a{width:100%;justify-content:center;box-sizing:border-box}}</style><style id="jml-projet-vendeur-pro-v2">
-.pro-agent{margin:28px 0 0;padding:0;border:1px solid #dfd5c5;border-radius:18px;background:#fffdf8;overflow:hidden;box-shadow:0 8px 24px rgba(15,43,34,.08)}
-.pro-agent-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);align-items:stretch}
-.pro-agent-col{padding:22px 24px}
-.pro-agent-left{background:linear-gradient(135deg,#fffdf8,#f5efe5);color:#26332d}
-.pro-agent-right{background:#153b32;color:#eef5f0}
-.pro-agent-col + .pro-agent-col{border-left:1px solid #d9ccb8}
+.pro-agent{margin:28px 0 0;padding:0;background:transparent;overflow:visible}
+.pro-agent-grid{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:14px;align-items:stretch}
+.pro-agent-col{padding:24px;border-radius:16px;min-height:132px;box-shadow:0 6px 18px rgba(15,43,34,.07)}
+.pro-agent-left{background:#fffdf8;border:1px solid #dfd5c5;color:#26332d}
+.pro-agent-right{background:#153b32;border:1px solid #153b32;color:#eef5f0}
+.pro-agent-col + .pro-agent-col{border-left:0}
 .pro-agent-person{display:flex;align-items:center;gap:16px}
 .pro-agent-badge{width:70px;height:70px;border-radius:50%;background:#173b32;overflow:hidden;border:2px solid #c79a3b;flex:none;box-shadow:0 2px 8px rgba(15,43,34,.12)}
 .pro-agent-badge img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 30%;border-radius:50%}
@@ -771,10 +771,9 @@ h1 span{color:var(--gold2);display:block}
 .pro-legal{margin:0;padding:11px 24px;border-top:1px solid rgba(233,198,119,.28);background:#102d25;color:#cbd9d1;font-size:8.5px;line-height:1.5}
 .pro-legal b{color:#e9c677}
 @media(max-width:700px){
-  .pro-agent-grid{grid-template-columns:1fr}
-  .pro-agent-col + .pro-agent-col{border-left:0;border-top:1px solid #d9ccb8}
-  .pro-agent-col{padding:18px}
-  .pro-agent-right{border-top:0!important}
+  .pro-agent-grid{grid-template-columns:1fr;gap:10px}
+  .pro-agent-col + .pro-agent-col{border-left:0}
+  .pro-agent-col{padding:18px;min-height:auto}
   .pro-legal{padding:11px 18px}
 }
 .pro-value-note{margin-top:16px;padding:14px 16px;border-left:4px solid #c79a3b;background:#f8f1e4;border-radius:10px;color:#4d5852;font-size:11px;line-height:1.55}
