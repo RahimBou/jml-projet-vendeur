@@ -868,39 +868,39 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--green);outline-offs
 <style id="seller-account-ui">
 .seller-account-modal{display:none;position:fixed;inset:0;z-index:9999}.seller-account-modal.open{display:block}.seller-account-backdrop{position:absolute;inset:0;background:rgba(11,31,27,.62);backdrop-filter:blur(3px)}.seller-account-dialog{position:relative;width:min(470px,calc(100% - 28px));margin:8vh auto 0;background:#fffdf8;border:1px solid #d9ccb3;border-radius:20px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.22)}.seller-account-close{position:absolute;right:12px;top:10px;border:0;background:transparent;font-size:27px;color:#60706a;cursor:pointer}.seller-account-dialog h3{margin:7px 35px 7px 0;color:#173b32;font:700 25px Georgia,serif}.seller-account-dialog>p{margin:0 0 17px;color:#66736d;font-size:11px;line-height:1.5}.seller-account-dialog label{display:block;margin:11px 0 0;color:#36564d;font-size:9px;font-weight:900;letter-spacing:.05em;text-transform:uppercase}.seller-account-dialog input{display:block;width:100%;margin-top:6px;padding:12px;border:1px solid #d9d1c1;border-radius:10px;background:#fff;font-size:14px}.seller-account-submit{width:100%;margin-top:15px;padding:13px;border:0;border-radius:10px;background:linear-gradient(135deg,#b88b3f,#d4ae60);color:#173b32;font-weight:900;cursor:pointer}.seller-account-msg{display:none;margin-top:11px;padding:10px;border-radius:10px;background:#f5efdf;border:1px solid #d0b477;font-size:11px;line-height:1.45}.seller-account-note{margin-top:11px!important;font-size:9px!important}
 <style id="jml-welcome-modal">
-.jml-welcome-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,29,24,.68);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+.jml-welcome-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.34);opacity:0;visibility:hidden;transition:opacity .16s ease,visibility .16s ease}
 .jml-welcome-modal[hidden]{display:none}
 .jml-welcome-modal.jml-welcome-visible{opacity:1;visibility:visible}
-.jml-welcome-dialog{transform:translateY(8px) scale(.98);transition:transform .22s ease}
-.jml-welcome-visible .jml-welcome-dialog{transform:translateY(0) scale(1)}
-.jml-welcome-dialog{width:min(620px,100%);max-height:min(88vh,720px);overflow:auto;background:#fffdf8;border:1px solid #d8bb7a;border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.28);padding:28px;color:#173b32;position:relative}
-.jml-welcome-kicker{font-size:10px;letter-spacing:.16em;font-weight:900;color:#a77b32}
-.jml-welcome-dialog h2{margin:8px 0 8px;font:700 30px Georgia,serif;color:#153b32}
-.jml-welcome-dialog>p{margin:0;color:#65716c;font-size:12px;line-height:1.6}
-.jml-welcome-list{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}
-.jml-welcome-item{padding:14px;border:1px solid #e3dacb;border-radius:13px;background:#f8f3e9}
-.jml-welcome-item b{display:block;font-size:12px;color:#153b32}
-.jml-welcome-item span{display:block;margin-top:4px;font-size:10px;line-height:1.5;color:#68746f}
-.jml-welcome-close{position:absolute;top:12px;right:14px;width:34px;height:34px;border:1px solid #ddd4c3;border-radius:50%;background:#fff;color:#173b32;font-size:22px;line-height:1;cursor:pointer}
-.jml-welcome-actions{display:flex;justify-content:flex-end;gap:10px}
-.jml-welcome-btn{border:0;border-radius:10px;padding:12px 18px;background:linear-gradient(135deg,#b88b3f,#d4ae60);color:#173b32;font-weight:900;cursor:pointer}
-@media(max-width:600px){.jml-welcome-modal{padding:12px;align-items:center;overflow:auto}.jml-welcome-dialog{padding:22px;border-radius:20px;max-height:88vh;box-sizing:border-box;margin:auto}.jml-welcome-dialog h2{font-size:25px}.jml-welcome-list{grid-template-columns:1fr}.jml-welcome-actions{display:block}.jml-welcome-btn{width:100%}}
+.jml-welcome-dialog{width:min(540px,calc(100vw - 36px));box-sizing:border-box;background:#26364f;color:#fff;border:0;border-radius:20px;box-shadow:0 18px 45px rgba(0,0,0,.38);padding:22px 24px 18px;position:relative;transform:scale(.98);transition:transform .16s ease;font-family:Arial,sans-serif}
+.jml-welcome-visible .jml-welcome-dialog{transform:scale(1)}
+.jml-welcome-kicker{font-size:13px;font-weight:600;color:#fff;margin:0 0 18px;letter-spacing:0}
+.jml-welcome-dialog h2{margin:0 0 14px;font:700 18px Arial,sans-serif;color:#fff}
+.jml-welcome-dialog>p{margin:0 0 12px;color:#f1f4f8;font-size:13px;line-height:1.5}
+.jml-welcome-list{display:block;margin:10px 0 14px}
+.jml-welcome-item{padding:7px 0;border:0;background:transparent}
+.jml-welcome-item b{display:inline;color:#fff;font-size:13px}
+.jml-welcome-item span{display:inline;margin-left:5px;color:#dfe5ec;font-size:12px;line-height:1.45}
+.jml-welcome-close{position:absolute;top:10px;right:13px;width:auto;height:auto;border:0;background:transparent;color:#fff;font-size:25px;line-height:1;cursor:pointer;padding:2px}
+.jml-welcome-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.jml-welcome-btn{border:0;border-radius:7px;padding:10px 17px;background:transparent;color:#8fd3ff;font-weight:700;font-size:13px;cursor:pointer}
+.jml-welcome-btn:hover{background:rgba(255,255,255,.07)}
+@media(max-width:600px){.jml-welcome-modal{padding:12px}.jml-welcome-dialog{width:min(520px,calc(100vw - 24px));padding:20px 19px 15px;border-radius:18px}.jml-welcome-dialog h2{font-size:17px}.jml-welcome-list{margin:8px 0 12px}.jml-welcome-item{padding:5px 0}.jml-welcome-actions{margin-top:14px}.jml-welcome-btn{width:auto}}
 </style></head>
 <body>
 <div class="jml-welcome-modal" id="jmlWelcomeModal" role="presentation">
   <div class="jml-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="jmlWelcomeTitle">
     <button class="jml-welcome-close" id="jmlWelcomeClose" type="button" aria-label="Fermer">×</button>
-    <div class="jml-welcome-kicker">JML IMMOBILIER · VOTRE ESPACE VENDEUR</div>
-    <h2 id="jmlWelcomeTitle">Bienvenue dans votre espace</h2>
-    <p>Cette page vous accompagne étape par étape pour mieux comprendre votre marché, préciser votre bien et préparer votre projet de vente.</p>
+    <div class="jml-welcome-kicker">JML Immobilier indique</div>
+    <h2 id="jmlWelcomeTitle">Bienvenue dans votre espace vendeur.</h2>
+    <p>Votre demande est enregistrée. Cette page vous permet de suivre votre projet et de préparer votre vente étape par étape.</p>
     <div class="jml-welcome-list">
-      <div class="jml-welcome-item"><b>📍 Votre secteur</b><span>Consultez les repères de marché et les informations locales autour de votre bien.</span></div>
-      <div class="jml-welcome-item"><b>🏠 Votre bien</b><span>Ajoutez progressivement les caractéristiques qui permettent d'affiner l'analyse.</span></div>
-      <div class="jml-welcome-item"><b>🗓️ Votre calendrier</b><span>Suivez les prochaines étapes selon votre projet et votre délai.</span></div>
-      <div class="jml-welcome-item"><b>💡 Conseils vendeurs</b><span>Retrouvez des conseils pratiques pour préparer votre vente sereinement.</span></div>
+      <div class="jml-welcome-item"><b>Votre secteur</b><span>les repères de marché autour de votre bien.</span></div>
+      <div class="jml-welcome-item"><b>Votre bien</b><span>les informations utiles pour affiner votre dossier.</span></div>
+      <div class="jml-welcome-item"><b>Votre calendrier</b><span>les prochaines étapes de votre projet.</span></div>
+      <div class="jml-welcome-item"><b>Conseils vendeurs</b><span>des conseils pratiques pour préparer votre vente.</span></div>
     </div>
-    <p><strong>À retenir :</strong> les premiers chiffres sont des repères indicatifs. Plus votre dossier est précis, plus nous pouvons affiner l'analyse.</p>
-    <div class="jml-welcome-actions"><button class="jml-welcome-btn" id="jmlWelcomeContinue" type="button">Fermer — découvrir mon espace →</button></div>
+    <p><strong>À retenir :</strong> les premiers chiffres sont des repères indicatifs. Plus votre dossier est précis, plus nous pouvons affiner l’analyse.</p>
+    <div class="jml-welcome-actions"><button class="jml-welcome-btn" id="jmlWelcomeContinue" type="button">OK — découvrir mon espace</button></div>
   </div>
 </div>
 <div class="fb-wrap">
