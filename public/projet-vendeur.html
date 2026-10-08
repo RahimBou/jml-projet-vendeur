@@ -816,6 +816,47 @@ h1 span{color:var(--gold2);display:block}
  .estimation-story-trust>div{border-right:0;border-bottom:1px solid #e5ddcf;padding:9px 0}
  .estimation-story-trust a{grid-column:auto;width:100%;margin-top:10px}
 }
+</style>
+<style id="seller-floating-modal-v1">
+/* Fenêtre vendeur flottante — centrée sur l'écran */
+body.seller-modal-open{overflow:hidden}
+.seller-modal-overlay{
+  position:fixed!important;inset:0!important;z-index:99999!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;
+  padding:18px!important;
+  background:rgba(10,28,23,.56)!important;
+  backdrop-filter:blur(3px)!important;
+  -webkit-backdrop-filter:blur(3px)!important;
+}
+.seller-modal-overlay[hidden]{display:none!important}
+.seller-modal{
+  position:relative!important;
+  width:min(920px,calc(100vw - 36px))!important;
+  max-height:min(92vh,900px)!important;
+  overflow:auto!important;
+  border-radius:24px!important;
+  background:#fffdf8!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.30)!important;
+  border:1px solid rgba(199,154,59,.28)!important;
+}
+.seller-modal-close{
+  position:sticky!important;top:14px!important;float:right!important;z-index:20!important;
+  margin:14px 14px -48px 0!important;
+  width:38px!important;height:38px!important;
+  border:1px solid rgba(23,59,49,.16)!important;border-radius:50%!important;
+  background:rgba(255,253,248,.94)!important;color:#173b31!important;
+  font-size:25px!important;line-height:1!important;cursor:pointer!important;
+  box-shadow:0 5px 18px rgba(23,51,44,.12)!important;
+}
+.seller-modal > .card{
+  margin:0!important;border:0!important;border-radius:24px!important;
+  box-shadow:none!important;
+}
+@media(max-width:700px){
+  .seller-modal-overlay{padding:10px!important;align-items:center!important}
+  .seller-modal{width:calc(100vw - 20px)!important;max-height:94vh!important;border-radius:20px!important}
+  .seller-modal-close{margin:10px 10px -46px 0!important}
+}
 </style></head>
 <body>
 <header class="hero">
@@ -877,7 +918,7 @@ h1 span{color:var(--gold2);display:block}
     <a href="#form">Commencer mon estimation →</a>
   </div>
 </section>
-<main class="card">
+<div class="seller-modal-overlay" id="sellerModal" hidden><div class="seller-modal" role="dialog" aria-modal="true" aria-labelledby="sellerModalTitle"><button type="button" class="seller-modal-close" id="sellerModalClose" aria-label="Fermer">×</button><main class="card">
   <div class="top">
     <div>
       <div class="tag">Votre premier repère commence ici</div>
@@ -921,7 +962,7 @@ h1 span{color:var(--gold2);display:block}
     <div class="bottom"><label class="chk"><input type="checkbox" required>J'accepte que JML Immobilier utilise ces informations pour me recontacter au sujet de mon projet immobilier. J’ai pris connaissance du caractère facultatif des informations non nécessaires à la prise de contact.</label><button class="btn" type="submit">Obtenir mon premier repère →</button></div>
     <div class="ok" id="ok">Merci ! Je vous recontacte très prochainement.</div>
   </form>
-</main>
+</main></div></div>
 <section class="pro-value-note"><b>Un premier repère, pas une promesse de prix.</b><br>
 Lorsque les informations sur votre bien sont suffisamment complètes, le repère de valeur JML s’appuie sur les ventes comparables disponibles. Il constitue un <b>point de départ pour travailler le positionnement</b> du bien. L’état, les travaux, le DPE, l’emplacement, les prestations, le terrain, le stationnement, la luminosité et les éventuelles nuisances peuvent faire varier la valeur à la hausse ou à la baisse. Le repère ne constitue ni une expertise immobilière, ni une promesse de prix, ni une garantie de vente.</section>
 <section class="pro-agent">
@@ -1351,5 +1392,26 @@ document.getElementById('form').onsubmit=async function(ev){
   transition:background-color 9999s ease-out 0s!important;
 }
 </style>
-</body>
+
+<script id="seller-floating-modal-js">
+(function(){
+  const modal=document.getElementById('sellerModal');
+  if(!modal)return;
+  const closeBtn=document.getElementById('sellerModalClose');
+  const openers=document.querySelectorAll('a[href="#form"]');
+  function openModal(){
+    modal.hidden=false;
+    document.body.classList.add('seller-modal-open');
+    requestAnimationFrame(()=>document.getElementById('nom')?.focus({preventScroll:true}));
+  }
+  function closeModal(){
+    modal.hidden=true;
+    document.body.classList.remove('seller-modal-open');
+  }
+  openers.forEach(a=>a.addEventListener('click',function(e){e.preventDefault();openModal();}));
+  closeBtn?.addEventListener('click',closeModal);
+  modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)closeModal();});
+})();
+</script></body>
 </html>
