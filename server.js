@@ -104,13 +104,13 @@ app.use(express.urlencoded({ extended: true }));
 // Synthèse vendeur assistée par IA : seules les réponses du guide sont envoyées,
 // sans nom, e-mail, téléphone ni adresse précise.
 function getConfiguredGeminiModel(){
-  const configured=String(process.env.GEMINI_MODEL||"gemini-3.8-flash").replace(/^models\\//,"").trim();
+  const configured=String(process.env.GEMINI_MODEL||"gemini-3.8-flash").replace(/^models\//,"").trim();
   // Évite les anciens noms signalés comme indisponibles sur cette clé.
-  if(!configured || /^(gemini-2\\.5-flash-lite|gemini-3\\.5-flash-lite)$/i.test(configured)) return "gemini-3.8-flash";
+  if(!configured || /^(gemini-2\.5-flash-lite|gemini-3\.5-flash-lite)$/i.test(configured)) return "gemini-3.8-flash";
   return configured;
 }
 async function callGeminiInteractions(apiKey, configuredModel, input, timeoutMs, jsonOutput=false){
-  const model=String(configuredModel||"gemini-3.8-flash").replace(/^models\\//,"").trim();
+  const model=String(configuredModel||"gemini-3.8-flash").replace(/^models\//,"").trim();
   const body={model,input};
   if(jsonOutput) body.response_format={type:"text",mime_type:"application/json"};
   const response=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{
