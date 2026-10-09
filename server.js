@@ -120,6 +120,7 @@ Utilise uniquement les informations fournies. N'invente aucune caractéristique,
 Réponds en français et retourne uniquement un objet JSON avec ces clés :
 "title" (titre court),
 "summary" (2 à 4 phrases personnalisées),
+"listingDescription" (texte d'annonce immobilière réellement rédigé, naturel et attractif, 3 à 6 phrases ; commence par une accroche sobre, transforme les faits en phrases complètes ; n'inclus jamais le prix envisagé par le propriétaire, son adresse précise, sa motivation ou ses contraintes privées ; n'invente aucun équipement, état, terrain, proximité, DPE ou performance ; mentionne uniquement les faits connus et précise sobrement ce qui reste à confirmer si nécessaire),
 "property" (tableau de chaînes, 2 à 6 faits renseignés),
 "strengths" (tableau de 0 à 4 points favorables réellement étayés),
 "pointsToCheck" (tableau de 0 à 6 points à vérifier, seulement pertinents),
@@ -154,6 +155,11 @@ Réponds en français et retourne uniquement un objet JSON avec ces clés :
     const listKeys=["property","strengths","pointsToCheck","actionPlan","appointmentChecklist"];
     for(const key of listKeys) parsed[key]=Array.isArray(parsed[key])?parsed[key].map(x=>String(x).slice(0,500)).slice(0,8):[];
     for(const key of ["title","summary","priceNote","closing"]) parsed[key]=String(parsed[key]||"").slice(0,1800);
+    parsed.listingDescription=String(parsed.listingDescription||"").trim().slice(0,2200);
+    if(parsed.listingDescription.length<40){
+      console.error("JML seller guide AI error: missing listingDescription");
+      return res.status(502).json({ok:false,code:"AI_SYNTHESIS_ERROR",error:"L’IA n’a pas fourni de texte d’annonce exploitable."});
+    }
     res.setHeader("Cache-Control","no-store");
     return res.json({ok:true,synthesis:parsed,mode:"ai"});
   }catch(error){
