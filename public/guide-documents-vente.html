@@ -55,12 +55,93 @@ body{background:#f7f2e7;color:#173b31}.page{max-width:900px;margin:auto;padding:
   .tip{margin-top:3mm!important;padding:3mm!important;background:#fff!important;color:#111!important;border:1px solid #888!important;border-radius:2mm!important;font-size:8.5pt!important;line-height:1.35!important;break-inside:avoid!important}
   .tip strong{color:#111!important}
 }
-</style><style id="ardenne-identity-final">.ardenne-visual{background-image:linear-gradient(90deg,rgba(23,59,50,.96) 0%,rgba(23,59,50,.82) 48%,rgba(23,59,50,.42) 100%),url('/assets/charleville-place-ducale.svg')!important;background-size:cover!important;background-position:center!important}</style></head><body><main class="page"><header class="documents-topbar"><div class="documents-brand">JML IMMOBILIER<small>Les documents à préparer · Votre projet, notre engagement</small></div><div class="documents-top-actions"><a href="/espace-vendeur" aria-label="Retour à mon espace vendeur">← Mon espace vendeur</a><button type="button" class="documents-print" id="printDocumentsChecklist">Imprimer ma checklist</button><span class="documents-progress" id="documentsProgress" aria-live="polite">0 / 5 pièces cochées</span></div></header><section class="hero jml-architecture jml-architecture ardenne-visual"><div class="k">JML IMMOBILIER · DOCUMENTS</div><h1>Les documents à préparer</h1><p>Une checklist simple pour retrouver les informations utiles avant notre échange.</p><nav class="nav"><a href="/espace-vendeur">← Mon espace vendeur</a><a class="alt" href="/vendeur-secteur.html">Voir les repères du secteur</a></nav></section><section class="card"><div class="items"><div class="item"><div class="item-visual"><img src="/assets/guide-documents-photo.svg" alt="" loading="lazy"></div><div class="item-copy"><div class="num">PRIORITÉ 1 · PROPRIÉTÉ</div><h2>Identifier le bien</h2><p>Titre de propriété ou références disponibles permettant d'identifier le bien et les propriétaires.</p></div></div>
-<div class="item"><div class="item-visual"><img src="/assets/guide-dpe-photo.svg" alt="" loading="lazy"></div><div class="item-copy"><div class="num">PRIORITÉ 1 · DIAGNOSTICS</div><h2>DPE et diagnostics</h2><p>Conservez les documents disponibles et notez ceux dont la date ou la validité devra être vérifiée.</p></div></div>
-<div class="item"><div class="item-visual"><img src="/assets/guide-prix-photo.svg" alt="" loading="lazy"></div><div class="item-copy"><div class="num">PRIORITÉ 2 · FINANCES</div><h2>Taxe et charges</h2><p>Taxe foncière et, si nécessaire, informations relatives aux charges ou à la copropriété.</p></div></div>
-<div class="item"><div class="item-visual"><img src="/assets/guide-travaux-photo.svg" alt="" loading="lazy"></div><div class="item-copy"><div class="num">PRIORITÉ 2 · TRAVAUX</div><h2>Factures et justificatifs</h2><p>Commencez par les travaux importants : toiture, isolation, chauffage, fenêtres, rénovation ou extension. Ajoutez les justificatifs disponibles.</p></div></div>
-<div class="item"><div class="item-visual"><img src="/assets/guide-project-photo.svg" alt="" loading="lazy"></div><div class="item-copy"><div class="num">PRIORITÉ 3 · COPROPRIÉTÉ</div><h2>Documents disponibles</h2><p>Si le bien est concerné : charges, règlement, procès-verbaux d'assemblée générale et travaux votés.</p></div></div>
-<div class="item"><div class="item-visual"><img src="/assets/guide-calendar-photo.svg" alt="" loading="lazy"></div><div class="item-copy"><div class="num">PRIORITÉ 3 · CHECKLIST</div><h2>À compléter progressivement</h2><ul class="checklist-list" id="documentsChecklist"><li><label><input type="checkbox" data-document-check="property"><span>Titre de propriété ou références disponibles</span></label></li><li><label><input type="checkbox" data-document-check="diagnostics"><span>DPE et diagnostics immobiliers disponibles</span></label></li><li><label><input type="checkbox" data-document-check="tax"><span>Taxe foncière et charges éventuelles</span></label></li><li><label><input type="checkbox" data-document-check="works"><span>Factures et justificatifs des travaux</span></label></li><li><label><input type="checkbox" data-document-check="copro"><span>Documents de copropriété, si le bien est concerné</span></label></li></ul></div></div></div></section><section class="card"><h2>À retenir</h2><div class="tip"><strong>Commencez par l'essentiel :</strong> identifier le bien et retrouver les diagnostics disponibles. Le reste peut être complété progressivement selon votre situation.</div><div class="tip" style="margin-top:8px"><strong>JML Immobilier :</strong> cette checklist est un repère de préparation. Les documents réellement nécessaires peuvent varier selon le bien et la situation.</div><div class="actions"><button type="button" onclick="window.print()">Imprimer ma checklist</button><a class="primary" href="/preparer-rdv.html">Préparer mon rendez-vous →</a><a href="/espace-vendeur">Retour à mon espace vendeur</a></div></section><script>
+
+/* Explication pédagogique et checklist complète par situation */
+.explanation-card,.checklist-card{margin-bottom:14px}
+.section-title{font-size:21px;line-height:1.25;margin:0 0 10px;color:var(--green,#173b31)}
+.explanation-lead{font-size:14px;line-height:1.65;color:#42564c;margin:0 0 14px}
+.why-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.why-point{display:flex;flex-direction:column;gap:5px;padding:13px;border:1px solid var(--line,#e2dccf);border-radius:12px;background:#faf8f2}
+.why-point strong{font-size:13px;color:var(--green,#173b31)}
+.why-point span{font-size:12px;line-height:1.5;color:#52635b}
+.check-group{border-top:1px solid #e2dccf;padding:13px 0 5px;margin-top:8px;break-inside:avoid}
+.check-group h3{font-size:15px;margin:0 0 5px;color:var(--green,#173b31)}
+.checklist-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 20px}
+.checklist-list label{font-size:12px;line-height:1.45;align-items:flex-start}
+.checklist-list span{min-width:0}
+@media(max-width:650px){.why-grid,.checklist-list{grid-template-columns:1fr}}
+@media print{
+ @page{size:A4;margin:12mm}
+ .explanation-card{break-after:page;page-break-after:always}
+ .explanation-card,.checklist-card{margin:0 0 5mm!important;padding:0!important}
+ .section-title{font-size:16pt!important;color:#111!important}
+ .explanation-lead,.why-point span{font-size:9.5pt!important;color:#222!important}
+ .why-grid{grid-template-columns:1fr 1fr!important;gap:3mm!important}
+ .why-point{padding:3mm!important;background:#fff!important;border:1px solid #aaa!important;break-inside:avoid}
+ .why-point strong{font-size:9.5pt!important;color:#111!important}
+ .check-group{padding:2mm 0!important;margin-top:1mm!important;break-inside:avoid!important;page-break-inside:avoid!important}
+ .check-group h3{font-size:10.5pt!important;color:#111!important}
+ .checklist-list{grid-template-columns:1fr 1fr!important;gap:0 4mm!important}
+ .checklist-list label{font-size:8.5pt!important;line-height:1.3!important;padding:1.5mm 0!important;color:#111!important}
+ .checklist-list input{width:4mm!important;height:4mm!important;flex:0 0 4mm!important;border:1px solid #111!important;background:#fff!important}
+ .tip{background:#fff!important;color:#111!important;border:1px solid #777!important;font-size:8.5pt!important;break-inside:avoid!important}
+ .tip strong{color:#111!important}
+}</style><style id="ardenne-identity-final">.ardenne-visual{background-image:linear-gradient(90deg,rgba(23,59,50,.96) 0%,rgba(23,59,50,.82) 48%,rgba(23,59,50,.42) 100%),url('/assets/charleville-place-ducale.svg')!important;background-size:cover!important;background-position:center!important}</style></head><body><main class="page"><header class="documents-topbar"><div class="documents-brand">JML IMMOBILIER<small>Les documents à préparer · Votre projet, notre engagement</small></div><div class="documents-top-actions"><a href="/espace-vendeur" aria-label="Retour à mon espace vendeur">← Mon espace vendeur</a><button type="button" class="documents-print" id="printDocumentsChecklist">Imprimer ma checklist</button><span class="documents-progress" id="documentsProgress" aria-live="polite">0 / 5 pièces cochées</span></div></header><section class="hero jml-architecture jml-architecture ardenne-visual"><div class="k">JML IMMOBILIER · DOCUMENTS</div><h1>Les documents à préparer</h1><p>Une checklist simple pour retrouver les informations utiles avant notre échange.</p><nav class="nav"><a href="/espace-vendeur">← Mon espace vendeur</a><a class="alt" href="/vendeur-secteur.html">Voir les repères du secteur</a></nav></section><section class="card explanation-card">
+<h1 class="section-title">Pourquoi préparer ces documents ?</h1>
+<p class="explanation-lead">L’objectif n’est pas de vous donner des démarches compliquées ni de tout réunir dès aujourd’hui. Cette liste nous aide à comprendre précisément votre bien, à préparer un dossier fiable et à éviter les retards lorsque vous déciderez d’avancer vers la vente.</p>
+<div class="why-grid">
+<div class="why-point"><strong>Bien connaître le logement</strong><span>Confirmer les surfaces, les équipements, les travaux réalisés et les particularités du bien.</span></div>
+<div class="why-point"><strong>Informer correctement les acheteurs</strong><span>Préparer les diagnostics et les informations utiles, sans oublier un élément important.</span></div>
+<div class="why-point"><strong>Justifier les travaux et les frais</strong><span>Les factures, garanties, taxes et charges aident à répondre aux questions et à documenter le bien.</span></div>
+<div class="why-point"><strong>Faciliter le travail du notaire</strong><span>Anticiper les pièces nécessaires peut éviter des recherches et des retards au moment du dossier de vente.</span></div>
+</div>
+<div class="tip"><strong>Pas besoin de tout avoir pour notre premier échange.</strong> Cochez ce que vous possédez déjà. Le reste pourra être retrouvé ou demandé au bon moment. Certaines pièces ne concernent que les maisons, les appartements en copropriété ou certaines situations particulières.</div>
+</section>
+<section class="card checklist-card">
+<h2 class="section-title">Ma checklist des documents</h2>
+<p class="intro">Cochez les documents déjà retrouvés. Les cases sont enregistrées sur cet appareil et la liste peut être imprimée pour suivre ce qu’il reste à réunir.</p>
+<div class="check-group"><h3>1. Identité et propriété</h3><ul class="checklist-list" id="documentsChecklist">
+<li><label><input type="checkbox" data-document-check="title"><span>Titre de propriété (acte notarié), ou coordonnées du notaire si vous ne le retrouvez pas</span></label></li>
+<li><label><input type="checkbox" data-document-check="identity"><span>Pièce d’identité des propriétaires, à présenter au notaire lorsqu’elle sera demandée</span></label></li>
+<li><label><input type="checkbox" data-document-check="ownership"><span>Informations utiles sur les propriétaires : indivision, mariage/PACS, succession, tutelle ou procuration si cela vous concerne</span></label></li>
+<li><label><input type="checkbox" data-document-check="plans"><span>Plans, références cadastrales, surfaces et limites du terrain si disponibles</span></label></li>
+</ul></div>
+<div class="check-group"><h3>2. Diagnostics et informations réglementaires</h3><ul class="checklist-list">
+<li><label><input type="checkbox" data-document-check="dpe"><span>DPE en cours de validité</span></label></li>
+<li><label><input type="checkbox" data-document-check="audit"><span>Audit énergétique, si le type de bien et son classement le rendent obligatoire</span></label></li>
+<li><label><input type="checkbox" data-document-check="diagnostics"><span>Autres diagnostics selon le bien et la réglementation : amiante, plomb, électricité, gaz, termites, mérule, bruit, etc.</span></label></li>
+<li><label><input type="checkbox" data-document-check="erp"><span>État des risques et pollutions (ERP), à établir/actualiser pour la vente</span></label></li>
+<li><label><input type="checkbox" data-document-check="sewer"><span>Assainissement : document de contrôle si une installation non collective est concernée</span></label></li>
+<li><label><input type="checkbox" data-document-check="carrez"><span>Mesurage Loi Carrez pour un lot de copropriété, si applicable</span></label></li>
+<li><label><input type="checkbox" data-document-check="cil"><span>Carnet d’information du logement (CIL), lorsqu’il est obligatoire et existe</span></label></li>
+</ul></div>
+<div class="check-group"><h3>3. Travaux, équipements et garanties</h3><ul class="checklist-list">
+<li><label><input type="checkbox" data-document-check="invoices"><span>Factures des travaux, rénovations et améliorations</span></label></li>
+<li><label><input type="checkbox" data-document-check="warranties"><span>Garanties, assurances décennales et coordonnées des entreprises, si disponibles</span></label></li>
+<li><label><input type="checkbox" data-document-check="permits"><span>Permis de construire, déclarations préalables et autorisations pour extensions ou modifications, si concernés</span></label></li>
+<li><label><input type="checkbox" data-document-check="equipment"><span>Notices, contrats d’entretien et informations sur les équipements (chaudière, pompe à chaleur, poêle, panneaux solaires…)</span></label></li>
+<li><label><input type="checkbox" data-document-check="claims"><span>Informations sur d’éventuels sinistres, réparations importantes ou désordres connus</span></label></li>
+</ul></div>
+<div class="check-group"><h3>4. Taxes, charges et situation du bien</h3><ul class="checklist-list">
+<li><label><input type="checkbox" data-document-check="tax"><span>Dernier avis de taxe foncière</span></label></li>
+<li><label><input type="checkbox" data-document-check="utilities"><span>Montants ou justificatifs utiles sur les charges et consommations, si disponibles</span></label></li>
+<li><label><input type="checkbox" data-document-check="lease"><span>Bail, état des lieux et informations locatives si le bien est loué</span></label></li>
+<li><label><input type="checkbox" data-document-check="easements"><span>Informations sur servitudes, droit de passage, limites ou accords particuliers, si concernés</span></label></li>
+</ul></div>
+<div class="check-group"><h3>5. Appartement ou bien en copropriété uniquement</h3><ul class="checklist-list">
+<li><label><input type="checkbox" data-document-check="copro-regulation"><span>Règlement de copropriété et état descriptif de division, si disponibles</span></label></li>
+<li><label><input type="checkbox" data-document-check="copro-minutes"><span>Procès-verbaux des assemblées générales récentes, notamment les trois dernières années</span></label></li>
+<li><label><input type="checkbox" data-document-check="copro-charges"><span>Montant des charges, derniers appels de fonds et informations sur les travaux votés</span></label></li>
+<li><label><input type="checkbox" data-document-check="copro-syndic"><span>Coordonnées du syndic, fiche synthétique et carnet d’entretien, si accessibles</span></label></li>
+<li><label><input type="checkbox" data-document-check="copro-works"><span>Diagnostic technique global ou plan pluriannuel de travaux, s’ils existent ou sont applicables</span></label></li>
+</ul></div>
+<div class="check-group"><h3>6. Si le bien est loué ou si une situation particulière existe</h3><ul class="checklist-list">
+<li><label><input type="checkbox" data-document-check="rental"><span>Bail en cours, montant du loyer, dépôt de garantie et échéances, si le bien est loué</span></label></li>
+<li><label><input type="checkbox" data-document-check="special"><span>Documents liés à une succession, indivision, donation, prêt ou situation particulière, uniquement si cela vous concerne</span></label></li>
+</ul></div>
+<div class="tip"><strong>Important :</strong> cette checklist est un aide-mémoire général, pas une liste identique pour tous les biens. Les diagnostics et pièces exacts dépendent notamment du logement, de sa localisation, de son ancienneté et de sa situation juridique. Nous vérifierons les éléments nécessaires avec vous et le notaire. Ne transmettez pas de pièce d’identité ou de document confidentiel par un canal non sécurisé.</div>
+</section>
+<section class="card"><h2>À retenir</h2><div class="tip"><strong>Commencez par ce que vous avez déjà.</strong> Pour le premier rendez-vous, vos informations et les documents disponibles suffisent pour commencer à préparer le dossier. Nous identifierons ensemble les pièces manquantes et celles qui sont réellement nécessaires à votre vente.</div><div class="actions"><button type="button" onclick="window.print()">Imprimer ma checklist</button><a class="primary" href="/preparer-rdv.html">Préparer mon rendez-vous →</a><a href="/espace-vendeur">Retour à mon espace vendeur</a></div></section><script>
 (function(){
  const checks=[...document.querySelectorAll("[data-document-check]")];
  const progress=document.getElementById("documentsProgress");
