@@ -1090,6 +1090,19 @@ body.guide-modal-open{overflow:hidden}
         </div>
         <div class="seller-chart"><div class="seller-chart-title"><span>Comment lire ces repères</span><span>Uniquement si les données sont disponibles</span></div><div class="seller-market-reading"><p><strong>Un chiffre seul ne suffit pas.</strong> Le repère communal donne un contexte général. Pour votre bien, les ventes comparables sont plus utiles lorsqu’elles concernent le même type de bien, une surface proche et un secteur proche.</p><p>Lorsqu’il n’y a pas assez de ventes comparables fiables, nous préférons afficher <strong>« données insuffisantes »</strong> plutôt que de fabriquer une valeur ou une comparaison.</p></div></div>
         <div class="seller-source" id="sellerMarketSource" aria-live="polite">Recherche d’un repère local uniquement lorsqu’une source exploitable et datée est disponible.</div>
+        <section class="seller-credit-climate" aria-labelledby="sellerCreditTitle">
+          <div class="seller-credit-head">
+            <div><span class="seller-panel-kicker">🏦 FINANCEMENT DES ACHETEURS</span><h5 id="sellerCreditTitle">Le marché immobilier en ce moment</h5><p>Un repère national de crédit, rapproché des données locales disponibles.</p></div>
+            <button type="button" id="sellerCreditRefresh" class="seller-credit-refresh">Actualiser ↻</button>
+          </div>
+          <div class="seller-credit-metrics" id="sellerCreditMetrics" aria-live="polite">
+            <div class="seller-credit-metric"><span>Taux moyen du crédit</span><strong>Chargement…</strong><small>Source officielle en cours de lecture</small></div>
+            <div class="seller-credit-metric"><span>Évolution mensuelle</span><strong>—</strong><small>Comparaison avec le mois précédent</small></div>
+            <div class="seller-credit-metric"><span>Lecture du financement</span><strong>En cours</strong><small>Ce n’est pas une prédiction de vente</small></div>
+          </div>
+          <p class="seller-credit-explanation" id="sellerCreditExplanation">Nous vérifions la dernière publication de la Banque de France. Les taux nationaux ne correspondent pas forcément au taux proposé à chaque acheteur.</p>
+          <div class="seller-credit-foot"><span id="sellerCreditUpdated">Mise à jour à l’ouverture de l’espace</span><a id="sellerCreditSource" href="https://www.banque-france.fr/fr/publications-et-statistiques/statistiques/credit" target="_blank" rel="noopener noreferrer">Consulter la Banque de France ↗</a></div>
+        </section>
       </section>
 
       <section class="seller-panel seller-advice-panel">
@@ -1482,6 +1495,58 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
   }
 }
 
+
+async function loadSellerCreditClimate(force){
+  const metrics=document.getElementById("sellerCreditMetrics");
+  const explanation=document.getElementById("sellerCreditExplanation");
+  const updated=document.getElementById("sellerCreditUpdated");
+  const sourceLink=document.getElementById("sellerCreditSource");
+  const refresh=document.getElementById("sellerCreditRefresh");
+  if(!metrics)return;
+  if(refresh){refresh.disabled=true;refresh.textContent="Vérification…";}
+  if(force||!metrics.dataset.loaded)metrics.innerHTML='<div class="seller-credit-metric"><span>Taux moyen du crédit</span><strong>Chargement…</strong><small>Lecture de la dernière publication officielle</small></div><div class="seller-credit-metric"><span>Évolution mensuelle</span><strong>—</strong><small>Comparaison mensuelle</small></div><div class="seller-credit-metric"><span>Lecture du financement</span><strong>En cours</strong><small>Repère national</small></div>';
+  try{
+    const response=await fetch("/api/market-climate"+(force?"?refresh="+Date.now():""),{cache:"no-store"});
+    const data=await response.json();
+    if(!data.ok)throw new Error(data.message||"Publication officielle indisponible");
+    const rate=Number(data.averageNewMortgageRate);
+    const previous=Number(data.previousRate);
+    const delta=Number(data.monthlyChangePoints);
+    const fmt=v=>Number(v).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" %";
+    const change=Number.isFinite(delta)?(delta>0?"+":"")+String((delta/100).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2}))+" point(s)": "Non disponible";
+    let label="Contexte à surveiller",detail="Le taux seul ne permet pas de juger si le moment est bon pour vendre.";
+    if(Number.isFinite(delta)&&delta<0){label="Financement un peu plus favorable";detail="Le taux moyen a baissé sur le mois observé, ce qui peut aider certains acheteurs, sans garantir leur financement.";}
+    else if(Number.isFinite(delta)&&delta>0){label="Financement un peu plus exigeant";detail="Le taux moyen a augmenté sur le mois observé : certains budgets peuvent être davantage contraints.";}
+    else if(Number.isFinite(delta)&&delta===0){label="Financement stable";detail="Le taux moyen est stable sur le mois observé. La capacité d’emprunt dépend toujours du dossier de chaque acheteur.";}
+    if(Number.isFinite(rate)&&rate>=3.75){label="Financement plus contraint";detail="Le coût moyen du crédit est relativement élevé : le budget de certains acheteurs peut être limité.";}
+    metrics.innerHTML=[
+      ["Taux moyen du crédit",fmt(rate),"Nouveaux crédits à l’habitat · "+String(data.period||"dernière période")],
+      ["Évolution mensuelle",Number.isFinite(previous)?fmt(previous)+" → "+fmt(rate):"Non disponible",Number.isFinite(delta)?(delta>0?"Hausse":delta<0?"Baisse":"Stable")+" par rapport au mois précédent":"Comparaison indisponible"],
+      ["Lecture du financement",label,"Indicateur national, pas une garantie de vente"]
+    ].map(x=>'<div class="seller-credit-metric"><span>'+x[0]+'</span><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>').join("");
+    if(explanation)explanation.textContent=detail+" "+String(data.note||"");
+    if(updated)updated.textContent="Publication : "+String(data.publishedAt||data.period||"date non précisée")+" · Vérifié le "+new Date().toLocaleDateString("fr-FR");
+    if(sourceLink&&data.sourceUrl)sourceLink.href=data.sourceUrl;
+    metrics.dataset.loaded="1";
+    metrics.dataset.checkedAt=String(Date.now());
+  }catch(error){
+    if(!metrics.dataset.loaded)metrics.innerHTML='<div class="seller-credit-metric"><span>Taux moyen du crédit</span><strong>Indisponible</strong><small>Aucun taux inventé</small></div><div class="seller-credit-metric"><span>Lecture du financement</span><strong>À vérifier</strong><small>Réessayez ultérieurement</small></div>';
+    if(explanation)explanation.textContent="La publication officielle n’a pas pu être récupérée. Nous préférons ne pas afficher de chiffre potentiellement périmé.";
+    if(updated)updated.textContent="Dernière vérification : "+new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    console.warn("JML credit climate:",error);
+  }finally{
+    if(refresh){refresh.disabled=false;refresh.textContent="Actualiser ↻";}
+  }
+}
+(function(){
+  const refresh=document.getElementById("sellerCreditRefresh");
+  if(refresh)refresh.addEventListener("click",()=>loadSellerCreditClimate(true));
+  loadSellerCreditClimate(false);
+  // Contrôle léger lorsque l'espace reste ouvert ; aucune notification intrusive.
+  setInterval(()=>{if(document.visibilityState==="visible")loadSellerCreditClimate(false)},30*60*1000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")loadSellerCreditClimate(false)});
+})();
+
 function updateSellerProjectSummary(d){
    d=d||getSellerSpace()||{};
    const set=(id,v,empty)=>{
@@ -1796,6 +1861,24 @@ function updateSellerProjectSummary(d){
 @media(max-width:600px){.seller-status{padding:13px!important;gap:9px!important}.seller-access-actions{flex-direction:row!important}.seller-access-actions .secondary{width:auto!important}}
 </style>
 
+<style id="jml-credit-climate-style">
+.seller-credit-climate{margin-top:12px;padding:15px;border:1px solid #e4d8bd;border-radius:15px;background:linear-gradient(135deg,#fffdf8,#f7f1e4)}
+.seller-credit-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.seller-credit-head h5{margin:4px 0;color:#173b31;font-size:18px}
+.seller-credit-head p{margin:0;color:#68746f;font-size:11px;line-height:1.45}
+.seller-credit-refresh{flex:0 0 auto;border:1px solid #cbb47f;border-radius:9px;padding:8px 11px;background:#fffdf8;color:#173b31;font-weight:800;font-size:11px;cursor:pointer}
+.seller-credit-refresh:disabled{opacity:.65;cursor:wait}
+.seller-credit-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+.seller-credit-metric{min-width:0;padding:11px;border:1px solid #e9e0cf;border-radius:11px;background:#fff}
+.seller-credit-metric span,.seller-credit-metric small{display:block;color:#68746f;font-size:10px;line-height:1.4}
+.seller-credit-metric strong{display:block;margin:6px 0;color:#173b31;font-size:16px;line-height:1.3}
+.seller-credit-metric small{font-size:9px}
+.seller-credit-explanation{margin:10px 0 0;color:#46584f;font-size:11px;line-height:1.5}
+.seller-credit-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid #e8dcc5;color:#7a7d74;font-size:9px}
+.seller-credit-foot a{color:#6f592b;font-weight:800;text-decoration:none}
+.seller-credit-foot a:hover{text-decoration:underline}
+@media(max-width:600px){.seller-credit-climate{padding:12px}.seller-credit-head{align-items:flex-start}.seller-credit-head h5{font-size:16px}.seller-credit-refresh{font-size:10px;padding:8px}.seller-credit-metrics{grid-template-columns:1fr}.seller-credit-metric{padding:10px}.seller-credit-metric strong{font-size:15px}}
+</style>
 <style id="jml-bottom-compact">
 /* Bas de l'espace vendeur : même contenu, beaucoup moins d'espace vide */
 .seller-project-summary{margin-top:12px!important;padding:16px 18px!important}
