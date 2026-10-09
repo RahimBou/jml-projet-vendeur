@@ -103,8 +103,18 @@ app.use(express.urlencoded({ extended: true }));
 
 // Synthèse vendeur assistée par IA : seules les réponses du guide sont envoyées,
 // sans nom, e-mail, téléphone ni adresse précise.
+const geminiDiagnosticAttempts = new Map();
 app.get("/api/admin/diagnostics/gemini", async (req,res) => {
-  if(!requireAdminOr401(req,res)) return;
+  // Diagnostic fixe et limité : aucun prompt fourni par le visiteur, aucun secret renvoyé.
+  const clientKey=String(req.ip||req.socket?.remoteAddress||"unknown").slice(0,120);
+  const now=Date.now();
+  const recent=(geminiDiagnosticAttempts.get(clientKey)||[]).filter(ts=>now-ts<10*60*1000);
+  if(recent.length>=3) return res.status(429).json({ok:false,provider:"gemini",stage:"rate_limit",error:"Limite de test atteinte. Réessaie dans 10 minutes."});
+  recent.push(now);
+  geminiDiagnosticAttempts.set(clientKey,recent);
+  if(geminiDiagnosticAttempts.size>5000){
+    for(const [key,times] of geminiDiagnosticAttempts){if(!times.some(ts=>now-ts<10*60*1000))geminiDiagnosticAttempts.delete(key);}
+  }
   const apiKey=String(process.env.GEMINI_API_KEY||"").trim();
   if(!apiKey) return res.status(503).json({ok:false,provider:"gemini",stage:"configuration",error:"GEMINI_API_KEY is not configured."});
   const model=String(process.env.GEMINI_MODEL||"gemini-3.5-flash-lite").trim();
