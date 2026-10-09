@@ -1981,7 +1981,8 @@ function updateSellerProjectSummary(d){
        doc.head.appendChild(fit);
      }catch(e){}
    };
-   frame.src=link.getAttribute("href");
+   const guideUrl=link.getAttribute("href");
+   frame.src=guideUrl+(guideUrl.includes("?")?"&":"?")+"v=20261009-save-close-2";
    modal.classList.add("open");
    modal.setAttribute("aria-hidden","false");
    document.body.classList.add("guide-modal-open");
