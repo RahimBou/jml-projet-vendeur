@@ -103,6 +103,31 @@ app.use(express.urlencoded({ extended: true }));
 
 // Synthèse vendeur assistée par IA : seules les réponses du guide sont envoyées,
 // sans nom, e-mail, téléphone ni adresse précise.
+app.get("/api/admin/diagnostics/gemini", async (req,res) => {
+  if(!requireAdminOr401(req,res)) return;
+  const apiKey=String(process.env.GEMINI_API_KEY||"").trim();
+  if(!apiKey) return res.status(503).json({ok:false,provider:"gemini",stage:"configuration",error:"GEMINI_API_KEY is not configured."});
+  const model=String(process.env.GEMINI_MODEL||"gemini-3.5-flash-lite").trim();
+  try{
+    const response=await fetch("https://generativelanguage.googleapis.com/v1beta/models/"+encodeURIComponent(model)+":generateContent",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},
+      body:JSON.stringify({contents:[{role:"user",parts:[{text:"Réponds uniquement par : GEMINI_OK"}]}],generationConfig:{temperature:0,maxOutputTokens:20}}),
+      signal:AbortSignal.timeout(15000)
+    });
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok){
+      console.error("JML Gemini diagnostic error:",JSON.stringify({status:response.status,code:payload?.error?.status||null,message:String(payload?.error?.message||"provider_error").slice(0,500)}));
+      return res.status(502).json({ok:false,provider:"gemini",model,stage:"provider",status:response.status,code:payload?.error?.status||null,error:String(payload?.error?.message||"Gemini request failed").slice(0,500)});
+    }
+    const answer=(payload?.candidates?.[0]?.content?.parts||[]).map(part=>String(part.text||"")).join("").trim();
+    return res.json({ok:!!answer,provider:"gemini",model,stage:answer?"complete":"empty_response",answer:answer.slice(0,100)});
+  }catch(error){
+    console.error("JML Gemini diagnostic exception:",String(error?.message||error));
+    return res.status(502).json({ok:false,provider:"gemini",model,stage:"network",error:String(error?.message||"Network error").slice(0,300)});
+  }
+});
+
 app.post("/api/seller-guide/synthesis", async (req,res) => {
   const apiKey=String(process.env.GEMINI_API_KEY||"").trim();
   if(!apiKey) return res.status(503).json({ok:false,code:"AI_NOT_CONFIGURED",error:"La synthèse IA n'est pas encore configurée. Ajoutez GEMINI_API_KEY dans Render."});
