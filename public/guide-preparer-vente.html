@@ -76,7 +76,7 @@ body{min-height:100vh;background:var(--cream)}
 
 /* Vendeur UX — supprimer le grand bandeau illustré pour accéder directement aux étapes */
 .guide{padding-top:12px}
-.guide-head{display:none!important}
+.guide-head{display:block!important}
 .guide-card{margin-top:0}
 
 /* Le récapitulatif et la checklist suivent chacun leur colonne pour éviter les grands espaces vides */
@@ -145,14 +145,14 @@ body{min-height:100vh;background:var(--cream)}
 <div class="guide-meta"><span>6 étapes guidées</span><span>À votre rythme</span></div><a class="guide-start" href="#step1" id="startGuide">Commencer ma préparation <span aria-hidden="true">→</span></a><div class="guide-hero-photo"><img src="/assets/charleville-place-ducale.svg" alt="Paysage stylisé des Ardennes" loading="eager"></div>
 </section>
 <section class="guide-card">
-<p class="guide-intro">Avancez à votre rythme. Ouvrez les étapes qui vous concernent, notez vos réponses et retrouvez votre récapitulatif avant le rendez-vous. Vos réponses sont conservées sur cet appareil.</p>
+<p class="guide-intro">Vous n’avez pas besoin d’avoir toutes les réponses dès maintenant. L’objectif est de mieux comprendre votre bien, votre projet et vos attentes, pour que notre rendez-vous soit concret et adapté à votre situation. Commencez par les informations que vous connaissez ; vous pourrez compléter le reste tranquillement, à votre rythme.</p>
 <div class="synthesis-panel"><button type="button" id="generateSellerPdf" class="synthesis-button">Créer ma synthèse en PDF <span aria-hidden="true">↗</span></button><p id="synthesisStatus" class="synthesis-status" aria-live="polite">La synthèse est préparée à partir de vos réponses enregistrées sur cet appareil.</p><p class="synthesis-privacy">Si l’assistant IA est activé, seules les réponses utiles à la synthèse lui sont transmises ; aucun nom, e-mail, téléphone ni adresse précise n’est envoyé.</p></div>
 <div class="progress-box"><div class="progress-row"><span id="progressText">0 / 6 étapes préparées</span><span id="progressPercent">0 %</span></div><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div><div class="progress-actions"><span id="saveStatus" aria-live="polite">Enregistrement sur cet appareil</span><button type="button" id="resetProgress">Réinitialiser</button></div></div>
 <div class="guide-topics">
 <div class="guide-topic-column" aria-label="Étapes 1, 3 et 5">
 <article class="guide-topic" style="--step-order:1" id="step1" data-step="1">
  <div class="guide-visual"><img src="/assets/guide-documents-photo.svg" alt="" loading="lazy"></div>
- <div><h2>1. Les caractéristiques du bien</h2><p>Surface, pièces, terrain et équipements : réunissez les informations principales, même approximatives.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div><h2>1. Les caractéristiques du bien</h2><p>Commençons par ce qui décrit votre bien : sa surface, ses pièces et les équipements que vous souhaitez nous présenter. Une réponse approximative peut déjà nous aider.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
   <label class="guide-field">Type de bien<select name="typeBien"><option value="">Choisir</option><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></label>
   <label class="guide-field">Surface habitable (m²)<input name="surface" type="number" min="0" inputmode="decimal" placeholder="Ex. 95"></label>
@@ -163,7 +163,7 @@ body{min-height:100vh;background:var(--cream)}
 </article>
 <article class="guide-topic" style="--step-order:3" data-step="3">
  <div class="guide-visual"><img src="/assets/guide-travaux-photo.svg" alt="" loading="lazy"></div>
- <div><h2>3. Faire le point sur les travaux</h2><p>Les travaux réalisés ou à prévoir peuvent aider à mieux comprendre le bien et ses caractéristiques.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div><h2>3. Faire le point sur les travaux</h2><p>Les travaux réalisés, leur date et ceux que vous envisagez sont utiles pour comprendre l’histoire du bien. Notez simplement ce dont vous vous souvenez.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
   <label class="guide-field">Travaux réalisés et années correspondantes<textarea name="travauxFaits" placeholder="Ex. toiture en 2019, fenêtres en 2022…"></textarea></label>
   <label class="guide-field">Travaux à prévoir ou points à signaler<textarea name="travauxPrevus" placeholder="Ex. rafraîchissement, chauffage à vérifier…"></textarea></label>
@@ -173,7 +173,7 @@ body{min-height:100vh;background:var(--cream)}
 </article>
 <article class="guide-topic" style="--step-order:5" data-step="5">
  <div class="guide-visual"><img src="/assets/guide-prix-photo.svg" alt="" loading="lazy"></div>
- <div><h2>5. Réfléchir au prix sans se bloquer</h2><p>Votre idée de prix est un point de départ pour la discussion, pas une estimation validée.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div><h2>5. Réfléchir au prix sans se bloquer</h2><p>Si vous avez déjà un prix en tête, vous pouvez nous expliquer ce qui vous a conduit à cette idée. Si ce n’est pas le cas, nous en parlerons ensemble.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
   <label class="guide-field">Avez-vous déjà un prix en tête ?<select name="prixIdee"><option value="">Choisir (facultatif)</option><option>Oui, j’ai une idée</option><option>J’hésite entre plusieurs prix</option><option>Non, je souhaite être conseillé</option><option>Je préfère en parler au rendez-vous</option></select></label>
   <label class="guide-field">Prix envisagé (facultatif, en €)<input name="prix" type="number" min="0" step="1000" inputmode="numeric" placeholder="Ex. 180000"></label>
@@ -188,7 +188,7 @@ body{min-height:100vh;background:var(--cream)}
 <div class="guide-topic-column" aria-label="Étapes 2, 4 et 6">
 <article class="guide-topic" style="--step-order:2" data-step="2">
  <div class="guide-visual"><img src="/assets/guide-project-photo.svg" alt="" loading="lazy"></div>
- <div><h2>2. Clarifier votre projet</h2><p>Votre raison de vendre, votre délai et vos priorités nous aideront à préparer un échange adapté.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div><h2>2. Clarifier votre projet</h2><p>Qu’est-ce qui compte le plus pour vous dans ce projet ? Votre calendrier et vos priorités nous aideront à préparer un rendez-vous qui vous ressemble.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
   <label class="guide-field">Quelle est votre principale motivation ?<select name="motif"><option value="">Choisir (facultatif)</option><option>Nouvelle étape de vie</option><option>Achat d’un autre bien</option><option>Déménagement</option><option>Succession</option><option>Investissement</option><option>Je préfère en parler au rendez-vous</option><option>Autre</option></select></label>
   <label class="guide-field">Quelles sont vos priorités ?<textarea name="priorites" placeholder="Ex. vendre au bon prix, limiter les visites, être accompagné…"></textarea></label>
@@ -198,7 +198,7 @@ body{min-height:100vh;background:var(--cream)}
 </article>
 <article class="guide-topic" style="--step-order:4" data-step="4">
  <div class="guide-visual"><img src="/assets/guide-dpe-photo.svg" alt="" loading="lazy"></div>
- <div><h2>4. Vérifier le DPE et les documents</h2><p>Repérez les documents déjà disponibles. Nous pourrons faire le point ensemble sur ceux qui manquent.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div><h2>4. Vérifier le DPE et les documents</h2><p>Indiquez les documents que vous avez déjà sous la main. Si certains manquent, ce n’est pas un problème : nous identifierons ensemble ce qu’il reste à retrouver.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
   <label class="guide-field">DPE et diagnostics<select name="dpe"><option value="">Choisir (facultatif)</option><option>Disponibles</option><option>Partiellement disponibles</option><option>À rechercher ou à réaliser</option><option>Je ne sais pas</option></select></label>
   <label class="guide-field">Taxe foncière<select name="taxe"><option value="">Choisir (facultatif)</option><option>Document disponible</option><option>À retrouver</option><option>Je ne l’ai pas sous la main</option></select></label>
@@ -208,7 +208,7 @@ body{min-height:100vh;background:var(--cream)}
 </article>
 <article class="guide-topic" style="--step-order:6" data-step="6">
  <div class="guide-visual"><img src="/assets/guide-calendar-photo.svg" alt="" loading="lazy"></div>
- <div><h2>6. Définir votre calendrier</h2><p>Un calendrier indicatif permet d’anticiper les prochaines étapes sans vous engager.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div><h2>6. Définir votre calendrier</h2><p>Parlons du moment qui vous conviendrait et des éventuelles contraintes à prendre en compte. Ce calendrier reste indicatif et pourra évoluer.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
   <label class="guide-field">Quand aimeriez-vous vendre ?<select name="calendrier"><option value="">Choisir (facultatif)</option><option>Dès que possible</option><option>Dans les 3 prochains mois</option><option>Dans 3 à 6 mois</option><option>Dans plus de 6 mois</option><option>Pas de date définie</option></select></label>
   <label class="guide-field">Y a-t-il une contrainte de date ou une question à prévoir ?<textarea name="contraintes" placeholder="Ex. achat à venir, déménagement, disponibilité pour les visites…"></textarea></label>
@@ -229,7 +229,7 @@ body{min-height:100vh;background:var(--cream)}
 
 </div>
 </div>
-<h2 class="guide-section-title">L’essentiel à retenir</h2><div class="guide-summary"><div class="guide-summary-copy"><strong>Un rendez-vous mieux préparé</strong><p>Vous n’avez pas besoin d’avoir toutes les réponses. Ces éléments nous aideront à mieux comprendre votre projet, à échanger sur votre bien et à identifier les points à vérifier. L’estimation nécessite une analyse personnalisée.</p></div><div class="guide-summary-photo"><img src="/assets/guide-summary-photo.svg" alt="" loading="lazy"></div></div>
+<h2 class="guide-section-title">Pour notre rendez-vous</h2><div class="guide-summary"><div class="guide-summary-copy"><strong>Avançons étape par étape</strong><p>Vos réponses nous donneront un premier aperçu de votre bien et de vos attentes. Les informations encore incertaines pourront être précisées ensemble ; rien ne vous oblige à tout compléter aujourd’hui. L’estimation nécessitera ensuite une analyse personnalisée.</p></div><div class="guide-summary-photo"><img src="/assets/guide-summary-photo.svg" alt="" loading="lazy"></div></div>
 
 </section>
 <div class="jml-social-links jml-follow-block" aria-label="Réseaux sociaux d'Abderrahim Boujnikh">
