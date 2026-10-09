@@ -53,6 +53,12 @@ body{min-height:100vh;background:var(--cream)}
 .guide-head{display:none!important}
 .guide-card{margin-top:0}
 
+/* Mise en page équilibrée : récapitulatif et checklist côte à côte */
+.guide-summary-check-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;margin-top:18px}
+.guide-summary-check-grid .guide-answer-summary{margin:0;min-width:0}
+.guide-summary-check-grid .guide-section-title{margin:0 0 9px!important}
+.guide-summary-check-grid .guide-check{height:calc(100% - 32px);box-sizing:border-box}
+@media(max-width:680px){.guide-summary-check-grid{grid-template-columns:1fr;gap:14px}}
 /* Impression PDF : document éditorial, lisible et identifié JML Immobilier */
 .print-header,.print-footer{display:none}
 @page{size:A4;margin:25mm 16mm 23mm}
@@ -83,6 +89,10 @@ body{min-height:100vh;background:var(--cream)}
   .guide-field textarea{min-height:9mm!important;resize:none!important}
   .guide-field-hint{font-size:7.5pt!important}
   .guide-topic-fields-actions,.guide-topic-toggle,.guide-start,.guide-actions,.jml-social-links{display:none!important}
+  .guide-summary-check-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:5mm!important;align-items:start!important;margin-top:4mm!important}
+  .guide-summary-check-grid .guide-answer-summary{padding:3mm!important;margin:0!important;break-inside:avoid;background:#f7f4ed!important}
+  .guide-summary-check-grid .guide-check{height:auto!important}
+  .guide-summary-check-grid .guide-section-title{margin:0 0 2mm!important}
   .guide-answer-summary{padding:3mm!important;margin:4mm 0!important;break-inside:avoid;background:#f7f4ed!important}
   .guide-answer-summary h2{font-size:12pt!important;margin-bottom:2mm!important}
   .guide-answer-summary p{font-size:8.5pt!important;line-height:1.35!important}
@@ -181,9 +191,12 @@ body{min-height:100vh;background:var(--cream)}
  </div>
 </article>
 </div>
+<div class="guide-summary-check-grid">
 <div class="guide-answer-summary" id="answerSummary" aria-live="polite"><h2>Votre récapitulatif</h2><p class="empty-note">Vos réponses enregistrées apparaîtront ici pour vous aider à préparer le rendez-vous.</p></div>
 
 <h2 class="guide-section-title">Checklist avant notre rendez-vous</h2><div class="guide-check"><ul><li>Les caractéristiques principales du bien</li><li>Les travaux réalisés et ceux éventuellement à prévoir</li><li>Le DPE et les diagnostics disponibles</li><li>La taxe foncière si vous l'avez</li><li>Le prix auquel vous pensez aujourd'hui, même s'il s'agit d'un ordre d'idée</li><li>Votre calendrier idéal et les éléments qui pourraient modifier votre décision</li></ul></div>
+
+</div>
 <h2 class="guide-section-title">À retenir</h2><div class="guide-summary"><div class="guide-summary-copy"><strong>Votre objectif</strong><p>Arriver au rendez-vous avec un projet plus clair et les informations utiles pour parler concrètement de votre bien. Ce guide ne remplace ni un avis professionnel ni une estimation.</p></div><div class="guide-summary-photo"><img src="/assets/guide-summary-photo.svg" alt="" loading="lazy"></div></div>
 <div class="guide-actions"><button type="button" onclick="window.print()">🖨️ Enregistrer en PDF</button><a href="/projet-vendeur">← Retour à votre espace vendeur</a></div>
 </section>
