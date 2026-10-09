@@ -472,8 +472,8 @@ body{min-height:100vh;background:var(--cream)}
    const response=await fetch("/api/seller-guide/synthesis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({answers})});
    const data=await response.json().catch(()=>({}));
    if(response.ok&&data.ok&&data.synthesis){synthesis=data.synthesis;mode="ai"}
-   else if(data.code==="AI_NOT_CONFIGURED")aiIssue="La clé OpenAI n’est pas configurée dans Render.";
-   else if(data.code==="AI_PROVIDER_ERROR")aiIssue="L’API IA a refusé la demande. Vérifie la clé, le modèle et le quota OpenAI dans Render.";
+   else if(data.code==="AI_NOT_CONFIGURED")aiIssue="La clé Gemini (GEMINI_API_KEY) n’est pas configurée dans Render.";
+   else if(data.code==="AI_PROVIDER_ERROR")aiIssue="Gemini a refusé la demande. Vérifie GEMINI_API_KEY, GEMINI_MODEL et les limites d’utilisation dans Google AI Studio.";
    else if(data.code==="AI_SYNTHESIS_ERROR")aiIssue="La génération IA a échoué. Vérifie les journaux Render pour connaître la cause.";
    else aiIssue=data.error||"Le service IA n’a pas renvoyé de synthèse.";
   }catch(e){aiIssue="Le service IA est inaccessible depuis le site. Vérifie le déploiement Render."}
