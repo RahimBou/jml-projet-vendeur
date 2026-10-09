@@ -21,25 +21,21 @@ body{min-height:100vh;background:var(--cream)}
 @media(max-width:560px){.guide{padding:12px 10px 35px}.guide-head{padding:21px 17px;border-radius:17px}.guide-head h1{font-size:25px}.guide-head p{font-size:13px}.guide-hero-photo{height:145px;margin-left:-17px;margin-right:-17px}.guide-card{padding:12px;border-radius:17px}.guide-topic{grid-template-columns:82px 1fr;gap:11px;padding:10px}.guide-visual{height:82px}.guide-topic h2{font-size:14px}.guide-topic p{font-size:12px;line-height:1.48}.guide-check-btn{font-size:10px;padding:5px 8px}.guide-section-title{font-size:18px!important}.guide-check{padding:11px 12px}.guide-check li{font-size:12px}.guide-actions a,.guide-actions button{min-width:0;width:100%}}
 @media(max-width:560px){.guide-summary{grid-template-columns:1fr}.guide-summary-photo{height:120px;min-height:0}.guide-summary-copy{padding:10px 7px 3px}}@media print{.guide-actions,.progress-box,.guide-check-btn{display:none!important}body{background:#fff}.guide{padding:0}.guide-card{border:0}.guide-topic{break-inside:avoid;box-shadow:none}.guide-summary{background:#fff;color:#000;border:1px solid #ccc}.guide-summary p{color:#000}}
 
-/* Verrouillage explicite de la colonne de chaque étape : l'ouverture ne peut pas la faire passer en pleine largeur */
-.guide-topics>.guide-topic:nth-child(1){grid-column:1!important;grid-row:1}
-.guide-topics>.guide-topic:nth-child(2){grid-column:2!important;grid-row:1}
-.guide-topics>.guide-topic:nth-child(3){grid-column:1!important;grid-row:2}
-.guide-topics>.guide-topic:nth-child(4){grid-column:2!important;grid-row:2}
-.guide-topics>.guide-topic:nth-child(5){grid-column:1!important;grid-row:3}
-.guide-topics>.guide-topic:nth-child(6){grid-column:2!important;grid-row:3}
-@media(max-width:760px){
- .guide-topics>.guide-topic:nth-child(n){grid-column:1!important;grid-row:auto}
-}
-/* Correctif responsive des étapes : une carte ouverte ne doit jamais étirer la colonne voisine */
-.guide-topics{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:start;gap:12px}
-.guide-topic{display:grid;grid-template-columns:64px minmax(0,1fr);align-content:start;align-items:start;min-width:0;width:100%;height:fit-content}
+
+/* Grille structurelle : colonnes indépendantes, sans lignes partagées entre cartes */
+.guide-topics{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:start}
+.guide-topic-column{display:flex;flex-direction:column;gap:12px;min-width:0}
+.guide-topic{display:grid;grid-template-columns:64px minmax(0,1fr);align-content:start;align-items:start;min-width:0;width:100%;box-sizing:border-box}
 .guide-topic>*{min-width:0}
-.guide-topic-fields{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+.guide-topic-fields{grid-column:1/-1;width:100%;min-width:0;box-sizing:border-box}
 .guide-topic-fields[hidden]{display:none!important}
 .guide-field{min-width:0}
 .guide-field input,.guide-field select,.guide-field textarea{min-width:0}
-@media(max-width:760px){.guide-topics{grid-template-columns:minmax(0,1fr)!important}.guide-topic{grid-template-columns:72px minmax(0,1fr)}}
+@media(max-width:760px){
+ .guide-topics{display:flex;flex-direction:column;gap:0}
+ .guide-topic-column{display:contents}
+ .guide-topic{order:var(--step-order);grid-template-columns:72px minmax(0,1fr);margin-bottom:12px}
+}
 /* Guide vendeur interactif — amélioration progressive */
 .guide-head{padding-bottom:18px}
 .guide-hero-photo{height:126px}
@@ -148,7 +144,8 @@ body{min-height:100vh;background:var(--cream)}
 <p class="guide-intro">Avancez à votre rythme. Ouvrez les étapes qui vous concernent, notez vos réponses et retrouvez votre récapitulatif avant le rendez-vous. Vos réponses sont conservées sur cet appareil.</p>
 <div class="progress-box"><div class="progress-row"><span id="progressText">0 / 6 étapes préparées</span><span id="progressPercent">0 %</span></div><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div><div class="progress-actions"><span id="saveStatus" aria-live="polite">Enregistrement sur cet appareil</span><button type="button" id="resetProgress">Réinitialiser</button></div></div>
 <div class="guide-topics">
-<article class="guide-topic" id="step1" data-step="1">
+<div class="guide-topic-column" aria-label="Étapes 1, 3 et 5">
+<article class="guide-topic" style="--step-order:1" id="step1" data-step="1">
  <div class="guide-visual"><img src="/assets/guide-documents-photo.svg" alt="" loading="lazy"></div>
  <div><h2>1. Les caractéristiques du bien</h2><p>Surface, pièces, terrain et équipements : réunissez les informations principales, même approximatives.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
@@ -159,17 +156,7 @@ body{min-height:100vh;background:var(--cream)}
   <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>Vous pouvez compléter plus tard.</span></div>
  </div>
 </article>
-<article class="guide-topic" data-step="2">
- <div class="guide-visual"><img src="/assets/guide-project-photo.svg" alt="" loading="lazy"></div>
- <div><h2>2. Clarifier votre projet</h2><p>Votre raison de vendre, votre délai et vos priorités nous aideront à préparer un échange adapté.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
- <div class="guide-topic-fields" hidden>
-  <label class="guide-field">Quelle est votre principale motivation ?<select name="motif"><option value="">Choisir (facultatif)</option><option>Nouvelle étape de vie</option><option>Achat d’un autre bien</option><option>Déménagement</option><option>Succession</option><option>Investissement</option><option>Je préfère en parler au rendez-vous</option><option>Autre</option></select></label>
-  <label class="guide-field">Quelles sont vos priorités ?<textarea name="priorites" placeholder="Ex. vendre au bon prix, limiter les visites, être accompagné…"></textarea></label>
-  <label class="guide-field">Votre délai idéal<select name="delai"><option value="">Choisir (facultatif)</option><option>Dès que possible</option><option>Dans 1 à 3 mois</option><option>Dans 3 à 6 mois</option><option>Dans plus de 6 mois</option><option>Je prends des renseignements</option></select></label>
-  <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>Répondez uniquement à ce que vous souhaitez.</span></div>
- </div>
-</article>
-<article class="guide-topic" data-step="3">
+<article class="guide-topic" style="--step-order:3" data-step="3">
  <div class="guide-visual"><img src="/assets/guide-travaux-photo.svg" alt="" loading="lazy"></div>
  <div><h2>3. Faire le point sur les travaux</h2><p>Les travaux réalisés ou à prévoir peuvent aider à mieux comprendre le bien et ses caractéristiques.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
@@ -179,17 +166,7 @@ body{min-height:100vh;background:var(--cream)}
   <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>Ne joignez pas de document sensible ici.</span></div>
  </div>
 </article>
-<article class="guide-topic" data-step="4">
- <div class="guide-visual"><img src="/assets/guide-dpe-photo.svg" alt="" loading="lazy"></div>
- <div><h2>4. Vérifier le DPE et les documents</h2><p>Repérez les documents déjà disponibles. Nous pourrons faire le point ensemble sur ceux qui manquent.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
- <div class="guide-topic-fields" hidden>
-  <label class="guide-field">DPE et diagnostics<select name="dpe"><option value="">Choisir (facultatif)</option><option>Disponibles</option><option>Partiellement disponibles</option><option>À rechercher ou à réaliser</option><option>Je ne sais pas</option></select></label>
-  <label class="guide-field">Taxe foncière<select name="taxe"><option value="">Choisir (facultatif)</option><option>Document disponible</option><option>À retrouver</option><option>Je ne l’ai pas sous la main</option></select></label>
-  <label class="guide-field">Autres documents disponibles<textarea name="documents" placeholder="Ex. plans, factures, titre de propriété…"></textarea></label>
-  <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>La liste est indicative, elle dépend de votre situation.</span></div>
- </div>
-</article>
-<article class="guide-topic" data-step="5">
+<article class="guide-topic" style="--step-order:5" data-step="5">
  <div class="guide-visual"><img src="/assets/guide-prix-photo.svg" alt="" loading="lazy"></div>
  <div><h2>5. Réfléchir au prix sans se bloquer</h2><p>Votre idée de prix est un point de départ pour la discussion, pas une estimation validée.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
@@ -200,7 +177,29 @@ body{min-height:100vh;background:var(--cream)}
   <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>Vous pourrez en discuter librement avec votre conseiller.</span></div>
  </div>
 </article>
-<article class="guide-topic" data-step="6">
+</div>
+<div class="guide-topic-column" aria-label="Étapes 2, 4 et 6">
+<article class="guide-topic" style="--step-order:2" data-step="2">
+ <div class="guide-visual"><img src="/assets/guide-project-photo.svg" alt="" loading="lazy"></div>
+ <div><h2>2. Clarifier votre projet</h2><p>Votre raison de vendre, votre délai et vos priorités nous aideront à préparer un échange adapté.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div class="guide-topic-fields" hidden>
+  <label class="guide-field">Quelle est votre principale motivation ?<select name="motif"><option value="">Choisir (facultatif)</option><option>Nouvelle étape de vie</option><option>Achat d’un autre bien</option><option>Déménagement</option><option>Succession</option><option>Investissement</option><option>Je préfère en parler au rendez-vous</option><option>Autre</option></select></label>
+  <label class="guide-field">Quelles sont vos priorités ?<textarea name="priorites" placeholder="Ex. vendre au bon prix, limiter les visites, être accompagné…"></textarea></label>
+  <label class="guide-field">Votre délai idéal<select name="delai"><option value="">Choisir (facultatif)</option><option>Dès que possible</option><option>Dans 1 à 3 mois</option><option>Dans 3 à 6 mois</option><option>Dans plus de 6 mois</option><option>Je prends des renseignements</option></select></label>
+  <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>Répondez uniquement à ce que vous souhaitez.</span></div>
+ </div>
+</article>
+<article class="guide-topic" style="--step-order:4" data-step="4">
+ <div class="guide-visual"><img src="/assets/guide-dpe-photo.svg" alt="" loading="lazy"></div>
+ <div><h2>4. Vérifier le DPE et les documents</h2><p>Repérez les documents déjà disponibles. Nous pourrons faire le point ensemble sur ceux qui manquent.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
+ <div class="guide-topic-fields" hidden>
+  <label class="guide-field">DPE et diagnostics<select name="dpe"><option value="">Choisir (facultatif)</option><option>Disponibles</option><option>Partiellement disponibles</option><option>À rechercher ou à réaliser</option><option>Je ne sais pas</option></select></label>
+  <label class="guide-field">Taxe foncière<select name="taxe"><option value="">Choisir (facultatif)</option><option>Document disponible</option><option>À retrouver</option><option>Je ne l’ai pas sous la main</option></select></label>
+  <label class="guide-field">Autres documents disponibles<textarea name="documents" placeholder="Ex. plans, factures, titre de propriété…"></textarea></label>
+  <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>La liste est indicative, elle dépend de votre situation.</span></div>
+ </div>
+</article>
+<article class="guide-topic" style="--step-order:6" data-step="6">
  <div class="guide-visual"><img src="/assets/guide-calendar-photo.svg" alt="" loading="lazy"></div>
  <div><h2>6. Définir votre calendrier</h2><p>Un calendrier indicatif permet d’anticiper les prochaines étapes sans vous engager.</p><button class="guide-topic-toggle" type="button" aria-expanded="false">Préparer cette étape <span aria-hidden="true">＋</span></button></div>
  <div class="guide-topic-fields" hidden>
@@ -209,6 +208,7 @@ body{min-height:100vh;background:var(--cream)}
   <div class="guide-topic-fields-actions"><button type="button" class="save-step">Enregistrer mes réponses</button><span>Le calendrier pourra évoluer.</span></div>
  </div>
 </article>
+</div>
 </div>
 <div class="guide-summary-check-grid">
 <div class="guide-answer-summary" id="answerSummary" aria-live="polite"><h2>Votre récapitulatif</h2><p class="empty-note">Au fur et à mesure, vos réponses apparaîtront ici. Vous pouvez laisser les champs vides si vous n’avez pas encore toutes les informations.</p></div>
