@@ -2270,8 +2270,8 @@ app.get("/api/market-climate",async(req,res)=>{
     const monthNames=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
     const monthLabel=monthNames[latest.month-1]||"";
     const periodLabel=monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1)+" "+latest.year;
-    const currentRateMatch=plain.match(/taux d['’]intérêt moyen des nouveaux crédits à l['’]habitat[^.]{0,260}?atteint\s*([0-9]+[,.][0-9]+)\s*%/i)
-      ||plain.match(/crédits à l['’]habitat[^.]{0,180}?atteint\s*([0-9]+[,.][0-9]+)\s*%/i);
+    const currentRateMatch=plain.match(/taux d['’]intérêt moyen des nouveaux crédits à l['’]habitat[^.]{0,260}?atteind(?:re|t)\s*([0-9]+[,.][0-9]+)\s*%/i)
+      ||plain.match(/crédits à l['’]habitat[^.]{0,180}?atteind(?:re|t)\s*([0-9]+[,.][0-9]+)\s*%/i);
     const previousRateMatch=plain.match(/après\s*([0-9]+[,.][0-9]+)\s*%\s*en\s*(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i);
     const productionMatch=plain.match(/production[^.]{0,160}?à\s*([0-9]+[,.][0-9]+)\s*Mds?€?/i);
     const durationMatch=plain.match(/durée initiale moyenne[^.]{0,160}?([0-9]+\s*ans?\s*(?:et\s*[0-9]+\s*mois?)?)/i);
