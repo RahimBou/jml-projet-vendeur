@@ -1198,8 +1198,26 @@ body.guide-modal-open{overflow:hidden}
    document.getElementById("jmlWelcomeClose")?.addEventListener("click",closeWelcome);
    document.getElementById("jmlWelcomeContinue")?.addEventListener("click",closeWelcome);
    welcome.addEventListener("click",function(e){if(e.target===welcome)closeWelcome();});
-   document.addEventListener("keydown",function(e){if(e.key==="Escape")closeWelcome();});
-   document.addEventListener("DOMContentLoaded",function(){setTimeout(openWelcome,80);});
+   document.addEventListener("keydown",function(e){if(e.key==="Escape"&&welcome.classList.contains("jml-welcome-visible"))closeWelcome();});
+
+   // Afficher l'accueil une seule fois par prospect, grâce à son identifiant dans l'URL.
+   // Le drapeau est enregistré avant l'ouverture : actualiser la page ne réaffiche pas la fenêtre.
+   const welcomePathMatch=window.location.pathname.match(/\\/espace-vendeur\\/([^/]+)/i);
+   const welcomeProspectId=String(window.jmlProspectId||((welcomePathMatch&&welcomePathMatch[1])||"")).trim();
+   const welcomeStorageKey="jml-seller-welcome-seen-v1:"+(welcomeProspectId||window.location.pathname);
+   let welcomeAlreadySeen=false;
+   try{welcomeAlreadySeen=localStorage.getItem(welcomeStorageKey)==="1";}catch(_e){}
+   const showWelcomeOnce=()=>{
+     if(welcomeAlreadySeen)return;
+     try{localStorage.setItem(welcomeStorageKey,"1");}catch(_e){}
+     welcomeAlreadySeen=true;
+     setTimeout(openWelcome,80);
+   };
+   if(document.readyState==="loading"){
+     document.addEventListener("DOMContentLoaded",showWelcomeOnce,{once:true});
+   }else{
+     showWelcomeOnce();
+   }
  }
 
 const sellerSpaceKey="jml-seller-space-v1";
