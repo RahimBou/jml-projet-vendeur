@@ -100,6 +100,67 @@ app.get("/api/territory-version", (req,res) => {
 });
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// Synthèse vendeur assistée par IA : seules les réponses du guide sont envoyées,
+// sans nom, e-mail, téléphone ni adresse précise.
+app.post("/api/seller-guide/synthesis", async (req,res) => {
+  const apiKey=String(process.env.OPENAI_API_KEY||"").trim();
+  if(!apiKey) return res.status(503).json({ok:false,code:"AI_NOT_CONFIGURED",error:"La synthèse IA n'est pas encore configurée."});
+  const allowedKeys=new Set(["typeBien","surface","pieces","equipements","motif","priorites","delai","travauxFaits","travauxPrevus","justificatifsTravaux","dpe","taxe","documents","prixIdee","prix","prixRaison","calendrier","contraintes"]);
+  const raw=req.body&&typeof req.body.answers==="object"&&req.body.answers?req.body.answers:{};
+  const answers={};
+  for(const [key,value] of Object.entries(raw)){
+    if(!allowedKeys.has(key)||value==null) continue;
+    const safe=String(value).replace(/[<>]/g," ").trim().slice(0,1200);
+    if(safe) answers[key]=safe;
+  }
+  if(!Object.keys(answers).length) return res.status(400).json({ok:false,error:"Aucune réponse à synthétiser."});
+  const prompt=`Tu es un assistant éditorial immobilier pour JML Immobilier, dans les Ardennes, en France. Rédige une synthèse claire, rassurante, pratique et honnête à destination du propriétaire qui prépare une vente.
+Utilise uniquement les informations fournies. N'invente aucune caractéristique, aucun prix de marché, aucune estimation, aucune obligation juridique précise ni aucun délai garanti. Le prix renseigné est une idée personnelle du vendeur, jamais une estimation validée. Distingue les faits des points à vérifier. Ne donne pas de conseil juridique ou fiscal.
+Réponds en français et retourne uniquement un objet JSON avec ces clés :
+"title" (titre court),
+"summary" (2 à 4 phrases personnalisées),
+"property" (tableau de chaînes, 2 à 6 faits renseignés),
+"strengths" (tableau de 0 à 4 points favorables réellement étayés),
+"pointsToCheck" (tableau de 0 à 6 points à vérifier, seulement pertinents),
+"actionPlan" (tableau de 3 à 5 actions concrètes et priorisées),
+"appointmentChecklist" (tableau de 3 à 7 éléments à préparer),
+"priceNote" (1 ou 2 phrases prudentes sur l'idée de prix, ou chaîne vide si aucun prix indiqué),
+"closing" (une phrase encourageante rappelant qu'il n'est pas nécessaire d'avoir tout complété).
+Évite les répétitions, les formulations alarmistes et les promesses commerciales. Si des informations manquent, indique-le simplement.`;
+  try{
+    const response=await fetch("https://api.openai.com/v1/responses",{
+      method:"POST",
+      headers:{"Authorization":"Bearer "+apiKey,"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:String(process.env.OPENAI_MODEL||"gpt-4.1-mini").trim(),
+        instructions:prompt,
+        input:JSON.stringify(answers),
+        text:{format:{type:"json_object"}},
+        max_output_tokens:1400
+      }),
+      signal:AbortSignal.timeout(25000)
+    });
+    const payload=await response.json().catch(()=>({}));
+    if(!response.ok){
+      console.error("JML seller guide AI error:",response.status,payload?.error?.code||payload?.error?.type||"provider_error");
+      return res.status(502).json({ok:false,code:"AI_PROVIDER_ERROR",error:"La synthèse IA est temporairement indisponible."});
+    }
+    let output=String(payload.output_text||"");
+    if(!output&&Array.isArray(payload.output)){
+      for(const item of payload.output) for(const part of (item.content||[])) if(part.type==="output_text") output+=part.text||"";
+    }
+    const parsed=JSON.parse(output);
+    const listKeys=["property","strengths","pointsToCheck","actionPlan","appointmentChecklist"];
+    for(const key of listKeys) parsed[key]=Array.isArray(parsed[key])?parsed[key].map(x=>String(x).slice(0,500)).slice(0,8):[];
+    for(const key of ["title","summary","priceNote","closing"]) parsed[key]=String(parsed[key]||"").slice(0,1800);
+    res.setHeader("Cache-Control","no-store");
+    return res.json({ok:true,synthesis:parsed,mode:"ai"});
+  }catch(error){
+    console.error("JML seller guide synthesis:",String(error?.message||error));
+    return res.status(502).json({ok:false,code:"AI_SYNTHESIS_ERROR",error:"Impossible de générer la synthèse IA pour le moment."});
+  }
+});
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "pro-login.html")));
 app.get("/projet-vendeur", (req, res) => res.sendFile(path.join(__dirname, "public", "projet-vendeur.html")));
 app.get("/espace-vendeur/:token", (req, res) => res.sendFile(path.join(__dirname, "public", "espace-vendeur.html")));
