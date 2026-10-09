@@ -918,7 +918,7 @@ async function getCommuneMarketData(city,code){
         percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2) FILTER (WHERE property_type='Appartement') AS apartment_price,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY (price / NULLIF(land_surface,0))) FILTER (WHERE property_type='Terrain' AND land_surface>0) AS terrain_price
         FROM jml_dvf_sales
-        WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '48 months'`,[communeCode]);
+        WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '24 months'`,[communeCode]);
       const s=summary.rows[0]||{};
       if(Number(s.transactions||0)>0){
         const recent=await db(`SELECT mutation_id AS id,TO_CHAR(sale_date,'YYYY-MM-DD') AS date,property_type AS type,
