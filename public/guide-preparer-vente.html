@@ -60,6 +60,14 @@ body{min-height:100vh;background:var(--cream)}
 .guide-answer-summary h2{margin:0 0 10px;color:var(--green);font-size:18px}
 .guide-answer-summary p{margin:6px 0;font-size:13px;line-height:1.5;color:#405249;overflow-wrap:anywhere}
 .guide-answer-summary .empty-note{color:#718078}
+.synthesis-panel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 18px;align-items:center;margin:0 0 16px;padding:17px 18px;border:1px solid #d9ddd7;border-left:4px solid #c9a85e;border-radius:15px;background:#fff}
+.synthesis-copy strong{display:block;color:#173b32;font-size:15px;margin-bottom:5px}
+.synthesis-copy p{margin:0;color:#52635b;font-size:13px;line-height:1.5}
+.synthesis-button{border:0;border-radius:10px;background:#173b32;color:#fff;padding:12px 15px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap}
+.synthesis-button:hover{background:#245346}
+.synthesis-button:disabled{opacity:.65;cursor:wait}
+.synthesis-status{grid-column:1/-1;margin:0;color:#65736c;font-size:11px;line-height:1.4}
+@media(max-width:560px){.synthesis-panel{grid-template-columns:1fr;padding:14px}.synthesis-button{width:100%;white-space:normal}.synthesis-status{grid-column:1}}
 .guide-summary strong{font-size:14px}
 @media(max-width:560px){.guide-hero-photo{height:100px}.guide-topic{grid-template-columns:72px minmax(0,1fr);gap:10px}.guide-topic-fields{grid-column:1/-1}.guide-start{width:100%;box-sizing:border-box}}
 @media print{.guide-topic-toggle,.guide-topic-fields-actions,.guide-start{display:none!important}.guide-topic-fields[hidden]{display:grid!important}.guide-topic-fields{border-top:1px solid #ccc}.guide-field input,.guide-field select,.guide-field textarea{border:0;padding:2px 0;min-height:0;background:transparent}.guide-answer-summary{break-inside:avoid}}
@@ -137,6 +145,7 @@ body{min-height:100vh;background:var(--cream)}
 </section>
 <section class="guide-card">
 <p class="guide-intro">Avancez à votre rythme. Ouvrez les étapes qui vous concernent, notez vos réponses et retrouvez votre récapitulatif avant le rendez-vous. Vos réponses sont conservées sur cet appareil.</p>
+<div class="synthesis-panel"><div class="synthesis-copy"><strong>Votre préparation devient un dossier utile</strong><p>Générez une synthèse personnalisée avec les informations renseignées, les points à vérifier et les prochaines actions. Le document ne reprend pas le formulaire brut.</p></div><button type="button" id="generateSellerPdf" class="synthesis-button">Créer ma synthèse PDF <span aria-hidden="true">↗</span></button><p id="synthesisStatus" class="synthesis-status" aria-live="polite">La synthèse est préparée à partir de vos réponses enregistrées sur cet appareil.</p></div>
 <div class="progress-box"><div class="progress-row"><span id="progressText">0 / 6 étapes préparées</span><span id="progressPercent">0 %</span></div><div class="progress-track"><div class="progress-fill" id="progressFill"></div></div><div class="progress-actions"><span id="saveStatus" aria-live="polite">Enregistrement sur cet appareil</span><button type="button" id="resetProgress">Réinitialiser</button></div></div>
 <div class="guide-topics">
 <div class="guide-topic-column" aria-label="Étapes 1, 3 et 5">
@@ -315,6 +324,98 @@ body{min-height:100vh;background:var(--cream)}
    render();
  });
  document.getElementById("startGuide").addEventListener("click",()=>{cards[0].querySelector(".guide-topic-fields").hidden=false;cards[0].querySelector(".guide-topic-toggle").setAttribute("aria-expanded","true");cards[0].querySelector(".guide-topic-toggle").innerHTML='Fermer cette étape <span aria-hidden="true">−</span>'});
+
+ const pdfButton=document.getElementById("generateSellerPdf");
+ const pdfStatus=document.getElementById("synthesisStatus");
+ const reportLabels={
+  typeBien:"Type de bien",surface:"Surface habitable",pieces:"Nombre de pièces",equipements:"Terrain et équipements",
+  motif:"Motivation de vente",priorites:"Priorités",delai:"Délai souhaité",travauxFaits:"Travaux réalisés",travauxPrevus:"Travaux à prévoir",
+  justificatifsTravaux:"Factures et garanties",dpe:"DPE et diagnostics",taxe:"Taxe foncière",documents:"Autres documents disponibles",
+  prixIdee:"Position sur le prix",prix:"Prix envisagé par le propriétaire",prixRaison:"Éléments qui motivent le prix",
+  calendrier:"Calendrier souhaité",contraintes:"Contraintes ou questions"
+ };
+ const reportGroups=[
+  {title:"Mon bien immobilier",keys:["typeBien","surface","pieces","equipements"]},
+  {title:"Mon projet et mes priorités",keys:["motif","priorites","delai","calendrier","contraintes"]},
+  {title:"État du bien et documents",keys:["travauxFaits","travauxPrevus","justificatifsTravaux","dpe","taxe","documents"]},
+  {title:"Mon idée de prix",keys:["prixIdee","prix","prixRaison"]}
+ ];
+ function currentAnswers(){
+  const answers={...(state.answers||{})};
+  cards.forEach(card=>card.querySelectorAll("input,select,textarea").forEach(field=>{
+   if(String(field.value||"").trim())answers[field.name]=String(field.value).trim();
+  }));
+  return Object.fromEntries(Object.entries(answers).filter(([k,v])=>reportLabels[k]&&String(v||"").trim()).map(([k,v])=>[k,String(v).trim().slice(0,1200)]));
+ }
+ function esc(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
+ function makeFallback(answers){
+  const has=(key)=>Boolean(String(answers[key]||"").trim());
+  const actions=[];
+  if(!has("dpe")||/à rechercher|réaliser|ne sais pas|partiellement/i.test(answers.dpe||""))actions.push("Vérifier la disponibilité du DPE et des diagnostics immobiliers.");
+  if(!has("taxe")||/à retrouver|pas sous la main/i.test(answers.taxe||""))actions.push("Retrouver le dernier avis de taxe foncière, si possible.");
+  if(!has("travauxFaits")&&!has("travauxPrevus"))actions.push("Faire une liste des travaux réalisés et de ceux qui restent à prévoir.");
+  if(!has("documents"))actions.push("Rassembler les documents déjà disponibles concernant le bien.");
+  if(!has("surface")||!has("typeBien"))actions.push("Compléter les caractéristiques essentielles du bien (type et surface notamment).");
+  if(!has("prix"))actions.push("Préparer les éléments qui motivent votre idée de prix, sans la considérer comme une estimation validée.");
+  if(!has("calendrier")&&!has("delai"))actions.push("Préciser le calendrier souhaité et les éventuelles contraintes personnelles.");
+  const checklist=["Caractéristiques du bien et surface connue","Diagnostics et DPE disponibles","Avis de taxe foncière, si disponible","Informations sur les travaux et leurs justificatifs","Questions et priorités pour le rendez-vous"];
+  const strengths=[];
+  if(has("travauxFaits"))strengths.push("Des travaux ont été décrits : leurs dates et justificatifs pourront aider à mieux documenter le bien.");
+  if(has("documents"))strengths.push("Des documents ont déjà été identifiés pour préparer l'échange.");
+  if(has("priorites"))strengths.push("Les priorités du projet sont exprimées et pourront guider la préparation du rendez-vous.");
+  return {
+   title:"Synthèse de mon projet de vente",
+   summary:"Ce document rassemble les informations communiquées pour préparer votre projet de vente. Il aide à organiser les prochaines démarches et à repérer les éléments qui restent à préciser. Il ne constitue ni une estimation immobilière ni un engagement de mise en vente.",
+   property:reportGroups.flatMap(g=>g.keys.filter(has).map(k=>reportLabels[k]+" : "+answers[k])),
+   strengths,
+   pointsToCheck:actions.slice(0,6),
+   actionPlan:(actions.length?actions:["Relire les informations réunies et préparer vos questions pour le rendez-vous."]).slice(0,5),
+   appointmentChecklist:checklist,
+   priceNote:has("prix")?"Le montant de "+answers.prix+" € correspond à votre indication personnelle. Il ne s'agit pas d'une estimation validée ; le positionnement devra être discuté à partir des caractéristiques du bien et des références de marché pertinentes.":"",
+   closing:"Vous n'avez pas besoin d'avoir toutes les réponses : cette synthèse permet de préparer un échange utile, à votre rythme."
+  };
+ }
+ function reportSection(title,items){
+  if(!Array.isArray(items)||!items.length)return "";
+  return '<section class="report-section"><h2>'+esc(title)+'</h2><ul>'+items.map(x=>'<li>'+esc(x)+'</li>').join("")+'</ul></section>';
+ }
+ function buildReport(syn,answers,mode){
+  const date=new Intl.DateTimeFormat("fr-FR",{dateStyle:"long"}).format(new Date());
+  const groups=reportGroups.map(g=>{
+   const entries=g.keys.filter(k=>answers[k]).map(k=>'<div class="fact"><span>'+esc(reportLabels[k])+'</span><strong>'+esc(answers[k])+(k==="surface"?" m²":k==="prix"?" €":"")+'</strong></div>');
+   return entries.length?'<section class="report-section"><h2>'+esc(g.title)+'</h2><div class="facts">'+entries.join("")+'</div></section>':"";
+  }).join("");
+  const property=syn.property&&syn.property.length?reportSection("Les informations clés",syn.property):"";
+  const strengths=reportSection("Éléments déjà identifiés",syn.strengths);
+  const points=reportSection("Points à vérifier",syn.pointsToCheck);
+  const actions=reportSection("Mon plan d’action",syn.actionPlan);
+  const checklist=reportSection("À préparer pour le rendez-vous",syn.appointmentChecklist);
+  const price=syn.priceNote?'<section class="price-note"><h2>À propos du prix envisagé</h2><p>'+esc(syn.priceNote)+'</p></section>':"";
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(syn.title||"Synthèse vendeur")+' — JML Immobilier</title><style>'+
+   '@page{size:A4;margin:16mm 15mm 18mm}*{box-sizing:border-box}body{margin:0;color:#263b33;font:10.5pt/1.5 Arial,sans-serif;background:#fff}.top{background:#173b32;color:#fff;padding:24px 26px;border-radius:12px;margin-bottom:20px;border-bottom:4px solid #c9a85e}.brand{font:700 20pt Georgia,serif;letter-spacing:.04em}.brand small{font:700 9pt Arial,sans-serif;letter-spacing:.16em;margin-left:7px}.eyebrow{color:#d8bb7a;font-size:8pt;letter-spacing:.14em;font-weight:700;margin:12px 0 5px}.top h1{font:700 23pt Georgia,serif;line-height:1.15;margin:0 0 8px}.top p{margin:0;color:#e5ece7;font-size:10pt}.date{font-size:8pt;color:#6c7a73;margin:0 0 16px}.intro{font-size:11pt;line-height:1.6;margin:0 0 17px}.report-section,.price-note{margin:0 0 15px;break-inside:avoid}.report-section h2,.price-note h2{font-size:12pt;color:#173b32;margin:0 0 7px;padding-bottom:5px;border-bottom:1px solid #d8bb7a}.facts{display:grid;grid-template-columns:1fr 1fr;gap:7px}.fact{border:1px solid #e0e4df;border-radius:7px;padding:8px 10px;overflow-wrap:anywhere}.fact span{display:block;font-size:8pt;color:#66746e;margin-bottom:2px}.fact strong{font-size:9.5pt;font-weight:600;white-space:pre-wrap}.report-section ul{padding-left:19px;margin:6px 0}.report-section li{padding:2px 0;break-inside:avoid}.price-note{background:#f7f3e9;border-left:3px solid #c9a85e;padding:12px 14px;break-inside:avoid}.price-note p{margin:0}.closing{background:#173b32;color:#fff;padding:13px 15px;border-radius:8px;margin-top:17px}.closing strong{display:block;color:#d8bb7a;margin-bottom:4px}.closing p{margin:0}.footer{border-top:1px solid #c9a85e;margin-top:20px;padding-top:8px;display:flex;justify-content:space-between;gap:12px;color:#68766e;font-size:8pt}.empty{color:#68766e;font-style:italic}@media(max-width:560px){.facts{grid-template-columns:1fr}}@media print{body{font-size:10pt}.top{print-color-adjust:exact;-webkit-print-color-adjust:exact}.closing,.price-note{print-color-adjust:exact;-webkit-print-color-adjust:exact}}'+
+   '</style></head><body><header class="top"><div class="brand">JML <small>IMMOBILIER</small></div><div class="eyebrow">PRÉPARATION À LA VENTE · ARDENNES</div><h1>'+esc(syn.title||"Synthèse de mon projet de vente")+'</h1><p>Un document de travail personnalisé pour préparer les prochaines étapes de votre projet.</p></header><p class="date">Document préparé le '+esc(date)+' · Abderrahim Boujnikh, agent commercial immobilier · JML Immobilier</p><p class="intro">'+esc(syn.summary||"Synthèse des informations communiquées.")+'</p>'+groups+property+strengths+points+actions+checklist+price+'<div class="closing"><strong>La prochaine étape</strong><p>'+esc(syn.closing||"Cette synthèse vous aidera à préparer votre échange avec JML Immobilier.")+'</p></div><footer class="footer"><span>JML Immobilier · Votre projet, notre engagement</span><span>Document préparatoire — non contractuel</span></footer><script>window.addEventListener("load",()=>setTimeout(()=>window.print(),500));<\/script></body></html>';
+ }
+ pdfButton.addEventListener("click",async()=>{
+  const answers=currentAnswers();
+  if(!Object.keys(answers).length){pdfStatus.textContent="Renseignez au moins une information avant de créer votre synthèse.";pdfStatus.style.color="#9a5b32";return}
+  const reportWindow=window.open("about:blank","_blank");
+  if(!reportWindow){pdfStatus.textContent="Autorisez l’ouverture d’une fenêtre pour créer votre PDF, puis réessayez.";pdfStatus.style.color="#9a5b32";return}
+  reportWindow.document.write("<!doctype html><html lang='fr'><meta charset='utf-8'><title>Préparation de votre synthèse</title><body style='font:16px Arial;padding:32px;color:#173b32'>Préparation de votre synthèse personnalisée…</body></html>");
+  reportWindow.document.close();
+  pdfButton.disabled=true;pdfButton.textContent="Préparation en cours…";
+  pdfStatus.textContent="Création de la synthèse à partir de vos réponses…";pdfStatus.style.color="#65736c";
+  let synthesis,mode="local";
+  try{
+   const response=await fetch("/api/seller-guide/synthesis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({answers})});
+   const data=await response.json().catch(()=>({}));
+   if(response.ok&&data.ok&&data.synthesis){synthesis=data.synthesis;mode="ai"}
+  }catch(e){}
+  if(!synthesis)synthesis=makeFallback(answers);
+  reportWindow.document.open();reportWindow.document.write(buildReport(synthesis,answers,mode));reportWindow.document.close();
+  pdfButton.disabled=false;pdfButton.innerHTML='Créer ma synthèse PDF <span aria-hidden="true">↗</span>';
+  pdfStatus.textContent=mode==="ai"?"Synthèse personnalisée générée par l’assistant IA. Dans la fenêtre ouverte, choisissez « Enregistrer au format PDF ».":"Synthèse structurée créée à partir de vos réponses. L’assistant IA sera activé dès que sa clé sera configurée sur Render. Dans la fenêtre ouverte, choisissez « Enregistrer au format PDF ».";
+  pdfStatus.style.color=mode==="ai"?"#26745d":"#65736c";
+ });
  render();
 })();
 </script>
