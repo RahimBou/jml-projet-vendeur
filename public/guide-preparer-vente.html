@@ -52,9 +52,62 @@ body{min-height:100vh;background:var(--cream)}
 .guide{padding-top:12px}
 .guide-head{display:none!important}
 .guide-card{margin-top:0}
+
+/* Impression PDF : document éditorial, lisible et identifié JML Immobilier */
+.print-header,.print-footer{display:none}
+@page{size:A4;margin:25mm 16mm 23mm}
+@media print{
+  html,body{background:#fff!important;color:#24352e!important;font-size:10pt!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .print-header{display:block!important;position:fixed;top:-18mm;left:0;right:0;height:16mm;padding:0 0 3mm;border-bottom:1.5pt solid #c9a85e;background:#fff;color:#173b32}
+  .print-brand{font-family:Georgia,serif;font-size:17pt;font-weight:700;letter-spacing:.03em;line-height:1.1}
+  .print-brand span{font-family:Arial,sans-serif;font-size:10pt;letter-spacing:.13em}
+  .print-address{font-size:8.5pt;margin-top:2mm;color:#52635b}
+  .print-document{position:absolute;right:0;top:2mm;font-size:7.5pt;letter-spacing:.08em;color:#7d6840;font-weight:700;text-align:right}
+  .print-footer{display:flex!important;position:fixed;bottom:-17mm;left:0;right:0;height:13mm;padding-top:2.5mm;border-top:1pt solid #c9a85e;background:#fff;color:#173b32;align-items:center;justify-content:space-between;gap:5mm;font-size:7.5pt}
+  .print-footer strong{font-size:9pt;white-space:nowrap}
+  .print-footer span{color:#52635b}
+  .guide{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
+  .guide-head{display:none!important}
+  .guide-card{padding:0!important;margin:0!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important}
+  .guide-intro{font-size:9pt!important;line-height:1.45!important;margin:0 0 5mm!important;color:#52635b!important}
+  .progress-box{padding:3mm 4mm!important;margin:0 0 4mm!important;break-inside:avoid;background:#f7f4ed!important}
+  .guide-topics{display:block!important}
+  .guide-topic{grid-template-columns:18mm minmax(0,1fr)!important;gap:3mm!important;padding:3mm!important;margin:0 0 3mm!important;border:1px solid #d9ddd7!important;border-radius:3mm!important;box-shadow:none!important;background:#fff!important;break-inside:avoid}
+  .guide-visual{height:17mm!important;width:18mm!important;border:0!important}
+  .guide-topic h2{font-size:10pt!important;margin:0 0 1mm!important;color:#173b32!important}
+  .guide-topic p{font-size:8.5pt!important;line-height:1.35!important}
+  .guide-topic-fields[hidden]{display:grid!important}
+  .guide-topic-fields{grid-column:1/-1!important;grid-template-columns:1fr 1fr!important;gap:2.5mm 4mm!important;padding-top:2.5mm!important;margin-top:1mm!important;border-top:1px solid #e3e5df!important}
+  .guide-field{font-size:8pt!important;gap:1mm!important;break-inside:avoid}
+  .guide-field input,.guide-field select,.guide-field textarea{font-size:8.5pt!important;min-height:0!important;padding:1.5mm 2mm!important;border:0!important;border-bottom:1px solid #cfd5d0!important;border-radius:0!important;background:#fff!important;color:#24352e!important}
+  .guide-field textarea{min-height:9mm!important;resize:none!important}
+  .guide-field-hint{font-size:7.5pt!important}
+  .guide-topic-fields-actions,.guide-topic-toggle,.guide-start,.guide-actions,.jml-social-links{display:none!important}
+  .guide-answer-summary{padding:3mm!important;margin:4mm 0!important;break-inside:avoid;background:#f7f4ed!important}
+  .guide-answer-summary h2{font-size:12pt!important;margin-bottom:2mm!important}
+  .guide-answer-summary p{font-size:8.5pt!important;line-height:1.35!important}
+  .guide-section-title{font-size:12pt!important;margin:5mm 0 2mm!important;break-after:avoid;color:#173b32!important}
+  .guide-check{padding:2mm 4mm!important;break-inside:avoid;background:#fff!important}
+  .guide-check li{font-size:8.5pt!important;padding:1.5mm 0 1.5mm 7mm!important}
+  .guide-summary{grid-template-columns:1fr!important;margin-top:2mm!important;padding:3mm!important;break-inside:avoid;background:#173b32!important}
+  .guide-summary-copy{padding:1mm!important}
+  .guide-summary p{font-size:8.5pt!important;line-height:1.4!important}
+  .guide-summary-photo{display:none!important}
+  img{max-width:100%!important}
+}
 </style>
 <style id="ardenne-identity-final">.ardenne-visual{background-image:linear-gradient(90deg,rgba(23,59,50,.96) 0%,rgba(23,59,50,.82) 48%,rgba(23,59,50,.42) 100%),url('/assets/charleville-place-ducale.svg')!important;background-size:cover!important;background-position:center!important}</style></head>
 <body>
+<header class="print-header" aria-hidden="true">
+  <div class="print-brand">JML <span>IMMOBILIER</span></div>
+  <div class="print-address">42 rue du Théâtre · 08000 Charleville-Mézières</div>
+  <div class="print-document">GUIDE DE PRÉPARATION À LA VENTE</div>
+</header>
+<footer class="print-footer" aria-hidden="true">
+  <strong>Abderrahim BOUJNIKH</strong>
+  <span>Agent commercial immobilier · JML Immobilier</span>
+  <span>42 rue du Théâtre · 08000 Charleville-Mézières</span>
+</footer>
 <main class="guide">
 <section class="guide-head jml-architecture jml-architecture ardenne-visual">
 <div class="eyebrow">JML IMMOBILIER · GUIDE VENDEUR</div>
