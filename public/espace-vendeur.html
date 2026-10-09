@@ -1732,12 +1732,27 @@ function updateSellerProjectSummary(d){
   window.addEventListener("jml:territory-updated",event=>renderSellerMarketWatch(event.detail));
   renderSellerMarketWatch(window.jmlSellerTerritoryData||marketData);
   const marketTabs=document.getElementById("sellerMarketTabs");
-  if(marketTabs)marketTabs.addEventListener("click",function(event){
-    const button=event.target.closest("button");
-    if(!button)return;
+  function chooseSellerMarket(button){
+    if(!button||!["marketTabCommunal","marketTabHouse","marketTabApartment"].includes(button.id))return;
     selectedMarket=button.id==="marketTabHouse"?"house":button.id==="marketTabApartment"?"apartment":"communal";
+    // Réafficher à partir de la dernière réponse territoriale réellement chargée.
+    const latest=window.jmlSellerTerritoryData;
+    if(latest&&latest.market)marketData=latest.market;
     renderMarket();
-  });
+  }
+  if(marketTabs){
+    // Affectation directe à chaque bouton pour éviter les problèmes de délégation
+    // d'événements dans les versions précédentes de la page.
+    marketTabs.querySelectorAll("button").forEach(button=>{
+      button.type="button";
+      button.setAttribute("aria-controls","sellerMarketMetrics");
+      button.onclick=function(event){event.preventDefault();event.stopPropagation();chooseSellerMarket(button);};
+    });
+    marketTabs.addEventListener("click",function(event){
+      const button=event.target.closest("button");
+      if(button)chooseSellerMarket(button);
+    },true);
+  }
   async function refresh(){
     const d=read(); if(!d.submitted)return;
     const city=d.city||"";
