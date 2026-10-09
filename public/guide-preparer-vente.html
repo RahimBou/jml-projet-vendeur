@@ -251,7 +251,7 @@ body{min-height:100vh;background:var(--cream)}
  function valueOf(field){return (field.value||"").trim()}
  function updateSummary(){
    const values=[];
-   cards.forEach(card=>{
+   [...cards].sort((a,b)=>Number(a.dataset.step)-Number(b.dataset.step)).forEach(card=>{
      const step=Number(card.dataset.step);
      const fields=[...card.querySelectorAll(".guide-topic-fields input,.guide-topic-fields select,.guide-topic-fields textarea")];
      const answered=fields.map(f=>({label:fieldLabel(f),value:valueOf(f)})).filter(x=>x.value);
