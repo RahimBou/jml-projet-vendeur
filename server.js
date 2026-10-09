@@ -136,7 +136,7 @@ Réponds en français et retourne uniquement un objet JSON avec ces clés :
       body:JSON.stringify({
         model:String(process.env.OPENAI_MODEL||"gpt-4.1-mini").trim(),
         instructions:prompt,
-        input:"Réponds en JSON valide en respectant les instructions. Voici les réponses du propriétaire à synthétiser :\n"+JSON.stringify(answers),
+        input:"Réponds en json valide en respectant les instructions. Le format de sortie demandé est json. Voici les réponses du propriétaire à synthétiser :\n"+JSON.stringify(answers),
         text:{format:{type:"json_object"}},
         max_output_tokens:1400
       }),
