@@ -2252,7 +2252,7 @@ app.get("/api/territory-nearby", async (req,res) => {
 const jmlCreditClimateCache={expiresAt:0,data:null};
 app.get("/api/market-climate",async(req,res)=>{
   res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
-  if(jmlCreditClimateCache.data&&jmlCreditClimateCache.expiresAt>Date.now())return res.json({...jmlCreditClimateCache.data,cache:true});
+  if(!req.query.refresh&&jmlCreditClimateCache.data&&jmlCreditClimateCache.expiresAt>Date.now())return res.json({...jmlCreditClimateCache.data,cache:true});
   const indexUrl="https://www.banque-france.fr/fr/publications-et-statistiques/statistiques/credit";
   try{
     const indexResponse=await fetch(indexUrl,{headers:{"Accept":"text/html","User-Agent":"JML-Projet-Vendeur/3.10.0"},signal:AbortSignal.timeout(10000)});
