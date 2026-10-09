@@ -480,7 +480,7 @@ body{min-height:100vh;background:var(--cream)}
   if(!synthesis)synthesis=makeFallback(answers);
   reportWindow.document.open();reportWindow.document.write(buildReport(synthesis,answers,mode));reportWindow.document.close();
   pdfButton.disabled=false;pdfButton.innerHTML='Créer ma synthèse en PDF <span aria-hidden="true">↗</span>';
-  pdfStatus.textContent=mode==="ai"?"Synthèse IA générée avec un brouillon de texte d’annonce. Choisissez « Enregistrer au format PDF » dans la fenêtre ouverte.":"Mode de secours utilisé — "+aiIssue+" Le PDF reste disponible ; le texte d’annonce est provisoire et fondé sur les réponses. Choisissez « Enregistrer au format PDF » dans la fenêtre ouverte.";
+  pdfStatus.textContent=mode==="ai"?"IA confirmée : la synthèse et le texte d’annonce ci-joints proviennent de la réponse du service IA. Choisissez « Enregistrer au format PDF » dans la fenêtre ouverte.":"⚠️ IA NON UTILISÉE — "+aiIssue+" Le PDF reste disponible, mais le texte d’annonce est un brouillon automatique et non un texte rédigé par l’IA. Choisissez « Enregistrer au format PDF » dans la fenêtre ouverte.";
   pdfStatus.style.color=mode==="ai"?"#26745d":"#9a5b32";
  });
  render();
