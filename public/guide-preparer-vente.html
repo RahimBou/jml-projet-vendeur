@@ -22,10 +22,12 @@ body{min-height:100vh;background:var(--cream)}
 @media(max-width:560px){.guide-summary{grid-template-columns:1fr}.guide-summary-photo{height:120px;min-height:0}.guide-summary-copy{padding:10px 7px 3px}}@media print{.guide-actions,.progress-box,.guide-check-btn{display:none!important}body{background:#fff}.guide{padding:0}.guide-card{border:0}.guide-topic{break-inside:avoid;box-shadow:none}.guide-summary{background:#fff;color:#000;border:1px solid #ccc}.guide-summary p{color:#000}}
 
 
-/* Colonnes réellement indépendantes : l’ouverture d’une carte ne réserve pas une hauteur dans l’autre colonne */
-.guide-topics{display:flex;align-items:flex-start;gap:12px;width:100%;min-width:0}
-.guide-topic-column{display:flex;flex:1 1 0;flex-direction:column;align-self:flex-start;gap:12px;width:calc(50% - 6px);min-width:0;height:max-content}
-.guide-topic{display:grid;grid-template-columns:64px minmax(0,1fr);align-content:start;align-items:start;align-self:flex-start;min-width:0;width:100%;height:auto;box-sizing:border-box}
+/* Grille structurelle : deux colonnes indépendantes, chacune empile ses cartes.
+   Une étape ouverte agrandit uniquement sa propre colonne ; aucune largeur fixe ni flex-basis concurrent. */
+.guide{width:100%;max-width:1180px;box-sizing:border-box;margin:0 auto}
+.guide-topics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;column-gap:18px;row-gap:14px;width:100%;min-width:0}
+.guide-topic-column{display:flex;flex-direction:column;align-self:start;gap:14px;width:100%;min-width:0;min-height:0;height:auto}
+.guide-topic{display:grid;grid-template-columns:76px minmax(0,1fr);align-content:start;align-items:start;min-width:0;width:100%;height:auto;box-sizing:border-box;margin:0}
 .guide-topic>*{min-width:0}
 .guide-topic-fields{grid-column:1/-1;width:100%;min-width:0;box-sizing:border-box}
 .guide-topic-fields[hidden]{display:none!important}
