@@ -31,12 +31,12 @@ body{min-height:100vh;background:var(--cream)}.fb-wrap{max-width:720px;margin:0 
 .seller-hero h3{margin:0 0 6px;font-size:25px}.seller-hero p{margin:0;color:var(--muted);line-height:1.55}.seller-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}.seller-pill{padding:7px 11px;border-radius:999px;background:#efe4c8;color:#6f592b;font-size:11px;font-weight:800}
 .seller-section{margin-top:14px;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:0 5px 18px rgba(23,51,44,.04)}
 .seller-section-head{display:flex;gap:12px;align-items:flex-start}.seller-icon{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#f0e2c1;color:#7b5e22;font-size:21px;flex:0 0 42px}.seller-section h4{margin:1px 0 5px;font-size:20px}.seller-section-head p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}.seller-arrow{margin-left:auto;width:34px;height:34px;border:0;border-radius:50%;background:#d8bb7a;color:#17332c;font-size:22px;line-height:1;flex:0 0 34px}
-.seller-market{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}.seller-metric{padding:12px;border:1px solid var(--line);border-radius:12px;background:#faf7ef}.seller-metric span{display:block;color:var(--muted);font-size:10px}.seller-metric strong{display:block;font-size:17px;margin-top:4px}.seller-metric small{display:block;color:var(--muted);font-size:9.5px;margin-top:3px}
+.seller-market{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}.seller-metric{padding:12px;border:1px solid var(--line);border-radius:12px;background:#faf7ef}.seller-metric span{display:block;color:var(--muted);font-size:10px}.seller-metric strong{display:block;font-size:17px;margin-top:4px}.seller-metric small{display:block;color:var(--muted);font-size:9.5px;margin-top:3px}
 .seller-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px}.seller-tag{padding:7px 10px;border-radius:999px;background:#f1e5c9;color:#6f592b;font-size:10.5px;font-weight:700}
 .seller-timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:17px;position:relative}.seller-timeline:before{content:"";position:absolute;left:7%;right:7%;top:9px;height:2px;background:#ddd7ca}.seller-step{position:relative;text-align:center;color:var(--muted);font-size:10px;padding-top:21px}.seller-step i{position:absolute;top:2px;left:50%;transform:translateX(-50%);width:15px;height:15px;border-radius:50%;background:#ddd7ca;border:3px solid var(--card);z-index:1}.seller-step.active{color:var(--green);font-weight:800}.seller-step.active i{background:#b8944e}.seller-step:first-child{text-align:left}.seller-step:first-child i{left:7%}.seller-step:last-child{text-align:right}.seller-step:last-child i{left:93%}
 .seller-advice{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:14px}.seller-advice a{display:block;text-decoration:none;color:var(--green);padding:13px;border:1px solid var(--line);border-radius:12px;background:#faf7ef;font-weight:800;font-size:12px}.seller-advice a span{display:block;color:var(--muted);font-weight:500;font-size:10.5px;line-height:1.4;margin-top:5px}
 .seller-source{margin-top:10px;color:var(--muted);font-size:10px;line-height:1.45}
-@media(max-width:600px){.seller-market,.seller-advice{grid-template-columns:1fr}.seller-section{padding:15px}.seller-hero{padding:18px}.seller-hero h3{font-size:22px}.seller-brand{padding:12px}}
+@media(max-width:760px){.seller-market{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:600px){.seller-market,.seller-advice{grid-template-columns:1fr}.seller-section{padding:15px}.seller-hero{padding:18px}.seller-hero h3{font-size:22px}.seller-brand{padding:12px}}
 
 
 /* V1.7 — immersion premium Ardennes */
@@ -1417,10 +1417,16 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
     const matches=Number(data.comparables?.matchCount||0);
     const typeLabel=d.propertyType||"Bien";
     if(marketCards){
+      const localM2=Number(data.comparables?.weightedPriceM2);
+      const localLabel=Number.isFinite(localM2)&&localM2>0?formatPrice(localM2):"Données insuffisantes";
+      const localDetail=matches
+        ?matches.toLocaleString("fr-FR")+" vente(s) comparable(s)"+(data.comparables?.radiusKm?" · rayon "+String(data.comparables.radiusKm).replace(".",",")+" km":"")
+        :"Adresse ou ventes comparables à préciser";
       marketCards.innerHTML=[
-        ["Médiane communale",formatPrice(m.communalPrice),m.period||"DVF disponibles"],
-        [typeLabel,formatPrice(typePrice),"Repère du type de bien"],
-        ["Transactions",transactions?transactions.toLocaleString("fr-FR"):"Données insuffisantes",matches?matches.toLocaleString("fr-FR")+" comparables":"Comparables à préciser"]
+        ["Médiane communale",formatPrice(m.communalPrice),m.period||"Période DVF disponible"],
+        [typeLabel,formatPrice(typePrice),"Repère communal pour ce type de bien"],
+        ["Prix du secteur proche",localLabel,localDetail],
+        ["Ventes recensées",transactions?transactions.toLocaleString("fr-FR"):"Données insuffisantes","Transactions DVF disponibles dans la commune"]
       ].map(x=>"<div class=\"seller-metric\"><span>"+escHtml(x[0])+"</span><strong>"+escHtml(x[1])+"</strong><small>"+escHtml(x[2])+"</small></div>").join("");
     }
     const source=String(m.source||data.source||"Données DVF");
