@@ -55,9 +55,9 @@ body{min-height:100vh;background:var(--cream)}
 
 /* Mise en page équilibrée : récapitulatif et checklist côte à côte */
 .guide-summary-check-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;margin-top:18px}
-.guide-summary-check-grid .guide-answer-summary{margin:0;min-width:0}
+.guide-summary-check-grid .guide-answer-summary{margin:0;min-width:0}\n.guide-summary-check-grid .guide-checklist-panel{min-width:0}
 .guide-summary-check-grid .guide-section-title{margin:0 0 9px!important}
-.guide-summary-check-grid .guide-check{height:calc(100% - 32px);box-sizing:border-box}
+.guide-summary-check-grid .guide-check{height:auto;box-sizing:border-box}
 @media(max-width:680px){.guide-summary-check-grid{grid-template-columns:1fr;gap:14px}}
 /* Impression PDF : document éditorial, lisible et identifié JML Immobilier */
 .print-header,.print-footer{display:none}
@@ -192,12 +192,20 @@ body{min-height:100vh;background:var(--cream)}
 </article>
 </div>
 <div class="guide-summary-check-grid">
-<div class="guide-answer-summary" id="answerSummary" aria-live="polite"><h2>Votre récapitulatif</h2><p class="empty-note">Vos réponses enregistrées apparaîtront ici pour vous aider à préparer le rendez-vous.</p></div>
-
-<h2 class="guide-section-title">Checklist avant notre rendez-vous</h2><div class="guide-check"><ul><li>Les caractéristiques principales du bien</li><li>Les travaux réalisés et ceux éventuellement à prévoir</li><li>Le DPE et les diagnostics disponibles</li><li>La taxe foncière si vous l'avez</li><li>Le prix auquel vous pensez aujourd'hui, même s'il s'agit d'un ordre d'idée</li><li>Votre calendrier idéal et les éléments qui pourraient modifier votre décision</li></ul></div>
-
+<div class="guide-answer-summary" id="answerSummary" aria-live="polite"><h2>Votre récapitulatif</h2><p class="empty-note">Au fur et à mesure, vos réponses apparaîtront ici. Vous pouvez laisser les champs vides si vous n’avez pas encore toutes les informations.</p></div>
+<div class="guide-checklist-panel">
+<h2 class="guide-section-title">À préparer pour notre rendez-vous</h2>
+<div class="guide-check"><ul>
+<li>Les caractéristiques du bien : surface, pièces, terrain et équipements</li>
+<li>Les travaux réalisés ou à prévoir, avec les dates si vous les connaissez</li>
+<li>Le DPE et les diagnostics déjà disponibles</li>
+<li>Le dernier avis de taxe foncière, si vous l’avez</li>
+<li>Votre idée de prix, même approximative</li>
+<li>Votre délai souhaité et les éventuelles contraintes à prendre en compte</li>
+</ul></div>
 </div>
-<h2 class="guide-section-title">À retenir</h2><div class="guide-summary"><div class="guide-summary-copy"><strong>Votre objectif</strong><p>Arriver au rendez-vous avec un projet plus clair et les informations utiles pour parler concrètement de votre bien. Ce guide ne remplace ni un avis professionnel ni une estimation.</p></div><div class="guide-summary-photo"><img src="/assets/guide-summary-photo.svg" alt="" loading="lazy"></div></div>
+</div>
+<h2 class="guide-section-title">L’essentiel à retenir</h2><div class="guide-summary"><div class="guide-summary-copy"><strong>Un rendez-vous mieux préparé</strong><p>Vous n’avez pas besoin d’avoir toutes les réponses. Ces éléments nous aideront à mieux comprendre votre projet, à échanger sur votre bien et à identifier les points à vérifier. L’estimation nécessite une analyse personnalisée.</p></div><div class="guide-summary-photo"><img src="/assets/guide-summary-photo.svg" alt="" loading="lazy"></div></div>
 <div class="guide-actions"><button type="button" onclick="window.print()">🖨️ Enregistrer en PDF</button><a href="/projet-vendeur">← Retour à votre espace vendeur</a></div>
 </section>
 <div class="jml-social-links jml-follow-block" aria-label="Réseaux sociaux d'Abderrahim Boujnikh">
