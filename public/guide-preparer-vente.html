@@ -298,7 +298,8 @@ body{min-height:100vh;background:var(--cream)}
    card.querySelectorAll("textarea,input").forEach(f=>f.addEventListener("input",()=>{
      state.answers[f.name]=f.value;persist();updateSummary();
    }));
-   card.querySelector(".save-step").addEventListener("click",()=>{
+   const saveButton=card.querySelector(".save-step");
+   saveButton.addEventListener("click",()=>{
      const fields=[...card.querySelectorAll("input,select,textarea")];
      fields.forEach(f=>state.answers[f.name]=f.value);
      const hasAnswer=fields.some(f=>String(f.value||"").trim()!=="");
@@ -311,9 +312,21 @@ body{min-height:100vh;background:var(--cream)}
        return;
      }
      if(!state.done.includes(n))state.done.push(n);
-     persist();render();
-     status.textContent="Étape "+n+" enregistrée";
+     // Sauvegarder les réponses avant de refermer l'étape.
+     persist();
+     const toggle=card.querySelector(".guide-topic-toggle");
+     const panel=card.querySelector(".guide-topic-fields");
+     if(toggle&&panel){
+       toggle.setAttribute("aria-expanded","false");
+       panel.hidden=true;
+     }
+     render();
+     status.textContent="Étape "+n+" enregistrée ✓ — vos réponses sont conservées sur cet appareil.";
      status.style.color="#26745d";
+     const originalLabel="Enregistrer mes réponses";
+     saveButton.textContent="Réponses enregistrées ✓";
+     saveButton.disabled=true;
+     window.setTimeout(()=>{saveButton.textContent=originalLabel;saveButton.disabled=false},1800);
    });
  });
  document.getElementById("resetProgress").addEventListener("click",()=>{
