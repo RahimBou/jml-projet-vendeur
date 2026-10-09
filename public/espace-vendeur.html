@@ -1423,6 +1423,8 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
     if(!response.ok||!data.ok)throw new Error(data.error||"Données territoriales indisponibles");
     const m=data.market||{};
     const ref=data.sellerReference||{};
+    // Source unique partagée avec les onglets : évite qu'un ancien script remplace les cartes.
+    window.jmlSellerTerritoryData=data;
     updateSellerProjectSummary(d);
     const type=String(d.propertyType||"").toLowerCase();
     const typePrice=/appartement|studio|duplex|loft/i.test(type)?m.apartmentPrice:/maison/i.test(type)?m.housePrice:/terrain/i.test(type)?m.terrainPrice:m.communalPrice;
@@ -1658,14 +1660,27 @@ function updateSellerProjectSummary(d){
   let selectedMarket="communal";
   function renderMarket(){
     const cards=document.getElementById("sellerMarketMetrics");
-    if(!cards||!marketData)return;
-    const x=marketData,fmt=v=>Number(v)>0?Number(v).toLocaleString("fr-FR")+" €/m²":"Données insuffisantes";
-    const config={
-      communal:{label:"Communal",price:x.communalPrice,note:"Médiane communale"},
-      house:{label:"Maison",price:x.housePrice,note:"Repère pour les maisons"},
-      apartment:{label:"Appartement",price:x.apartmentPrice,note:"Repère pour les appartements"}
-    }[selectedMarket];
-    cards.innerHTML=[[config.label,fmt(config.price),config.note],["Médiane communale",fmt(x.communalPrice),"Contexte général"],["Transactions",x.transactions?Number(x.transactions).toLocaleString("fr-FR"):"Données insuffisantes","Ventes recensées"]].map(a=>"<div class='seller-metric'><span>"+esc(a[0])+"</span><strong>"+esc(a[1])+"</strong><small>"+esc(a[2])+"</small></div>").join("");
+    if(!cards)return;
+    const data=window.jmlSellerTerritoryData;
+    const x=data&&data.market?data.market:marketData;
+    if(!x)return;
+    const comparables=data&&data.comparables?data.comparables:{};
+    const selected={
+      communal:{label:"Médiane communale",price:x.communalPrice,note:x.period||"DVF · période disponible"},
+      house:{label:"Maison",price:x.housePrice,note:"Médiane DVF des maisons de la commune"},
+      apartment:{label:"Appartement",price:x.apartmentPrice,note:"Médiane DVF des appartements de la commune"}
+    }[selectedMarket]||{label:"Médiane communale",price:x.communalPrice,note:x.period||"DVF · période disponible"};
+    const fmt=v=>Number.isFinite(Number(v))&&Number(v)>0?Number(v).toLocaleString("fr-FR")+" €/m²":"Données insuffisantes";
+    const tx=Number(x.transactions||0);
+    const localM2=Number(comparables.weightedPriceM2);
+    const matches=Number(comparables.matchCount||0);
+    const localDetail=matches?matches.toLocaleString("fr-FR")+" vente(s) comparable(s)"+(comparables.radiusKm?" · rayon "+String(comparables.radiusKm).replace(".",",")+" km":""):"Adresse ou ventes comparables à préciser";
+    cards.innerHTML=[
+      [selected.label,fmt(selected.price),selected.note],
+      ["Médiane communale",fmt(x.communalPrice),"Contexte général de la commune"],
+      ["Prix du secteur proche",fmt(localM2),localDetail],
+      ["Ventes recensées",tx?tx.toLocaleString("fr-FR"):"Données insuffisantes","Transactions DVF disponibles dans la commune"]
+    ].map(a=>"<div class='seller-metric'><span>"+esc(a[0])+"</span><strong>"+esc(a[1])+"</strong><small>"+esc(a[2])+"</small></div>").join("");
     document.querySelectorAll("#sellerMarketTabs button").forEach(b=>{
       const active=b.id==={communal:"marketTabCommunal",house:"marketTabHouse",apartment:"marketTabApartment"}[selectedMarket];
       b.classList.toggle("active",active);b.setAttribute("aria-pressed",active?"true":"false");
