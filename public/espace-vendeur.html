@@ -1109,6 +1109,24 @@ body.guide-modal-open{overflow:hidden}
         <div class="seller-panel-head"><div><span class="seller-panel-kicker">🧭 CONSEIL VENDEUR DU MOMENT</span><h4>Une information utile, au bon moment</h4><p>Actualités, réglementation, financement et marché issus de sources professionnelles.</p></div><span class="seller-source-badge">Actualisé</span></div>
         <div class="seller-advice-card" id="sellerAdviceCard" aria-live="polite"><div class="seller-advice-loading"><strong>Conseil vendeur</strong><br>Nous préparons une information utile pour votre projet.</div></div>
         <div class="seller-advice-dots" id="sellerAdviceDots" aria-label="Conseils disponibles"></div>
+        <section class="seller-market-watch" aria-labelledby="sellerWatchTitle">
+          <div class="seller-watch-heading"><span class="seller-panel-kicker">📍 VOTRE SUIVI PERSONNALISÉ</span><h5 id="sellerWatchTitle">Votre bien face au marché</h5><p>Les repères utiles pour préparer une vente réaliste.</p></div>
+          <div class="seller-watch-facts" id="sellerWatchFacts" aria-live="polite">
+            <div><span>Votre bien</span><strong>Chargement…</strong></div>
+            <div><span>Prix du secteur proche</span><strong>Recherche en cours</strong></div>
+            <div><span>Ventes communales</span><strong>Recherche en cours</strong></div>
+          </div>
+          <div class="seller-watch-next" id="sellerWatchNext"><strong>À suivre</strong><p>Nous mettrons en évidence les informations disponibles sans inventer de valeur si les données manquent.</p></div>
+        </section>
+        <section class="seller-market-watch seller-watch-check" aria-labelledby="sellerWatchChecklistTitle">
+          <div class="seller-watch-heading"><span class="seller-panel-kicker">🎯 POUR MIEUX SITUER VOTRE BIEN</span><h5 id="sellerWatchChecklistTitle">Les 3 points qui comptent</h5></div>
+          <ul class="seller-watch-list">
+            <li><span>01</span><div><strong>Un prix cohérent</strong><small>Comparer les ventes réelles, pas seulement les annonces.</small></div></li>
+            <li><span>02</span><div><strong>Les caractéristiques du bien</strong><small>Surface, état, terrain et DPE influencent la comparaison.</small></div></li>
+            <li><span>03</span><div><strong>Le bon secteur</strong><small>Une donnée proche de votre adresse est plus pertinente qu’une moyenne générale.</small></div></li>
+          </ul>
+          <a class="seller-watch-link" href="/vendeur-secteur.html" id="sellerWatchSectorLink">Approfondir les repères locaux →</a>
+        </section>
       </section>
     </div>
 
@@ -1425,6 +1443,7 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
     const ref=data.sellerReference||{};
     // Source unique partagée avec les onglets : évite qu'un ancien script remplace les cartes.
     window.jmlSellerTerritoryData=data;
+    window.dispatchEvent(new CustomEvent("jml:territory-updated",{detail:data}));
     updateSellerProjectSummary(d);
     const type=String(d.propertyType||"").toLowerCase();
     const typePrice=/appartement|studio|duplex|loft/i.test(type)?m.apartmentPrice:/maison/i.test(type)?m.housePrice:/terrain/i.test(type)?m.terrainPrice:m.communalPrice;
@@ -1686,6 +1705,32 @@ function updateSellerProjectSummary(d){
       b.classList.toggle("active",active);b.setAttribute("aria-pressed",active?"true":"false");
     });
   }
+  function renderSellerMarketWatch(data){
+    const facts=document.getElementById("sellerWatchFacts");
+    const next=document.getElementById("sellerWatchNext");
+    if(!facts)return;
+    const d=read();
+    const market=(data&&data.market)||(window.jmlSellerTerritoryData&&window.jmlSellerTerritoryData.market)||marketData||{};
+    const comp=(data&&data.comparables)||(window.jmlSellerTerritoryData&&window.jmlSellerTerritoryData.comparables)||{};
+    const escText=esc;
+    const fmt=v=>Number.isFinite(Number(v))&&Number(v)>0?Number(v).toLocaleString("fr-FR")+" €/m²":"Données insuffisantes";
+    const type=String(d.propertyType||"Bien immobilier");
+    const surface=d.surface?String(d.surface)+" m²":"Surface à compléter";
+    const count=Number(comp.matchCount||0);
+    facts.innerHTML=[
+      ["Votre bien",type+" · "+surface],
+      ["Prix du secteur proche",fmt(comp.weightedPriceM2)],
+      ["Ventes communales",Number(market.transactions||0)>0?Number(market.transactions).toLocaleString("fr-FR")+" recensées":"Données insuffisantes"]
+    ].map(a=>"<div><span>"+escText(a[0])+"</span><strong>"+escText(a[1])+"</strong></div>").join("");
+    if(next){
+      let message=count>0?count.toLocaleString("fr-FR")+" vente(s) comparable(s) ont été retenues par la recherche. Il reste à vérifier leur type, leur surface et leur proximité.":"Les comparables précis ne sont pas encore suffisants. L’adresse et les caractéristiques détaillées permettront d’affiner la recherche.";
+      next.innerHTML="<strong>À suivre</strong><p>"+escText(message)+"</p>";
+    }
+    const sectorLink=document.getElementById("sellerWatchSectorLink");
+    if(sectorLink&&d.token)sectorLink.href="/vendeur-secteur.html?token="+encodeURIComponent(d.token);
+  }
+  window.addEventListener("jml:territory-updated",event=>renderSellerMarketWatch(event.detail));
+  renderSellerMarketWatch(window.jmlSellerTerritoryData||marketData);
   const marketTabs=document.getElementById("sellerMarketTabs");
   if(marketTabs)marketTabs.addEventListener("click",function(event){
     const button=event.target.closest("button");
@@ -1885,6 +1930,27 @@ function updateSellerProjectSummary(d){
 @media(max-width:600px){.seller-status{padding:13px!important;gap:9px!important}.seller-access-actions{flex-direction:row!important}.seller-access-actions .secondary{width:auto!important}}
 </style>
 
+<style id="jml-market-watch-style">
+.seller-market-watch{margin-top:13px;padding:14px;border:1px solid #e4d8bd;border-radius:14px;background:linear-gradient(145deg,#fffdf8,#f8f3e8)}
+.seller-watch-heading h5{margin:4px 0;color:#173b31;font-size:17px;line-height:1.25}
+.seller-watch-heading p{margin:0;color:#68746f;font-size:10.5px;line-height:1.45}
+.seller-watch-facts{display:grid;gap:7px;margin-top:12px}
+.seller-watch-facts>div{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 10px;border:1px solid #e9e0cf;border-radius:10px;background:#fff}
+.seller-watch-facts span{color:#68746f;font-size:10px}
+.seller-watch-facts strong{max-width:58%;color:#173b31;font-size:11px;text-align:right;overflow-wrap:anywhere}
+.seller-watch-next{margin-top:9px;padding:10px;border-radius:10px;background:#173b31;color:#fff}
+.seller-watch-next strong{font-size:11px;color:#e7cd91}
+.seller-watch-next p{margin:4px 0 0;font-size:10px;line-height:1.5;color:#edf1ed}
+.seller-watch-list{display:grid;gap:10px;margin:12px 0;padding:0;list-style:none}
+.seller-watch-list li{display:flex;gap:10px;align-items:flex-start}
+.seller-watch-list li>span{display:grid;place-items:center;flex:0 0 27px;height:27px;border-radius:8px;background:#efe4c8;color:#6f592b;font-size:10px;font-weight:900}
+.seller-watch-list strong,.seller-watch-list small{display:block}
+.seller-watch-list strong{color:#173b31;font-size:11px}
+.seller-watch-list small{margin-top:3px;color:#68746f;font-size:10px;line-height:1.45}
+.seller-watch-link{display:block;padding-top:10px;border-top:1px solid #e4d8bd;color:#765b27;font-size:10.5px;font-weight:900;text-decoration:none}
+.seller-watch-link:hover{text-decoration:underline}
+@media(max-width:760px){.seller-market-watch{padding:12px}.seller-watch-facts strong{max-width:60%}}
+</style>
 <style id="jml-credit-climate-style">
 .seller-credit-climate{margin-top:12px;padding:15px;border:1px solid #e4d8bd;border-radius:15px;background:linear-gradient(135deg,#fffdf8,#f7f1e4)}
 .seller-credit-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
