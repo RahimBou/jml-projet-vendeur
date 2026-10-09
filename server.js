@@ -2244,6 +2244,62 @@ app.get("/api/territory-nearby", async (req,res) => {
   }
 });
 
+
+/**
+ * Contexte de financement national à partir de la dernière publication Banque de France.
+ * On découvre la dernière page mensuelle depuis l'index officiel : pas de taux figé dans le code.
+ */
+const jmlCreditClimateCache={expiresAt:0,data:null};
+app.get("/api/market-climate",async(req,res)=>{
+  res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+  if(jmlCreditClimateCache.data&&jmlCreditClimateCache.expiresAt>Date.now())return res.json({...jmlCreditClimateCache.data,cache:true});
+  const indexUrl="https://www.banque-france.fr/fr/publications-et-statistiques/statistiques/credit";
+  try{
+    const indexResponse=await fetch(indexUrl,{headers:{"Accept":"text/html","User-Agent":"JML-Projet-Vendeur/3.10.0"},signal:AbortSignal.timeout(10000)});
+    if(!indexResponse.ok)throw new Error("Index Banque de France HTTP "+indexResponse.status);
+    const indexHtml=await indexResponse.text();
+    const links=[...indexHtml.matchAll(/href=["']([^"']*\/statistiques\/credit\/credits-aux-particuliers-(\d{4})-(\d{2})[^"']*)["']/gi)]
+      .map(m=>({url:new URL(m[1],indexUrl).toString(),year:Number(m[2]),month:Number(m[3])}))
+      .sort((a,b)=>(b.year-a.year)||(b.month-a.month));
+    if(!links.length)throw new Error("Dernière publication mensuelle introuvable");
+    const latest=links[0];
+    const articleResponse=await fetch(latest.url,{headers:{"Accept":"text/html","User-Agent":"JML-Projet-Vendeur/3.10.0"},signal:AbortSignal.timeout(10000)});
+    if(!articleResponse.ok)throw new Error("Publication Banque de France HTTP "+articleResponse.status);
+    const html=await articleResponse.text();
+    const plain=html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;|&#160;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ");
+    const monthNames=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+    const monthLabel=monthNames[latest.month-1]||"";
+    const periodLabel=monthLabel.charAt(0).toUpperCase()+monthLabel.slice(1)+" "+latest.year;
+    const currentRateMatch=plain.match(/taux d['’]intérêt moyen des nouveaux crédits à l['’]habitat[^.]{0,260}?atteint\s*([0-9]+[,.][0-9]+)\s*%/i)
+      ||plain.match(/crédits à l['’]habitat[^.]{0,180}?atteint\s*([0-9]+[,.][0-9]+)\s*%/i);
+    const previousRateMatch=plain.match(/après\s*([0-9]+[,.][0-9]+)\s*%\s*en\s*(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i);
+    const productionMatch=plain.match(/production[^.]{0,160}?à\s*([0-9]+[,.][0-9]+)\s*Mds?€?/i);
+    const durationMatch=plain.match(/durée initiale moyenne[^.]{0,160}?([0-9]+\s*ans?\s*(?:et\s*[0-9]+\s*mois?)?)/i);
+    const publishedMatch=plain.match(/Mise en ligne le\s*([0-9]{1,2}\s+[A-Za-zéûô]+\s+[0-9]{4})/i);
+    if(!currentRateMatch)throw new Error("Taux moyen introuvable dans la publication officielle");
+    const rate=Number(currentRateMatch[1].replace(",","."));
+    const previousRate=previousRateMatch?Number(previousRateMatch[1].replace(",",".")):null;
+    const delta=Number.isFinite(previousRate)?Math.round((rate-previousRate)*100):null;
+    const data={
+      ok:true,source:"Banque de France",sourceUrl:latest.url,
+      period:periodLabel,publishedAt:publishedMatch?.[1]||null,
+      averageNewMortgageRate:rate,previousRate:Number.isFinite(previousRate)?previousRate:null,
+      monthlyChangePoints:delta,productionBillions:productionMatch?Number(productionMatch[1].replace(",",".")):null,
+      averageDuration:durationMatch?.[1]||null,
+      interpretation:delta===null?"Dernière donnée nationale publiée.":delta>0?"Le coût moyen du crédit a légèrement augmenté sur le mois observé.":delta<0?"Le coût moyen du crédit a légèrement baissé sur le mois observé.":"Le coût moyen du crédit est stable sur le mois observé.",
+      note:"Indicateur national, hors frais et assurance. Le taux obtenu par un acheteur dépend de son dossier, de la durée et de la banque."
+    };
+    jmlCreditClimateCache.data=data;jmlCreditClimateCache.expiresAt=Date.now()+6*60*60*1000;
+    return res.json(data);
+  }catch(error){
+    console.warn("JML market climate Banque de France:",String(error?.message||error));
+    return res.status(200).json({
+      ok:false,source:"Banque de France",sourceUrl:indexUrl,
+      message:"La dernière publication officielle n’a pas pu être récupérée. Réessayez plus tard ; aucun taux n’est inventé."
+    });
+  }
+});
+
 app.get("/api/territory-summary", async (req,res) => {
   const city=clean(req.query.city,100);
   const address=clean(req.query.address,180);
