@@ -957,6 +957,9 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--green);outline-offs
 .guide-modal-title{min-width:0}
 .guide-modal-title strong{display:block;font-size:14px;line-height:1.3}
 .guide-modal-title span{display:block;margin-top:2px;color:#d9e4dd;font-size:10px}
+.guide-modal-head-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto}
+.guide-modal-action{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:8px 11px;border:1px solid rgba(216,187,122,.75);border-radius:9px;background:rgba(255,255,255,.08);color:#fff;font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer}
+.guide-modal-action:hover{background:#d8bb7a;color:#173b32}
 .guide-modal-close{width:40px;height:40px;flex:0 0 40px;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:25px;line-height:1;cursor:pointer;transition:background .18s ease,transform .18s ease}
 .guide-modal-close:hover{background:#b8944e;color:#173b31;transform:rotate(90deg)}
 .guide-modal-content{position:relative;flex:1;min-height:0;background:#f6f2e9}
@@ -966,7 +969,7 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--green);outline-offs
 .guide-modal-spinner{width:20px;height:20px;border:2px solid #ded4bf;border-top-color:#b8944e;border-radius:50%;animation:guideSpin .75s linear infinite}
 @keyframes guideSpin{to{transform:rotate(360deg)}}
 body.guide-modal-open{overflow:hidden}
-@media(max-width:600px){.guide-modal{padding:0;align-items:stretch}.guide-modal-dialog{width:100%;height:100%;height:100dvh;max-height:none;border-radius:0;border:0}.guide-modal-head{padding:10px 12px}.guide-modal-close{width:38px;height:38px;flex-basis:38px}.guide-modal-title strong{font-size:13px}.seller-guide-grid a{min-height:118px}}
+@media(max-width:600px){.guide-modal{padding:0;align-items:stretch}.guide-modal-dialog{width:100%;height:100%;height:100dvh;max-height:none;border-radius:0;border:0}.guide-modal-head{padding:8px 9px;gap:7px}.guide-modal-brand{gap:6px}.guide-modal-mark{width:30px;height:30px;flex-basis:30px;font-size:12px}.guide-modal-title strong{font-size:11px}.guide-modal-title span{font-size:9px}.guide-modal-head-actions{gap:4px}.guide-modal-action{min-height:32px;padding:6px 7px;font-size:9px}.guide-modal-close{width:32px;height:32px;flex-basis:32px;font-size:21px}.seller-guide-grid a{min-height:118px}}
 @media(prefers-reduced-motion:reduce){.seller-guide-grid a,.seller-guide-grid a>span,.guide-modal,.guide-modal-dialog,.guide-modal-close{animation:none;transition:none}}
 </style>
 <style id="seller-guide-iframe-fit">
@@ -1894,7 +1897,11 @@ function updateSellerProjectSummary(d){
  <section class="guide-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="sellerGuideModalTitle">
   <header class="guide-modal-head">
    <div class="guide-modal-brand"><div class="guide-modal-mark" aria-hidden="true">JML</div><div class="guide-modal-title"><strong id="sellerGuideModalTitle">Guide pratique JML Immobilier</strong><span>Votre projet, notre engagement</span></div></div>
-   <button type="button" class="guide-modal-close" id="sellerGuideModalClose" aria-label="Fermer le guide">×</button>
+   <div class="guide-modal-head-actions">
+    <button type="button" class="guide-modal-action" id="sellerGuideModalPrint">▣ Enregistrer en PDF</button>
+    <button type="button" class="guide-modal-action" id="sellerGuideModalBack">← Retour espace vendeur</button>
+    <button type="button" class="guide-modal-close" id="sellerGuideModalClose" aria-label="Fermer le guide">×</button>
+   </div>
   </header>
   <div class="guide-modal-content">
    <div class="guide-modal-loading" id="sellerGuideModalLoading"><span class="guide-modal-spinner" aria-hidden="true"></span><span>Ouverture de votre guide…</span></div>
@@ -1907,9 +1914,11 @@ function updateSellerProjectSummary(d){
  const modal=document.getElementById("sellerGuideModal");
  const frame=document.getElementById("sellerGuideModalFrame");
  const closeBtn=document.getElementById("sellerGuideModalClose");
+ const printBtn=document.getElementById("sellerGuideModalPrint");
+ const backBtn=document.getElementById("sellerGuideModalBack");
  const title=document.getElementById("sellerGuideModalTitle");
  const loading=document.getElementById("sellerGuideModalLoading");
- if(!modal||!frame||!closeBtn||!title||!loading)return;
+ if(!modal||!frame||!closeBtn||!printBtn||!backBtn||!title||!loading)return;
  let lastTrigger=null;
  const guideLinks=[...document.querySelectorAll(".seller-guide-grid a[href^='/guide-']")];
  function openGuide(link){
@@ -1996,6 +2005,8 @@ function updateSellerProjectSummary(d){
    });
  });
  closeBtn.addEventListener("click",closeGuide);
+ backBtn.addEventListener("click",closeGuide);
+ printBtn.addEventListener("click",()=>{try{frame.contentWindow.focus();frame.contentWindow.print()}catch(e){window.alert("Impossible d’ouvrir l’impression. Réessayez après le chargement du guide.")}});
  modal.addEventListener("click",event=>{if(event.target===modal)closeGuide()});
  document.addEventListener("keydown",event=>{
    if(!modal.classList.contains("open"))return;
