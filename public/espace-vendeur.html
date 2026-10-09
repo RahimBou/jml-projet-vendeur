@@ -1202,7 +1202,7 @@ body.guide-modal-open{overflow:hidden}
 
    // Afficher l'accueil une seule fois par prospect, grâce à son identifiant dans l'URL.
    // Le drapeau est enregistré avant l'ouverture : actualiser la page ne réaffiche pas la fenêtre.
-   const welcomePathMatch=window.location.pathname.match(/\\/espace-vendeur\\/([^/]+)/i);
+   const welcomePathMatch=window.location.pathname.match(/\/espace-vendeur\/([^/]+)/i);
    const welcomeProspectId=String(window.jmlProspectId||((welcomePathMatch&&welcomePathMatch[1])||"")).trim();
    const welcomeStorageKey="jml-seller-welcome-seen-v1:"+(welcomeProspectId||window.location.pathname);
    let welcomeAlreadySeen=false;
