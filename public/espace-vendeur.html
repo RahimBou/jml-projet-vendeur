@@ -931,7 +931,45 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--green);outline-offs
     max-height:88vh!important;
   }
 }
-</style></head>
+</style><style id="seller-guide-modal-v1">
+/* Guides vendeurs : cartes plus vivantes et ouverture en fenêtre flottante */
+.seller-guides{position:relative;overflow:hidden}
+.seller-guides:before{content:"";position:absolute;left:0;top:0;width:100%;height:3px;background:linear-gradient(90deg,#b8944e,#e8d6a8,transparent 78%)}
+.seller-guide-grid a{position:relative;overflow:hidden;min-height:135px;padding:16px;border-radius:16px;background:linear-gradient(145deg,#fffdf8,#f5efe1);box-shadow:0 5px 16px rgba(23,51,44,.035);transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
+.seller-guide-grid a:after{content:"";position:absolute;right:-28px;bottom:-35px;width:92px;height:92px;border:12px solid rgba(184,148,78,.09);border-radius:50%;pointer-events:none;transition:transform .3s ease}
+.seller-guide-grid a:hover,.seller-guide-grid a:focus-visible{transform:translateY(-4px);border-color:#b8944e;box-shadow:0 13px 26px rgba(23,51,44,.11);outline:none}
+.seller-guide-grid a:hover:after{transform:scale(1.18)}
+.seller-guide-grid a>span{transition:transform .25s ease,background .25s ease}
+.seller-guide-grid a:hover>span{transform:rotate(-7deg) scale(1.08);background:#173b31;color:#e2c37d}
+.seller-guide-grid b{display:inline-flex;align-items:center;gap:5px}
+.seller-guide-grid b:after{content:"↗";transition:transform .2s ease}
+.seller-guide-grid a:hover b:after{transform:translate(3px,-2px)}
+@keyframes guideCardEnter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+.seller-guide-grid a{animation:guideCardEnter .42s ease both}
+.seller-guide-grid a:nth-child(2){animation-delay:.07s}.seller-guide-grid a:nth-child(3){animation-delay:.14s}
+.guide-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:clamp(8px,2.5vw,28px);background:rgba(10,24,20,.64);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+.guide-modal.open{opacity:1;visibility:visible}
+.guide-modal-dialog{display:flex;flex-direction:column;width:min(1040px,100%);height:min(88vh,900px);height:min(88dvh,900px);min-height:0;overflow:hidden;background:#f6f2e9;border:1px solid rgba(216,187,122,.7);border-radius:22px;box-shadow:0 28px 90px rgba(0,0,0,.35);transform:translateY(15px) scale(.985);transition:transform .24s ease}
+.guide-modal.open .guide-modal-dialog{transform:translateY(0) scale(1)}
+.guide-modal-head{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 16px;background:#153b32;color:#fff;border-bottom:1px solid rgba(216,187,122,.5);flex:0 0 auto}
+.guide-modal-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.guide-modal-mark{width:36px;height:36px;flex:0 0 36px;border:1px solid #d8bb7a;border-radius:10px;display:grid;place-items:center;color:#e2c37d;font:700 15px Georgia,serif}
+.guide-modal-title{min-width:0}
+.guide-modal-title strong{display:block;font-size:14px;line-height:1.3}
+.guide-modal-title span{display:block;margin-top:2px;color:#d9e4dd;font-size:10px}
+.guide-modal-close{width:40px;height:40px;flex:0 0 40px;border:1px solid rgba(255,255,255,.22);border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:25px;line-height:1;cursor:pointer;transition:background .18s ease,transform .18s ease}
+.guide-modal-close:hover{background:#b8944e;color:#173b31;transform:rotate(90deg)}
+.guide-modal-content{position:relative;flex:1;min-height:0;background:#f6f2e9}
+.guide-modal-frame{width:100%;height:100%;display:block;border:0;background:#f6f2e9}
+.guide-modal-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:10px;background:#f6f2e9;color:#173b31;font-size:13px;pointer-events:none;transition:opacity .2s ease}
+.guide-modal-loading[hidden]{display:none}
+.guide-modal-spinner{width:20px;height:20px;border:2px solid #ded4bf;border-top-color:#b8944e;border-radius:50%;animation:guideSpin .75s linear infinite}
+@keyframes guideSpin{to{transform:rotate(360deg)}}
+body.guide-modal-open{overflow:hidden}
+@media(max-width:600px){.guide-modal{padding:0;align-items:stretch}.guide-modal-dialog{width:100%;height:100%;height:100dvh;max-height:none;border-radius:0;border:0}.guide-modal-head{padding:10px 12px}.guide-modal-close{width:38px;height:38px;flex-basis:38px}.guide-modal-title strong{font-size:13px}.seller-guide-grid a{min-height:118px}}
+@media(prefers-reduced-motion:reduce){.seller-guide-grid a,.seller-guide-grid a>span,.guide-modal,.guide-modal-dialog,.guide-modal-close{animation:none;transition:none}}
+</style>
+</head>
 <body>
 <div class="jml-welcome-modal" id="jmlWelcomeModal" role="presentation">
   <div class="jml-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="jmlWelcomeTitle">
@@ -1826,5 +1864,68 @@ function updateSellerProjectSummary(d){
   try{const r=await fetch("/api/seller-account/register",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,email:email.value.trim(),password:p,confirmation:p2})});const d2=await r.json();if(!r.ok)throw new Error(d2.error||"Impossible d’enregistrer votre espace.");msg.textContent="Votre espace est enregistré. Un e-mail de confirmation vient d’être envoyé.";msg.style.display="block";submit.textContent="Espace enregistré ✓";setTimeout(()=>{close();},1400)}catch(err){msg.textContent=err.message||"Une erreur est survenue.";msg.style.display="block";submit.disabled=false;submit.textContent="Enregistrer mon espace →"}
  });
 })();
-</script></body>
+</script>
+<div class="guide-modal" id="sellerGuideModal" aria-hidden="true">
+ <section class="guide-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="sellerGuideModalTitle">
+  <header class="guide-modal-head">
+   <div class="guide-modal-brand"><div class="guide-modal-mark" aria-hidden="true">JML</div><div class="guide-modal-title"><strong id="sellerGuideModalTitle">Guide pratique JML Immobilier</strong><span>Votre projet, notre engagement</span></div></div>
+   <button type="button" class="guide-modal-close" id="sellerGuideModalClose" aria-label="Fermer le guide">×</button>
+  </header>
+  <div class="guide-modal-content">
+   <div class="guide-modal-loading" id="sellerGuideModalLoading"><span class="guide-modal-spinner" aria-hidden="true"></span><span>Ouverture de votre guide…</span></div>
+   <iframe class="guide-modal-frame" id="sellerGuideModalFrame" title="Guide pratique JML Immobilier" loading="eager"></iframe>
+  </div>
+ </section>
+</div>
+<script id="seller-guide-modal-script">
+(function(){
+ const modal=document.getElementById("sellerGuideModal");
+ const frame=document.getElementById("sellerGuideModalFrame");
+ const closeBtn=document.getElementById("sellerGuideModalClose");
+ const title=document.getElementById("sellerGuideModalTitle");
+ const loading=document.getElementById("sellerGuideModalLoading");
+ if(!modal||!frame||!closeBtn||!title||!loading)return;
+ let lastTrigger=null;
+ const guideLinks=[...document.querySelectorAll(".seller-guide-grid a[href^='/guide-']")];
+ function openGuide(link){
+   lastTrigger=link;
+   title.textContent=(link.querySelector("strong")?.textContent||"Guide pratique")+" · JML Immobilier";
+   loading.hidden=false;
+   frame.onload=()=>{loading.hidden=true};
+   frame.src=link.getAttribute("href");
+   modal.classList.add("open");
+   modal.setAttribute("aria-hidden","false");
+   document.body.classList.add("guide-modal-open");
+   closeBtn.focus({preventScroll:true});
+ }
+ function closeGuide(){
+   modal.classList.remove("open");
+   modal.setAttribute("aria-hidden","true");
+   document.body.classList.remove("guide-modal-open");
+   frame.onload=null;
+   frame.src="about:blank";
+   loading.hidden=false;
+   if(lastTrigger)lastTrigger.focus({preventScroll:true});
+ }
+ guideLinks.forEach(link=>{
+   link.setAttribute("aria-haspopup","dialog");
+   link.addEventListener("click",event=>{
+     if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
+     event.preventDefault();
+     openGuide(link);
+   });
+ });
+ closeBtn.addEventListener("click",closeGuide);
+ modal.addEventListener("click",event=>{if(event.target===modal)closeGuide()});
+ document.addEventListener("keydown",event=>{
+   if(!modal.classList.contains("open"))return;
+   if(event.key==="Escape"){event.preventDefault();closeGuide();return}
+   if(event.key==="Tab"){
+     const focusables=[closeBtn];
+     if(document.activeElement===closeBtn&&event.shiftKey){event.preventDefault();focusables[0].focus()}
+   }
+ });
+})();
+</script>
+</body>
 </html>
