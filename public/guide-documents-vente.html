@@ -153,7 +153,9 @@ body{background:#f7f2e7;color:#173b31}.page{max-width:900px;margin:auto;padding:
  }
  try{
    const saved=JSON.parse(localStorage.getItem(storageKey)||"[]");
-   checks.forEach(x=>x.checked=Array.isArray(saved)&&saved.includes(x.dataset.documentCheck));
+   const legacyMap={property:"title",diagnostics:"diagnostics",tax:"tax",works:"invoices",copro:"copro-regulation"};
+   const migrated=Array.isArray(saved)?saved.map(key=>legacyMap[key]||key):[];
+   checks.forEach(x=>x.checked=migrated.includes(x.dataset.documentCheck));
  }catch(e){}
  checks.forEach(x=>x.addEventListener("change",refresh));
  document.getElementById("printDocumentsChecklist").addEventListener("click",()=>window.print());
