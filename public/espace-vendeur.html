@@ -1898,7 +1898,6 @@ function updateSellerProjectSummary(d){
   <header class="guide-modal-head">
    <div class="guide-modal-brand"><div class="guide-modal-mark" aria-hidden="true">JML</div><div class="guide-modal-title"><strong id="sellerGuideModalTitle">Guide pratique JML Immobilier</strong><span>Votre projet, notre engagement</span></div></div>
    <div class="guide-modal-head-actions">
-    <button type="button" class="guide-modal-action" id="sellerGuideModalPrint">▣ Enregistrer en PDF</button>
     <button type="button" class="guide-modal-action" id="sellerGuideModalBack">← Retour espace vendeur</button>
     <button type="button" class="guide-modal-close" id="sellerGuideModalClose" aria-label="Fermer le guide">×</button>
    </div>
@@ -1914,11 +1913,10 @@ function updateSellerProjectSummary(d){
  const modal=document.getElementById("sellerGuideModal");
  const frame=document.getElementById("sellerGuideModalFrame");
  const closeBtn=document.getElementById("sellerGuideModalClose");
- const printBtn=document.getElementById("sellerGuideModalPrint");
  const backBtn=document.getElementById("sellerGuideModalBack");
  const title=document.getElementById("sellerGuideModalTitle");
  const loading=document.getElementById("sellerGuideModalLoading");
- if(!modal||!frame||!closeBtn||!printBtn||!backBtn||!title||!loading)return;
+ if(!modal||!frame||!closeBtn||!backBtn||!title||!loading)return;
  let lastTrigger=null;
  const guideLinks=[...document.querySelectorAll(".seller-guide-grid a[href^='/guide-']")];
  function openGuide(link){
@@ -2007,7 +2005,6 @@ function updateSellerProjectSummary(d){
  });
  closeBtn.addEventListener("click",closeGuide);
  backBtn.addEventListener("click",closeGuide);
- printBtn.addEventListener("click",()=>{try{frame.contentWindow.focus();frame.contentWindow.print()}catch(e){window.alert("Impossible d’ouvrir l’impression. Réessayez après le chargement du guide.")}});
  modal.addEventListener("click",event=>{if(event.target===modal)closeGuide()});
  document.addEventListener("keydown",event=>{
    if(!modal.classList.contains("open"))return;
