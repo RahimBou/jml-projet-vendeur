@@ -21,6 +21,15 @@ body{min-height:100vh;background:var(--cream)}
 @media(max-width:560px){.guide{padding:12px 10px 35px}.guide-head{padding:21px 17px;border-radius:17px}.guide-head h1{font-size:25px}.guide-head p{font-size:13px}.guide-hero-photo{height:145px;margin-left:-17px;margin-right:-17px}.guide-card{padding:12px;border-radius:17px}.guide-topic{grid-template-columns:82px 1fr;gap:11px;padding:10px}.guide-visual{height:82px}.guide-topic h2{font-size:14px}.guide-topic p{font-size:12px;line-height:1.48}.guide-check-btn{font-size:10px;padding:5px 8px}.guide-section-title{font-size:18px!important}.guide-check{padding:11px 12px}.guide-check li{font-size:12px}.guide-actions a,.guide-actions button{min-width:0;width:100%}}
 @media(max-width:560px){.guide-summary{grid-template-columns:1fr}.guide-summary-photo{height:120px;min-height:0}.guide-summary-copy{padding:10px 7px 3px}}@media print{.guide-actions,.progress-box,.guide-check-btn{display:none!important}body{background:#fff}.guide{padding:0}.guide-card{border:0}.guide-topic{break-inside:avoid;box-shadow:none}.guide-summary{background:#fff;color:#000;border:1px solid #ccc}.guide-summary p{color:#000}}
 
+/* Correctif responsive des étapes : une carte ouverte ne doit jamais étirer la colonne voisine */
+.guide-topics{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;align-items:start;gap:12px}
+.guide-topic{display:grid;grid-template-columns:64px minmax(0,1fr);align-content:start;align-items:start;min-width:0;width:100%;height:fit-content}
+.guide-topic>*{min-width:0}
+.guide-topic-fields{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);width:100%;min-width:0}
+.guide-topic-fields[hidden]{display:none!important}
+.guide-field{min-width:0}
+.guide-field input,.guide-field select,.guide-field textarea{min-width:0}
+@media(max-width:760px){.guide-topics{grid-template-columns:minmax(0,1fr)!important}.guide-topic{grid-template-columns:72px minmax(0,1fr)}}
 /* Guide vendeur interactif — amélioration progressive */
 .guide-head{padding-bottom:18px}
 .guide-hero-photo{height:126px}
@@ -55,7 +64,7 @@ body{min-height:100vh;background:var(--cream)}
 
 /* Mise en page équilibrée : récapitulatif et checklist côte à côte */
 .guide-summary-check-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;margin-top:18px}
-.guide-summary-check-grid .guide-answer-summary{margin:0;min-width:0}\n.guide-summary-check-grid .guide-checklist-panel{min-width:0}
+.guide-summary-check-grid .guide-answer-summary{margin:0;min-width:0}.guide-summary-check-grid .guide-checklist-panel{min-width:0}
 .guide-summary-check-grid .guide-section-title{margin:0 0 9px!important}
 .guide-summary-check-grid .guide-check{height:auto;box-sizing:border-box}
 @media(max-width:680px){.guide-summary-check-grid{grid-template-columns:1fr;gap:14px}}
