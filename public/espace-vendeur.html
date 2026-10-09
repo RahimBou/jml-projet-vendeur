@@ -1512,6 +1512,15 @@ async function loadSellerCreditClimate(force){
     const rate=Number(data.averageNewMortgageRate);
     const previous=Number(data.previousRate);
     const delta=Number(data.monthlyChangePoints);
+    let visitChange="";
+    try{
+      const previousVisit=JSON.parse(localStorage.getItem("jmlSellerCreditSnapshot")||"null");
+      if(previousVisit&&Number.isFinite(Number(previousVisit.rate))&&Number(previousVisit.rate)!==rate){
+        const movement=rate>Number(previousVisit.rate)?"a augmenté":"a baissé";
+        visitChange=" Depuis votre dernière visite enregistrée, le taux moyen "+movement+" de "+Math.abs(rate-Number(previousVisit.rate)).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" point(s).";
+      }else if(previousVisit&&Number(previousVisit.rate)===rate){visitChange=" Depuis votre dernière visite enregistrée, ce taux est inchangé."}
+      localStorage.setItem("jmlSellerCreditSnapshot",JSON.stringify({rate,period:data.period,checkedAt:new Date().toISOString()}));
+    }catch(_storageError){}
     const fmt=v=>Number(v).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" %";
     const change=Number.isFinite(delta)?(delta>0?"+":"")+String((delta/100).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2}))+" point(s)": "Non disponible";
     let label="Contexte à surveiller",detail="Le taux seul ne permet pas de juger si le moment est bon pour vendre.";
@@ -1524,7 +1533,7 @@ async function loadSellerCreditClimate(force){
       ["Évolution mensuelle",Number.isFinite(previous)?fmt(previous)+" → "+fmt(rate):"Non disponible",Number.isFinite(delta)?(delta>0?"Hausse":delta<0?"Baisse":"Stable")+" par rapport au mois précédent":"Comparaison indisponible"],
       ["Lecture du financement",label,"Indicateur national, pas une garantie de vente"]
     ].map(x=>'<div class="seller-credit-metric"><span>'+x[0]+'</span><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>').join("");
-    if(explanation)explanation.textContent=detail+" "+String(data.note||"");
+    if(explanation)explanation.textContent=detail+" "+String(data.note||"")+visitChange;
     if(updated)updated.textContent="Publication : "+String(data.publishedAt||data.period||"date non précisée")+" · Vérifié le "+new Date().toLocaleDateString("fr-FR");
     if(sourceLink&&data.sourceUrl)sourceLink.href=data.sourceUrl;
     metrics.dataset.loaded="1";
