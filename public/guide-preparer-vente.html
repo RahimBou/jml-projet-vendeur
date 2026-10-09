@@ -196,10 +196,21 @@ body{min-height:100vh;background:var(--cream)}
      state.answers[f.name]=f.value;persist();updateSummary();
    }));
    card.querySelector(".save-step").addEventListener("click",()=>{
-     card.querySelectorAll("input,select,textarea").forEach(f=>state.answers[f.name]=f.value);
+     const fields=[...card.querySelectorAll("input,select,textarea")];
+     fields.forEach(f=>state.answers[f.name]=f.value);
+     const hasAnswer=fields.some(f=>String(f.value||"").trim()!=="");
+     if(!hasAnswer){
+       state.done=state.done.filter(step=>step!==n);
+       persist();render();
+       status.textContent="Complétez au moins un champ pour valider cette étape.";
+       status.style.color="#9a5b32";
+       fields[0]?.focus({preventScroll:true});
+       return;
+     }
      if(!state.done.includes(n))state.done.push(n);
      persist();render();
      status.textContent="Étape "+n+" enregistrée";
+     status.style.color="#26745d";
    });
  });
  document.getElementById("resetProgress").addEventListener("click",()=>{
