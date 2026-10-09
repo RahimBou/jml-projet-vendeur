@@ -144,7 +144,7 @@ Réponds en français et retourne uniquement un objet JSON avec ces clés :
     });
     const payload=await response.json().catch(()=>({}));
     if(!response.ok){
-      console.error("JML seller guide AI error:",response.status,payload?.error?.code||payload?.error?.type||"provider_error");
+      console.error("JML seller guide AI error:",JSON.stringify({status:response.status,code:payload?.error?.code||null,type:payload?.error?.type||null,param:payload?.error?.param||null,message:String(payload?.error?.message||"provider_error").slice(0,700)}));
       return res.status(502).json({ok:false,code:"AI_PROVIDER_ERROR",error:"La synthèse IA est temporairement indisponible."});
     }
     let output=String(payload.output_text||"");
