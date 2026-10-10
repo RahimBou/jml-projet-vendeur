@@ -44,8 +44,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.12.0";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis";
+const VERSION = "3.12.1";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-comparable-diagnostics-v1";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
