@@ -2901,5 +2901,84 @@ function updateSellerProjectSummary(d){
 }
 </style>
 
+
+<style id="jml-dashboard-compact-layout">
+/* Tableau de bord plus compact : garder l'identité JML sans monopoliser l'écran */
+.fb-success{margin-top:12px!important}
+.fb-success-head{padding-bottom:12px!important}
+.fb-success-head h2{font-size:24px!important;margin-bottom:5px!important}
+.seller-space{margin-top:8px!important}
+.seller-dashboard-hero{
+  min-height:290px!important;
+  height:290px!important;
+  border-radius:22px!important;
+  box-shadow:0 12px 30px rgba(13,49,42,.13)!important;
+}
+.seller-dashboard-overlay{
+  padding:26px!important;
+  justify-content:flex-end!important;
+}
+.seller-dashboard-overlay h3{
+  font-size:38px!important;
+  line-height:1.05!important;
+  margin:7px 0!important;
+}
+.seller-dashboard-overlay p{font-size:13px!important;line-height:1.4!important}
+.seller-dashboard-pills{margin-top:10px!important;gap:6px!important}
+.seller-dashboard-pills span{padding:6px 9px!important;font-size:10px!important}
+.seller-status{
+  margin-top:9px!important;
+  padding:10px 14px!important;
+  gap:10px!important;
+  border-radius:14px!important;
+}
+.seller-status-copy strong{font-size:15px!important}
+.seller-status-copy span{font-size:10px!important;line-height:1.35!important}
+.seller-status-steps b{width:21px!important;height:21px!important;flex-basis:21px!important}
+.seller-access-actions{gap:6px!important}
+.seller-access-actions .secondary{padding:8px 10px!important;font-size:10px!important}
+.seller-next-action{
+  margin-top:9px!important;
+  padding:10px 14px!important;
+  gap:12px!important;
+  border-radius:14px!important;
+}
+.seller-next-action-icon{width:34px!important;height:34px!important;flex-basis:34px!important;border-radius:10px!important;font-size:17px!important}
+.seller-next-action-kicker{font-size:8px!important}
+.seller-next-action strong{font-size:13px!important;line-height:1.25!important}
+.seller-next-action small{font-size:10px!important;line-height:1.35!important}
+.seller-next-action .seller-next-btn{padding:8px 10px!important;font-size:10px!important}
+.seller-space-meta{margin-top:5px!important;gap:5px!important}
+.seller-space-meta span{padding:5px 8px!important;font-size:9px!important}
+.seller-quick-grid{margin-top:10px!important;gap:10px!important}
+.seller-quick-grid>.seller-quick-card{min-height:220px!important}
+.seller-quick-grid>.seller-quick-card>.seller-quick-photo{height:95px!important;min-height:95px!important;flex-basis:95px!important}
+.seller-quick-grid>.seller-quick-card>span:not(.seller-quick-icon){padding:14px 12px 8px!important}
+.seller-quick-grid>.seller-quick-card>em{min-height:34px!important;height:34px!important;flex-basis:34px!important;margin:6px 10px 10px!important}
+@media(max-width:850px){
+ .seller-dashboard-hero{height:260px!important;min-height:260px!important}
+ .seller-dashboard-overlay{padding:22px!important}
+ .seller-dashboard-overlay h3{font-size:34px!important}
+ .seller-status{padding:10px 12px!important}
+ .seller-quick-grid>.seller-quick-card{min-height:205px!important}
+}
+@media(max-width:560px){
+ .fb-success-head h2{font-size:22px!important}
+ .seller-dashboard-hero{height:230px!important;min-height:230px!important;border-radius:18px!important}
+ .seller-dashboard-overlay{padding:17px!important}
+ .seller-dashboard-overlay h3{font-size:29px!important}
+ .seller-dashboard-overlay p{font-size:12px!important}
+ .seller-dashboard-kicker{font-size:8px!important;padding:5px 8px!important}
+ .seller-dashboard-pills{margin-top:8px!important}
+ .seller-dashboard-pills span{font-size:9px!important;padding:5px 7px!important}
+ .seller-next-action{align-items:flex-start!important;gap:8px!important;padding:10px!important}
+ .seller-next-action-main{gap:8px!important}
+ .seller-next-action .seller-next-btn{padding:7px 8px!important;font-size:9px!important}
+ .seller-status{padding:9px!important}
+ .seller-quick-grid>.seller-quick-card{min-height:190px!important}
+ .seller-quick-grid>.seller-quick-card>.seller-quick-photo{height:82px!important;min-height:82px!important;flex-basis:82px!important}
+}
+</style>
+
 </body>
 </html>
