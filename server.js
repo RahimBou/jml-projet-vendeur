@@ -837,7 +837,7 @@ async function getLocalEnvironment(commune){
     const response=await fetch("https://www.mon-quartier-info.com/commune/"+code,{headers:{"User-Agent":"JML-Projet-Vendeur/3.0"},signal:AbortSignal.timeout(7000)});
     if(response.ok){
       const text=stripHtml(await response.text());
-      const pick=label=>{const m=text.match(new RegExp(label+"\\s*\\((\\d+)\\)","i"));return m?Number(m[1]):null;};
+      const pick=label=>{const m=text.match(new RegExp(label+"\\s*\\((\d+)\\)","i"));return m?Number(m[1]):null;};
       const schools=pick("École"),health=pick("Médecin généraliste"),pharmacies=pick("Pharmacie"),shops=pick("Alimentation générale"),postOffices=pick("Bureau ou relais de poste"),stations=pick("Gare de voyageurs");
       const sm=text.match(/([0-9\s]+) équipements et services recensés sur la commune/i);
       const data={available:true,source:"INSEE BPE / Mon Quartier Info",sourceUrl:"https://www.mon-quartier-info.com/commune/"+code,counters:{schools:schools??0,health:health??0,pharmacies:pharmacies??0,shops:shops??0,stations:stations??0,busStops:null,postOffices:postOffices??0,totalServices:sm?Number(sm[1].replace(/\s/g,"")):null},names:{schools:[],health:[],pharmacies:[],shops:[],stations:[]},radiusKm:null,note:"Comptage communal issu principalement de la Base permanente des équipements (INSEE)."};
@@ -2148,7 +2148,7 @@ app.post("/api/estimator-agent/run", async (req,res)=>{
     const result=await runEstimatorAgent({
       address:clean(input.address,180),
       city:clean(input.city,100),
-      postalCode:String(input.postalCode||"").match(/\\b\\d{5}\\b/)?.[0]||"",
+      postalCode:String(input.postalCode||"").match(/\\b\d{5}\\b/)?.[0]||"",
       surface:Number(input.surface),
       rooms:Number(input.rooms),
       propertyType:clean(input.propertyType,60),
@@ -2456,7 +2456,7 @@ app.post("/api/market-climate/analysis", async (req,res) => {
     const priceM2=num(x?.pricePerM2??x?.price_per_m2,1,100000);
     const type=txt(x?.type??x?.propertyType,40);
     return {date,priceM2,type};
-  }).filter(x=>/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date)&&x.priceM2!==null&&/^20\\d{2}-/.test(x.date));
+  }).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.priceM2!==null&&/^20\d{2}-/.test(x.date));
   const selectedType=txt(territoryRaw.propertyType,50);
   const typeMatches=x=>!selectedType||/tous|bien/i.test(selectedType)||(
     /appartement|studio|duplex/i.test(selectedType)?/appartement/i.test(x.type):
