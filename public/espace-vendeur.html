@@ -1492,7 +1492,21 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
     const source=String(m.source||data.source||"Données DVF");
     const period=String(m.period||"période disponible");
     const refText=ref.referenceValue?(" · Repère surface : "+Number(ref.referenceValue).toLocaleString("fr-FR")+" €"):"";
-    if(marketSource)marketSource.textContent=source+" · "+period+". "+(matches?matches+" comparable(s) identifié(s).":"Les comparables précis seront affinés avec l’adresse.")+refText;
+    const diag=data.diagnostics?.comparables||data.market?.comparables?.diagnostics||{};
+    let diagnosticText="";
+    if(diag.timeout){
+      diagnosticText=" Contrôle des comparables interrompu par un délai d’attente ; résultat local non confirmé.";
+    }else{
+      const geoText=diag.addressGeocoded
+        ?"Adresse géolocalisée."
+        :(diag.addressProvided
+          ?"Adresse saisie mais non localisée ; recherche repliée sur le centre communal."
+          :"Adresse absente du dossier ; recherche repliée sur le centre communal.");
+      const sourceRows=(Number(diag.postgresRows)||0)+(Number(diag.freshRows)||0)+(Number(diag.marketRows)||0);
+      diagnosticText=" Contrôle DVF : "+geoText+" "+sourceRows+" ligne(s) reçue(s) des sources, "+(Number(diag.candidateCount)||0)+" vente(s) après filtrage, "+(Number(diag.valuationCount)||0)+" retenue(s) pour le calcul.";
+      if(!matches&&data.market?.comparables?.message)diagnosticText+=" "+String(data.market.comparables.message);
+    }
+    if(marketSource)marketSource.textContent=source+" · "+period+". "+(matches?matches+" comparable(s) identifié(s).":"Données insuffisantes pour établir un prix de secteur.")+refText+diagnosticText;
   }catch(error){
     console.warn("JML seller dashboard territory-summary:",error);
     /* Secours : le bloc marché ne doit pas dépendre du calcul fin des comparables.
