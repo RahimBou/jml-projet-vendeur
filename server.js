@@ -135,7 +135,7 @@ function getGeminiInteractionText(payload){
 const geminiDiagnosticAttempts = new Map();
 app.get("/api/admin/diagnostics/gemini", async (req,res) => {
   // Diagnostic fixe et limité : aucun prompt fourni par le visiteur, aucun secret renvoyé.
-  const clientKey=String(req.ip||req.socket?.remoteAddress||"unknown").slice(0,120);
+  const clientKey=String(req.ip||req.socket?.remoteAddress||"unknown").slice(0,240);
   const now=Date.now();
   const recent=(geminiDiagnosticAttempts.get(clientKey)||[]).filter(ts=>now-ts<10*60*1000);
   if(recent.length>=3) return res.status(429).json({ok:false,provider:"gemini",stage:"rate_limit",error:"Limite de test atteinte. Réessaie dans 10 minutes."});
@@ -961,7 +961,7 @@ async function getCommuneMarketData(city,code){
     const terrain=external.filter(x=>x.type==="Terrain").map(x=>x.pricePerM2).filter(Number.isFinite).sort((a,b)=>a-b);
     const terrainMedian=terrain.length?(terrain.length%2?terrain[(terrain.length-1)/2]:(terrain[terrain.length/2-1]+terrain[terrain.length/2])/2):null;
     const years={};
-    external.forEach(x=>{const y=String(x.date||"").slice(0,4);if(!years[y])years[y]=[];years[y].push(x.pricePerM2);});
+    external.forEach(x=>{const y=String(x.date||"").slice(0,8);if(!years[y])years[y]=[];years[y].push(x.pricePerM2);});
     const history=Object.entries(years).sort((a,b)=>a[0].localeCompare(b[0])).map(([year,v])=>({
       year:Number(year),transactions:v.length,value:Math.round(v.slice().sort((a,b)=>a-b)[Math.floor((v.length-1)/2)])
     }));
@@ -2382,7 +2382,7 @@ async function fetchJmlAgencyListings(){
    }catch(e){console.warn("JML available listing skipped:",url,String(e?.message||e).slice(0,100));}
   }
  }
- await Promise.all([worker(),worker(),worker()]);
+ await Promise.all([worker(),worker(),worker(),worker()]);
  const items=results.sort((a,b)=>a.order-b.order).slice(0,8).map(({order,...item})=>item);
  return {ok:true,source:"Site officiel JML Immobilier",sourceUrl:homepage,fetchedAt:new Date().toISOString(),items};
 }
