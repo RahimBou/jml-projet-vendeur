@@ -2259,8 +2259,8 @@ app.get("/api/market-climate",async(req,res)=>{
     const response=await fetch(seriesUrl,{headers:{"Accept":"text/html","User-Agent":"JML-Projet-Vendeur/3.10.0"},signal:AbortSignal.timeout(12000)});
     if(!response.ok)throw new Error("Série officielle HTTP "+response.status);
     const html=await response.text();
-    const plain=html.replace(/<script[\\s\\S]*?<\\/script>/gi," ").replace(/<style[\\s\\S]*?<\\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;|&#160;|&#8239;/gi," ").replace(/&amp;/gi,"&").replace(/\\s+/g," ");
-    const rowMatches=[...plain.matchAll(/(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\\s+(20\\d{2})\\s+([0-9]+[,.][0-9]+)/gi)];
+    const plain=html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;|&#160;|&#8239;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ");
+    const rowMatches=[...plain.matchAll(/(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(20\d{2})\s+([0-9]+[,.][0-9]+)/gi)];
     if(!rowMatches.length)throw new Error("Valeur de série officielle introuvable");
     const latest=rowMatches[0], previous=rowMatches[1];
     const period=latest[1].charAt(0).toUpperCase()+latest[1].slice(1)+" "+latest[2];
