@@ -1831,8 +1831,11 @@ async function buildComparableSales(market,property){
   const isLand=typeWanted==="Terrain";
   const targetSurface=isLand?landSurface:surface;
 
+  const addressProvided=Boolean(String(property?.address||"").trim());
   let origin=await geocodeAddress(property?.address,city);
-  let originSource="Adresse";
+  const addressGeocoded=Boolean(origin);
+  const addressGeocodeLabel=origin?.label||null;
+  let originSource=addressGeocoded?"Adresse":"Centre de la commune";
   let commune=null;
   try{ commune=await resolveTerritoryCommune(city,property?.address||""); }catch(_e){ commune=null; }
   if(!origin){
@@ -1845,7 +1848,7 @@ async function buildComparableSales(market,property){
       }
     }catch(_e){}
   }
-  if(!origin) return {sales:[],valuationSales:[],sameStreet:[],median:null,weightedPriceM2:null,weightedMedianPriceM2:null,matchCount:0,totalCandidates:0,radiusKm:null,searchScope:"Localisation indisponible",origin:null,message:"Ni l'adresse ni le centre de la commune n'ont pu être géolocalisés."};
+  if(!origin) return {sales:[],valuationSales:[],sameStreet:[],median:null,weightedPriceM2:null,weightedMedianPriceM2:null,matchCount:0,totalCandidates:0,radiusKm:null,searchScope:"Localisation indisponible",origin:null,originSource:"Aucune localisation",message:"Ni l'adresse ni le centre de la commune n'ont pu être géolocalisés.",diagnostics:{addressProvided,addressGeocoded:false,addressGeocodeLabel:null,originSource:"Aucune localisation",geocodeStatus:addressProvided?"Échec du géocodage de l’adresse":"Adresse absente",postgresRows:0,freshRows:0,marketRows:0,candidateCount:0,top40:0,valuationCount:0,timeout:false}};
 
   const MAX_RADIUS_KM=3;
   const MAX_AGE_MONTHS=48;
@@ -1975,7 +1978,7 @@ async function buildComparableSales(market,property){
   // par le contrôle marché, sans retarder l'affichage des comparables.
   externalRows=0;
 
-  if(!candidates.length) return {sales:[],valuationSales:[],sameStreet:[],median:null,weightedPriceM2:null,weightedMedianPriceM2:null,matchCount:0,totalCandidates:0,radiusKm:null,searchScope:"Aucune transaction comparable",origin,originSource,source:"DVF local JML / PostgreSQL",engineVersion:"8.4.0-PG-DVF-VALUATION-COMPARE"};
+  if(!candidates.length) return {sales:[],valuationSales:[],sameStreet:[],median:null,weightedPriceM2:null,weightedMedianPriceM2:null,matchCount:0,totalCandidates:0,radiusKm:null,searchScope:"Aucune transaction comparable",origin,originSource,source:"DVF local JML / PostgreSQL",engineVersion:"8.4.0-PG-DVF-VALUATION-COMPARE",message:"Aucune vente ne satisfait tous les critères de comparaison après filtrage.",diagnostics:{addressProvided,addressGeocoded,addressGeocodeLabel,originSource,geocodeStatus:addressGeocoded?"Adresse géolocalisée":addressProvided?"Adresse non géolocalisée ; centre communal utilisé":"Adresse absente ; centre communal utilisé",postgresRows:local.length,freshRows:freshDvfPlus.length,marketRows:Array.isArray(market?.recentSales)?market.recentSales.length:0,candidateCount:0,top40:0,valuationCount:0,typeWanted,surface:targetSurface,maxRadiusKm:MAX_RADIUS_KM,maxAgeMonths:MAX_AGE_MONTHS,timeout:false}};
 
   // Revalorisation temporelle : chaque vente est ramenée au niveau de la
   // dernière année locale suffisamment documentée. Le facteur est plafonné à
@@ -2105,6 +2108,16 @@ async function buildComparableSales(market,property){
       outlierCount,
       landComparison:!isLand&&landSurface!==null&&landSurface<100?"neutralise-sous-100m2":"actif",
       originSource,
+      addressProvided,
+      addressGeocoded,
+      addressGeocodeLabel,
+      geocodeStatus:addressGeocoded?"Adresse géolocalisée":addressProvided?"Adresse non géolocalisée ; centre communal utilisé":"Adresse absente ; centre communal utilisé",
+      freshRows:freshDvfPlus.length,
+      typeWanted,
+      surface:targetSurface,
+      maxRadiusKm:MAX_RADIUS_KM,
+      maxAgeMonths:MAX_AGE_MONTHS,
+      timeout:false,
       tierCounts,
       confidence,
       dpeCheckedCount:dpeRows.length,
@@ -2484,8 +2497,9 @@ app.get("/api/territory-summary", async (req,res) => {
         buildComparableSales(market,{address,propertyType,surface,landSurface,rooms,city:commune.nom}),
         new Promise(resolve=>setTimeout(()=>resolve({
           sales:[],sameStreet:[],median:null,weightedPriceM2:null,matchCount:0,totalCandidates:0,
-          radiusKm:null,searchScope:"Recherche trop lente — données communales conservées",origin:null,
-          message:"La recherche fine autour de l’adresse a dépassé le délai. Les données communales restent disponibles."
+          radiusKm:null,searchScope:"Recherche trop lente — données communales conservées",origin:null,originSource:"Délai dépassé",
+          message:"La recherche fine autour de l’adresse a dépassé le délai. Les données communales restent disponibles.",
+          diagnostics:{addressProvided:Boolean(address.trim()),addressGeocoded:false,addressGeocodeLabel:null,originSource:"Délai dépassé",geocodeStatus:"Recherche interrompue avant diagnostic complet",postgresRows:0,freshRows:0,marketRows:Array.isArray(market?.recentSales)?market.recentSales.length:0,candidateCount:0,top40:0,valuationCount:0,timeout:true}
         }),18000))
       ]);
     }catch(error){
@@ -2660,7 +2674,15 @@ app.get("/api/territory-summary", async (req,res) => {
         market:!!market?.found,comparables:!!comparable,
         nearby:Array.isArray(nearby),
         marketSource:market?.source||null,
-        marketRows:Array.isArray(market?.recentSales)?market.recentSales.length:0
+        marketRows:Array.isArray(market?.recentSales)?market.recentSales.length:0,
+        comparables:comparable?.diagnostics||{
+          addressProvided:Boolean(address.trim()),addressGeocoded:false,originSource:comparable?.originSource||"Non disponible",
+          geocodeStatus:comparable?.message||"Diagnostic indisponible",postgresRows:0,freshRows:0,
+          marketRows:Array.isArray(market?.recentSales)?market.recentSales.length:0,
+          candidateCount:Number(comparable?.totalCandidates)||0,top40:Number(comparable?.matchCount)||0,
+          valuationCount:Array.isArray(comparable?.valuationSales)?comparable.valuationSales.length:0,
+          timeout:String(comparable?.searchScope||"").includes("trop lente")
+        }
       }
     });
   }catch(error){
