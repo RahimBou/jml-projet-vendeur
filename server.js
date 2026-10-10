@@ -46,8 +46,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.14.5";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1-seller-owner-prefill-v1";
+const VERSION = "3.14.6";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1-seller-owner-prefill-v2-backfill";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -4684,12 +4684,29 @@ app.get("/api/seller-space/:token", async (req,res)=>{
   if(!token) return apiError(res,400,"JML-S001","Accès vendeur invalide.");
   try{
     if(pool){
-      const q=await db("SELECT * FROM jml_seller_spaces WHERE access_token=$1 LIMIT 1",[token]);
+      const q=await db("SELECT ss.*,p.name AS linked_prospect_name,p.phone AS linked_prospect_phone,p.email AS linked_prospect_email FROM jml_seller_spaces ss LEFT JOIN jml_prospects p ON p.id=ss.prospect_id WHERE ss.access_token=$1 LIMIT 1",[token]);
       if(!q.rowCount) return apiError(res,404,"JML-S002","Espace vendeur introuvable.");
-      return res.json({ok:true,space:sellerSpacePublic(q.rows[0])});
+      let row=q.rows[0];
+      const currentOwners=Array.isArray(row.owner_data)?row.owner_data:[];
+      const identity=sellerOwnerDataFromLead({name:row.linked_prospect_name,phone:row.linked_prospect_phone,email:row.linked_prospect_email});
+      const hasIdentity=identity.some(owner=>owner.firstName||owner.lastName||owner.phone||owner.email);
+      if(!currentOwners.length&&hasIdentity){
+        const updated=await db("UPDATE jml_seller_spaces SET owner_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1 RETURNING *",[token,JSON.stringify(identity)]);
+        if(updated.rowCount) row=updated.rows[0];
+      }
+      return res.json({ok:true,space:sellerSpacePublic(row)});
     }
     const space=memory.sellerSpaces.get(token);
     if(!space) return apiError(res,404,"JML-S002","Espace vendeur introuvable.");
+    if(!Array.isArray(space.ownerData)||!space.ownerData.length){
+      const prospect=[...memory.prospects.values()].find(p=>String(p.id||"")===String(space.prospectId||""));
+      const identity=sellerOwnerDataFromLead({name:prospect?.name,phone:prospect?.phone,email:prospect?.email});
+      if(identity.some(owner=>owner.firstName||owner.lastName||owner.phone||owner.email)){
+        space.ownerData=identity;
+        space.updatedAt=now();
+        memory.sellerSpaces.set(token,space);
+      }
+    }
     return res.json({ok:true,space:sellerSpacePublic(space)});
   }catch(e){return unexpected(res,"JML-S003","Lecture de votre espace vendeur indisponible.",e);}
 });
