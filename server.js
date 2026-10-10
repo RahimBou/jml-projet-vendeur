@@ -4288,7 +4288,7 @@ app.post("/api/public-appointment", async (req,res) => {
 function newSellerSpaceToken(){ return crypto.randomBytes(32).toString("hex"); }
 
 function sellerOwnerDataFromLead(lead){
-  const parts=String(lead?.name||"").trim().split(/\\s+/).filter(Boolean);
+  const parts=String(lead?.name||"").trim().split(/\s+/).filter(Boolean);
   const firstName=parts.shift()||"";
   const lastName=parts.join(" ");
   return [{firstName:clean(firstName,80),lastName:clean(lastName,80),phone:clean(lead?.phone,40),email:cleanEmail(lead?.email)}];
