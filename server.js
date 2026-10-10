@@ -103,8 +103,8 @@ app.get("/api/dvfplus-market-summary", async (req,res) => {
         COUNT(*)::int AS sales,
         COUNT(*) FILTER (WHERE comparable_eligible)::int AS eligible_comparables,
         COUNT(*) FILTER (WHERE NOT comparable_eligible)::int AS excluded_from_comparables,
-        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2)
-          FILTER (WHERE comparable_eligible)::numeric, 2) AS median_price_per_m2,
+        ROUND((percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2)
+          FILTER (WHERE comparable_eligible))::numeric, 2) AS median_price_per_m2,
         MIN(sale_date)::text AS first_sale,
         MAX(sale_date)::text AS last_sale
       FROM jml_dvfplus_sales
