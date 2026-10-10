@@ -2184,6 +2184,17 @@ async function buildComparableSales(market,property){
 
   const weightedRows=valuationSales.filter(x=>Number.isFinite(x.pricePerM2)&&x.weight>0).slice().sort((a,b)=>a.pricePerM2-b.pricePerM2);
   const totalWeight=weightedRows.reduce((s,x)=>s+x.weight,0);
+  const valuationIds=new Set(weightedRows.map(x=>String(x.id)));
+  // Part relative du poids total effectivement utilisé pour calculer la médiane pondérée.
+  for(const sale of top40){
+    sale.inValuation=valuationIds.has(String(sale.id));
+    sale.influencePct=sale.inValuation&&totalWeight>0?Math.round(sale.weight/totalWeight*1000)/10:0;
+    sale.influenceReason=sale.statisticalOutlier
+      ?"Prix atypique : influence réduite par le contrôle statistique"
+      :sale.inValuation
+        ?"Poids calculé selon la similarité, la proximité et la cohérence du prix"
+        :"Écart statistique : vente affichée comme repère, non retenue dans la valeur centrale";
+  }
   let weightedMedianPriceM2=null,acc=0;
   for(const x of weightedRows){acc+=x.weight;if(acc>=totalWeight/2){weightedMedianPriceM2=x.pricePerM2;break;}}
   if(weightedMedianPriceM2===null&&weightedRows.length)weightedMedianPriceM2=weightedRows.at(-1).pricePerM2;
