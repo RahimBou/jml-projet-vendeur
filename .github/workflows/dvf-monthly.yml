@@ -1,13 +1,17 @@
-name: DVF mensuel
+name: DVF - veille et mise à jour automatique
 
 on:
   schedule:
-    - cron: "15 3 1 * *"
+    # Vérifie chaque semaine si la source officielle DVF a été mise à jour.
+    # La source ne publie pas de webhook ; le contrôle hebdomadaire détecte
+    # la nouvelle version dès le prochain passage.
+    - cron: "15 3 * * 1"
   workflow_dispatch:
 
 jobs:
   import-dvf:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,4 +22,4 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_SSL: "true"
-          DVF_IMPORT_YEARS: "2026,2025,2024,2023"
+          DVF_IMPORT_YEARS: "2026,2025,2024,2023,2022"
