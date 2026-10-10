@@ -245,7 +245,7 @@ app.get("/api/address-suggest",async(req,res)=>{
   const recent=(addressSuggestAttempts.get(clientKey)||[]).filter(ts=>now-ts<60*1000);
   if(recent.length>=60) return res.status(429).json({ok:false,code:"RATE_LIMIT",suggestions:[],error:"Trop de recherches d'adresses. Réessayez dans une minute."});
   recent.push(now); addressSuggestAttempts.set(clientKey,recent);
-  const query=String(req.query.q||"").replace(/[<>\\u0000-\\u001f\\u007f]/g," ").trim().slice(0,180);
+  const query=String(req.query.q||"").replace(/[<>]/g," ").trim().slice(0,180);
   if(query.length<3) return res.json({ok:true,suggestions:[]});
   try{
     const url="https://data.geopf.fr/geocodage/search?q="+encodeURIComponent(query)+"&limit=6";
