@@ -1741,25 +1741,43 @@ function updateSellerProjectSummary(d){
   renderSellerMarketWatch(window.jmlSellerTerritoryData||marketData);
   const marketTabs=document.getElementById("sellerMarketTabs");
   function chooseSellerMarket(button){
+    if(typeof button==="string")button=document.getElementById(button);
     if(!button||!["marketTabCommunal","marketTabHouse","marketTabApartment"].includes(button.id))return;
     selectedMarket=button.id==="marketTabHouse"?"house":button.id==="marketTabApartment"?"apartment":"communal";
+    if(marketTabs)marketTabs.querySelectorAll("button").forEach(b=>{
+      const active=b===button;
+      b.classList.toggle("active",active);
+      b.setAttribute("aria-pressed",active?"true":"false");
+    });
     // Réafficher à partir de la dernière réponse territoriale réellement chargée.
     const latest=window.jmlSellerTerritoryData;
     if(latest&&latest.market)marketData=latest.market;
     renderMarket();
   }
+  // Point d'entrée global également utilisable par les attributs onclick HTML.
+  window.jmlChooseSellerMarket=chooseSellerMarket;
   if(marketTabs){
-    // Affectation directe à chaque bouton pour éviter les problèmes de délégation
-    // d'événements dans les versions précédentes de la page.
     marketTabs.querySelectorAll("button").forEach(button=>{
       button.type="button";
       button.setAttribute("aria-controls","sellerMarketMetrics");
-      button.onclick=function(event){event.preventDefault();event.stopPropagation();chooseSellerMarket(button);};
+      button.style.setProperty("position","relative","important");
+      button.style.setProperty("z-index","5","important");
+      button.style.setProperty("pointer-events","auto","important");
+      button.setAttribute("onclick","window.jmlChooseSellerMarket('"+button.id+"')");
+      button.addEventListener("pointerup",function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        chooseSellerMarket(button);
+      },true);
+      button.addEventListener("click",function(event){
+        event.preventDefault();
+        event.stopPropagation();
+        chooseSellerMarket(button);
+      },true);
     });
-    marketTabs.addEventListener("click",function(event){
-      const button=event.target.closest("button");
-      if(button)chooseSellerMarket(button);
-    },true);
+    marketTabs.style.setProperty("position","relative","important");
+    marketTabs.style.setProperty("z-index","4","important");
+    marketTabs.style.setProperty("pointer-events","auto","important");
   }
   async function refresh(){
     const d=read(); if(!d.submitted)return;
