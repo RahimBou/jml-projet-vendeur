@@ -1552,5 +1552,41 @@ document.getElementById('form').onsubmit=async function(ev){
   modal.addEventListener('click',function(e){if(e.target===modal)closeModal();});
   document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!modal.hidden)closeModal();});
 })();
-</script></body>
+</script>
+<style id="seller-modal-space-efficient-v1">
+/* Formulaire d'estimation : en-tête compact, sans colonne vide */
+.seller-modal > .card{padding:20px 26px 24px!important}
+.seller-modal > .card > .top{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.25fr) minmax(250px,.75fr)!important;
+  gap:16px!important;align-items:center!important;margin:0 0 16px!important;
+}
+.seller-modal > .card > .top>div:first-child{min-width:0}
+.seller-modal > .card > .top h2{font-size:clamp(25px,3vw,31px)!important;line-height:1.12!important;margin:5px 0 8px!important;max-width:560px}
+.seller-modal > .card > .top p{font-size:12.5px!important;line-height:1.5!important;max-width:unset!important}
+.seller-modal > .card > .top .aside{
+  width:auto!important;max-width:none!important;min-width:0!important;box-sizing:border-box!important;
+  align-self:stretch!important;padding:14px!important;gap:11px!important;
+}
+.seller-modal > .card > .top .aside strong{font-size:12.5px!important;line-height:1.35!important}
+.seller-modal > .card > .top .aside small{font-size:11px!important;line-height:1.45!important}
+.seller-modal #form{gap:12px 22px!important}
+.seller-modal #form .f label{font-size:12px!important;margin-bottom:5px!important}
+.seller-modal #form .in{height:42px!important}
+.seller-modal #form .address-hint{display:block;margin-top:5px!important;font-size:10px!important}
+.seller-modal #form .bottom{gap:12px!important;padding-top:2px!important}
+.seller-modal #form .chk{font-size:10.5px!important;line-height:1.45!important}
+.seller-modal #form .btn{padding:12px 20px!important;font-size:13px!important}
+@media(max-width:700px){
+  .seller-modal > .card{padding:16px 16px 19px!important}
+  .seller-modal > .card > .top{grid-template-columns:minmax(0,1fr)!important;gap:11px!important;margin-bottom:13px!important}
+  .seller-modal > .card > .top h2{font-size:25px!important;padding-right:24px!important}
+  .seller-modal > .card > .top .aside{padding:10px 12px!important;align-items:center!important}
+  .seller-modal #form{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+  .seller-modal #form .f,.seller-modal #form .bottom,.seller-modal #form .ok{grid-column:1!important}
+  .seller-modal #form .bottom{align-items:stretch!important;flex-direction:column!important}
+  .seller-modal #form .btn{width:100%!important}
+}
+</style>
+</body>
 </html>
