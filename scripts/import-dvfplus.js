@@ -119,8 +119,10 @@ async function main() {
       if (!batch.length) return;
       await client.query("BEGIN");
       try {
+        // La clé de dédoublonnage est mutation_id + année, jamais l'adresse seule.
+        const uniqueBatch = [...new Map(batch.map(row => [String(row[0]) + "::" + String(row[2]), row])).values()];
         const values = [];
-        const rowsSql = batch.map((row, rowIndex) => {
+        const rowsSql = uniqueBatch.map((row, rowIndex) => {
           const offset = rowIndex * 15;
           values.push(...row);
           return `(${offset+1},${offset+2},${offset+3},${offset+4},${offset+5},${offset+6},${offset+7},${offset+8},${offset+9},${offset+10},${offset+11},${offset+12},${offset+13},${offset+14},${offset+15},'DVF+ Cerema')`;
@@ -139,7 +141,7 @@ async function main() {
             parcel_ids=EXCLUDED.parcel_ids, comparable_eligible=EXCLUDED.comparable_eligible,
             exclusion_reason=EXCLUDED.exclusion_reason, imported_at=NOW()
         `, values);
-        stats.imported += batch.length;
+        stats.imported += uniqueBatch.length;
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK");
