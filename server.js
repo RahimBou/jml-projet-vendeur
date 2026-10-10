@@ -46,8 +46,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.14.4";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1";
+const VERSION = "3.14.5";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1-seller-owner-prefill-v1";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -4287,6 +4287,13 @@ app.post("/api/public-appointment", async (req,res) => {
 
 function newSellerSpaceToken(){ return crypto.randomBytes(32).toString("hex"); }
 
+function sellerOwnerDataFromLead(lead){
+  const parts=String(lead?.name||"").trim().split(/\\s+/).filter(Boolean);
+  const firstName=parts.shift()||"";
+  const lastName=parts.join(" ");
+  return [{firstName:clean(firstName,80),lastName:clean(lastName,80),phone:clean(lead?.phone,40),email:cleanEmail(lead?.email)}];
+}
+
 async function createSellerSpace(data, prospectId, transactionClient = null){
   const conditionData=normalizeSellerCondition(data.conditionData);
   const space={
@@ -4818,10 +4825,23 @@ app.post("/api/leads", async (req,res) => {
           "SELECT * FROM jml_seller_spaces WHERE prospect_id=$1 ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST LIMIT 1",
           [prospectId]
         );
+        const initialOwnerData=sellerOwnerDataFromLead(lead);
+        if(existingSpaceResult.rowCount){
+          const currentOwners=existingSpaceResult.rows[0].owner_data;
+          const hasSavedOwners=Array.isArray(currentOwners)&&currentOwners.length>0;
+          const hasIdentity=initialOwnerData.some(owner=>owner.firstName||owner.lastName||owner.phone||owner.email);
+          if(!hasSavedOwners&&hasIdentity){
+            const updated=await client.query(
+              "UPDATE jml_seller_spaces SET owner_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1 RETURNING *",
+              [existingSpaceResult.rows[0].access_token,JSON.stringify(initialOwnerData)]
+            );
+            if(updated.rowCount) existingSpaceResult.rows[0]=updated.rows[0];
+          }
+        }
         const sellerSpace=existingSpaceResult.rowCount
           ? sellerSpacePublic(existingSpaceResult.rows[0])
           : await createSellerSpace(
-              {city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData},
+              {city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},
               prospectId,
               client
             );
@@ -4867,8 +4887,13 @@ app.post("/api/leads", async (req,res) => {
       prospectId=p.id;
     }
     let sellerSpace=[...memory.sellerSpaces.values()].find(s=>String(s.prospectId||"")===String(prospectId||""))||null;
+    const initialOwnerData=sellerOwnerDataFromLead(lead);
     if(!sellerSpace){
-      sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData},prospectId);
+      sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},prospectId);
+    }else if(!Array.isArray(sellerSpace.ownerData)||!sellerSpace.ownerData.length){
+      sellerSpace.ownerData=initialOwnerData;
+      sellerSpace.updatedAt=now();
+      memory.sellerSpaces.set(sellerSpace.accessToken,sellerSpace);
     }
     if(!sellerSpace.estimatorAgent || sellerSpace.estimatorAgent.status==="pending") setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
     if(!sellerSpace.listingResearch || sellerSpace.listingResearch.status==="pending") setImmediate(()=>startListingResearchForSpace(sellerSpace));
