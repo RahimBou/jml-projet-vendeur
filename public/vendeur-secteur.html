@@ -1817,6 +1817,18 @@ function renderCharacteristicAnalysis(analysis){
  const el=$("#characteristicAgent"); if(!el)return;
  const a=analysis||null;
  if(!a){el.innerHTML='<div class="agent-adjustment"><div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Le DVF reste la base</b></div><p>L’analyse des caractéristiques se charge séparément. Le repère DVF et la lecture vendeur restent affichés pendant cette étape.</p></div>';return;}
+ const currentReference=pageData.reference||{};
+ const currentValue=Number(currentReference.referenceValue);
+ const storedBaseline=Number(a.baseline?.value);
+ // Ne pas afficher une analyse persistée calculée sur une ancienne base DVF.
+ // La page principale est la source de vérité après le chargement des comparables.
+ if(Number.isFinite(currentValue)&&currentValue>0&&Number.isFinite(storedBaseline)&&storedBaseline>0&&Math.abs(storedBaseline-currentValue)/currentValue>0.01){
+   const currentM2=Number(currentReference.basePriceM2);
+   el.innerHTML='<div class="agent-adjustment"><div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Synchronisation DVF nécessaire</b></div>'+
+    '<div class="agent-adjustment-grid"><div><small>REPÈRE DVF ACTUEL</small><strong>'+esc(eur(currentValue))+'</strong><span>'+esc(Number.isFinite(currentM2)&&currentM2>0?Math.round(currentM2).toLocaleString("fr-FR")+" €/m²":"Ventes comparables actualisées")+'</span></div></div>'+
+    '<p class="agent-adjustment-note">Une analyse enregistrée utilise un ancien repère DVF ('+esc(eur(storedBaseline))+'). Pour éviter d’afficher deux valeurs contradictoires, l’ancien positionnement est masqué jusqu’à son recalcul.</p></div>';
+   return;
+ }
  const p=a.positioning||{},base=a.baseline||{},rows=Array.isArray(a.adjustments)?a.adjustments:[];
  const rowHtml=rows.map(x=>{
    const pct=Number(x.effectPct||0), eurv=Number(x.effectEur||0);
