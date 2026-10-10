@@ -2269,6 +2269,11 @@ async function buildComparableSales(market,property){
   const weightedRows=valuationSales.filter(x=>Number.isFinite(x.pricePerM2)&&x.weight>0).slice().sort((a,b)=>a.pricePerM2-b.pricePerM2);
   const totalWeight=weightedRows.reduce((s,x)=>s+x.weight,0);
   const valuationIds=new Set(weightedRows.map(x=>String(x.id)));
+  // Déclarer le résultat avant de le lire : la déclaration let ne peut pas
+  // être utilisée avant son initialisation (zone morte temporelle JavaScript).
+  let weightedMedianPriceM2=null,weightedMedianSaleId=null,acc=0;
+  for(const x of weightedRows){acc+=x.weight;if(acc>=totalWeight/2){weightedMedianPriceM2=x.pricePerM2;weightedMedianSaleId=String(x.id);break;}}
+  if(weightedMedianPriceM2===null&&weightedRows.length){weightedMedianPriceM2=weightedRows.at(-1).pricePerM2;weightedMedianSaleId=String(weightedRows.at(-1).id);}
   // Part relative du poids total effectivement utilisé pour calculer la médiane pondérée.
   for(const sale of top40){
     sale.inValuation=valuationIds.has(String(sale.id));
@@ -2280,9 +2285,6 @@ async function buildComparableSales(market,property){
         ?"Poids calculé selon la similarité, la proximité et la cohérence du prix"
         :"Écart statistique : vente affichée comme repère, non retenue dans la valeur centrale";
   }
-  let weightedMedianPriceM2=null,weightedMedianSaleId=null,acc=0;
-  for(const x of weightedRows){acc+=x.weight;if(acc>=totalWeight/2){weightedMedianPriceM2=x.pricePerM2;weightedMedianSaleId=String(x.id);break;}}
-  if(weightedMedianPriceM2===null&&weightedRows.length){weightedMedianPriceM2=weightedRows.at(-1).pricePerM2;weightedMedianSaleId=String(weightedRows.at(-1).id);}
 
   const values=valuationSales.map(x=>Number(x.pricePerM2)).sort((a,b)=>a-b);
   const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
