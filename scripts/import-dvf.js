@@ -44,11 +44,11 @@ async function importYear(client, year){
   const url="https://files.data.gouv.fr/geo-dvf/latest/csv/"+year+"/departements/08.csv.gz";
   console.log("DVF: téléchargement",year,url);
   const response=await fetch(url,{headers:{"Accept":"application/gzip","User-Agent":"JML-Projet-Vendeur-DVF-Importer/1.0"},signal:AbortSignal.timeout(120000)});
-  if(response.status===404){ console.log("DVF "+year+" indisponible (HTTP 404) : fichier départemental pas encore publié, année ignorée."); return null; }
+  if(response.status===404){ console.log("DVF "+year+" INDISPONIBLE (HTTP 404) — non importée, à distinguer des années importées."); return {unavailable:true,year}; }
   if(!response.ok) throw new Error("DVF "+year+" HTTP "+response.status);
   const raw=zlib.gunzipSync(Buffer.from(await response.arrayBuffer())).toString("utf8");
   const lines=raw.split(/\r?\n/).filter(Boolean);
-  if(!lines.length) return 0;
+  if(!lines.length) throw new Error("Fichier DVF vide pour "+year+".");
   const header=parseCsvLine(lines[0]).map(v=>v.trim());
   const idx=Object.fromEntries(header.map((v,i)=>[v,i]));
   const required=["id_mutation","date_mutation","nature_mutation","valeur_fonciere","type_local","surface_reelle_bati","latitude","longitude","code_commune","nom_commune"];
@@ -210,11 +210,13 @@ async function main(){
     }
 
     const failures=[];
+    const unavailableYears=[];
     let successfulYears=0;
     for(const year of YEARS){
       try{
         const imported = await importYear(client,year);
-        if(imported !== null) successfulYears++;
+        if(imported && imported.unavailable) unavailableYears.push(year);
+        else if(imported !== null) successfulYears++;
       } catch(error){
         try{ await client.query("ROLLBACK"); }catch(_){}
         const message=String(error?.message||error);
@@ -232,6 +234,7 @@ async function main(){
     if(!successfulYears) throw new Error("Aucune année DVF n'a été importée.");
     const count=await client.query("SELECT COUNT(*)::int AS count, MAX(imported_at) AS imported_at FROM jml_dvf_sales");
     console.log("DVF import terminé:",count.rows[0]);
+    console.log("DVF bilan des années demandées:",JSON.stringify({requestedYears:YEARS,importedYears:successfulYears,unavailableYears,failedYears:failures.map(f=>f.year)}));
   } finally {
     client.release();
     await pool.end();
