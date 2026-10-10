@@ -886,7 +886,11 @@ body.seller-modal-open{overflow:hidden}
  .seller-modal-benefits{grid-template-columns:1fr;gap:8px;margin:16px 0 14px}
  .seller-modal-benefits>div{padding:11px 13px}
 }
-</style></head>
+</style><style id="jml-address-selection-confirm-v1">
+#form .address-hint.address-confirmed{color:#176344;font-weight:700}
+#form .address-suggestion{touch-action:manipulation}
+</style>
+</head>
 <body>
 <header class="hero">
   <div class="script">Les Ardennes,<br>un cadre de vie unique</div>
@@ -1119,12 +1123,24 @@ loadEditSellerSpace();
     selectedAddress=item;
     input.value=item.label;
     cityInput.value=item.city||'';
+    input.dataset.addressSelected='true';
     input.setCustomValidity('');
+    var hint=form.querySelector('.address-hint');
+    if(hint){
+      hint.textContent='✓ Adresse sélectionnée : '+item.label;
+      hint.classList.add('address-confirmed');
+    }
     closeList();
   }
   input.addEventListener('input',function(){
     selectedAddress=null;
     cityInput.value='';
+    delete input.dataset.addressSelected;
+    var hint=form.querySelector('.address-hint');
+    if(hint){
+      hint.textContent="Saisissez le numéro et la rue, puis sélectionnez l’adresse exacte dans la liste.";
+      hint.classList.remove('address-confirmed');
+    }
     input.setCustomValidity('');
     if(timer)clearTimeout(timer);
     if(controller)controller.abort();
@@ -1151,7 +1167,15 @@ loadEditSellerSpace();
           var detail=document.createElement('small');
           detail.textContent=[item.postcode,item.city].filter(Boolean).join(' · ');
           option.appendChild(detail);
-          option.addEventListener('click',function(){chooseSuggestion(item);});
+          // Sélection dès le toucher : plus fiable dans les navigateurs mobiles.
+          option.addEventListener('pointerdown',function(event){
+            event.preventDefault();
+            chooseSuggestion(item);
+          });
+          // Repli clavier/accessibilité.
+          option.addEventListener('click',function(){
+            if(selectedAddress!==item)chooseSuggestion(item);
+          });
           list.appendChild(option);
         });
         list.hidden=false;
@@ -1218,7 +1242,7 @@ document.getElementById('form').onsubmit=async function(ev){
     email:document.getElementById('email').value.trim(),
     propertyType:typeMap[document.getElementById('type').value] || document.getElementById('type').value,
     horizon:horizonMap[document.getElementById('delai').value] || "unknown",
-    address:document.getElementById('adresse').value.trim(),
+    address:(selectedAddress&&document.getElementById('adresse').value.trim()===selectedAddress.label)?selectedAddress.label:document.getElementById('adresse').value.trim(),
     surface:document.getElementById('surface').value.trim(),
     rooms:document.getElementById('pieces').value.trim(),
     dpe:document.getElementById('dpe').value,
