@@ -1117,6 +1117,13 @@ body.guide-modal-open{overflow:hidden}
             <span class="seller-barometer-verdict" id="sellerBarometerVerdict">Analyse en cours…</span>
           </div>
           <p class="seller-barometer-summary" id="sellerBarometerSummary">Nous croisons les ventes DVF disponibles et les indicateurs de financement. Le diagnostic restera partiel si les données locales sont insuffisantes.</p>
+          <div style="display:flex;justify-content:flex-end;margin:10px 0 8px"><button type="button" id="sellerGeminiMarketAnalyze" class="seller-credit-refresh">Interpréter les données avec Gemini</button></div>
+          <section id="sellerGeminiMarketPanel" aria-live="polite" hidden style="border:1px solid #e3dfd2;border-radius:12px;padding:14px;margin:8px 0 12px;background:#fffdf8">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><strong id="sellerGeminiMarketTitle">Analyse du marché</strong><span id="sellerGeminiMarketBadge" style="font-size:11px;font-weight:700;border-radius:20px;padding:5px 9px;background:#eee8da">Diagnostic en préparation</span></div>
+            <p id="sellerGeminiMarketSummary" style="font-size:13px;line-height:1.65;margin:10px 0"></p>
+            <div id="sellerGeminiMarketSignals" style="display:grid;gap:9px"></div><div id="sellerGeminiMarketAdvice" style="margin-top:12px"></div>
+            <div id="sellerGeminiMarketUnknowns" style="margin-top:10px;color:#68685f;font-size:11px;line-height:1.5"></div><div id="sellerGeminiMarketMeta" style="margin-top:10px;color:#818077;font-size:10px"></div>
+          </section>
           <div class="seller-barometer-grid" id="sellerBarometerGrid" aria-live="polite">
             <div class="seller-barometer-row"><span class="seller-barometer-dot"></span><div><strong>Prix locaux</strong><small>Recherche des données communales…</small></div><b>En cours</b></div>
           </div>
@@ -2426,6 +2433,37 @@ function updateSellerProjectSummary(d){
       summary.textContent="Les indicateurs de financement ne montrent pas à eux seuls une direction suffisante. La décision doit surtout s’appuyer sur les ventes DVF comparables, la concurrence locale et les caractéristiques du bien.";
     }
   }
+  const aiButton=document.getElementById("sellerGeminiMarketAnalyze"), aiPanel=document.getElementById("sellerGeminiMarketPanel");
+  const aiTitle=document.getElementById("sellerGeminiMarketTitle"), aiBadge=document.getElementById("sellerGeminiMarketBadge");
+  const aiSummary=document.getElementById("sellerGeminiMarketSummary"), aiSignals=document.getElementById("sellerGeminiMarketSignals");
+  const aiAdvice=document.getElementById("sellerGeminiMarketAdvice"), aiUnknowns=document.getElementById("sellerGeminiMarketUnknowns"), aiMeta=document.getElementById("sellerGeminiMarketMeta");
+  function appendAiText(parent,tag,value,style){const el=document.createElement(tag);el.textContent=String(value||"");if(style)el.style.cssText=style;parent.appendChild(el);return el;}
+  async function runGeminiMarketAnalysis(){
+    if(!aiButton||!aiPanel)return;
+    aiButton.disabled=true;aiButton.textContent="Analyse en cours…";aiPanel.hidden=false;
+    aiTitle.textContent="Analyse du marché";aiBadge.textContent="Vérification des données";aiSummary.textContent="Gemini interprète uniquement les chiffres récupérés par JML. Les données manquantes ne seront pas estimées.";aiSignals.replaceChildren();aiAdvice.replaceChildren();aiUnknowns.textContent="";aiMeta.textContent="";
+    try{
+      const d=territory||{}, market=d.market||{}, comps=d.comparables||{};
+      const payload={territory:{city:d.city||d.communeName||"",propertyType:d.propertyType||""},
+        market:{communalPrice:market.communalPrice,housePrice:market.housePrice,apartmentPrice:market.apartmentPrice,transactions:market.transactions,period:market.period,source:market.source},
+        comparables:{matchCount:comps.matchCount,median:comps.median,source:comps.source},credit:credit||{}};
+      const response=await fetch("/api/market-climate/analysis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),cache:"no-store"});
+      const result=await response.json();if(!response.ok||!result.ok||!result.analysis)throw new Error(result.error||"Analyse indisponible");
+      const a=result.analysis, labels={plutot_favorable:"Signaux plutôt favorables",signaux_contrastes:"Signaux contrastés",plus_difficile:"Conditions potentiellement plus difficiles",diagnostic_partiel:"Diagnostic partiel"};
+      const colors={plutot_favorable:"#e5f2e8",signaux_contrastes:"#f6edda",plus_difficile:"#f8e7e2",diagnostic_partiel:"#eee8da"};
+      aiTitle.textContent=a.title||"Lecture du marché";aiBadge.textContent=labels[a.verdict]||labels.diagnostic_partiel;aiBadge.style.background=colors[a.verdict]||colors.diagnostic_partiel;aiSummary.textContent=a.summary;
+      (a.signals||[]).forEach(s=>{const card=document.createElement("div");card.style.cssText="border-top:1px solid #e8e4d9;padding-top:9px";
+        appendAiText(card,"strong",s.title,"display:block;font-size:12px;color:#34372f");
+        appendAiText(card,"p",s.finding,"margin:5px 0;font-size:12px;line-height:1.55;color:#55564e");
+        if(s.implication)appendAiText(card,"p",s.implication,"margin:3px 0;font-size:12px;line-height:1.55;color:#55564e");aiSignals.appendChild(card);});
+      if((a.sellerAdvice||[]).length){appendAiText(aiAdvice,"strong","Ce que cela implique pour votre vente","display:block;font-size:12px");
+        const list=document.createElement("ul");list.style.cssText="padding-left:18px;font-size:12px;line-height:1.6";a.sellerAdvice.forEach(x=>appendAiText(list,"li",x));aiAdvice.appendChild(list);}
+      if((a.unknowns||[]).length)aiUnknowns.textContent="À confirmer : "+a.unknowns.join(" · ");
+      aiMeta.textContent="Période : "+(a.asOf||"non précisée")+" · Confiance : "+(a.confidence||"faible")+" · Source IA : Gemini. Interprétation indicative, pas une prédiction de vente.";
+    }catch(error){aiTitle.textContent="Analyse non disponible";aiBadge.textContent="Données brutes conservées";aiSummary.textContent=String(error?.message||"Gemini n’a pas pu interpréter les données. Les indicateurs chiffrés restent affichés ci-dessus.");aiMeta.textContent="Aucun chiffre de remplacement n’a été inventé.";}
+    finally{aiButton.disabled=false;aiButton.textContent="Réinterpréter avec Gemini";}
+  }
+  if(aiButton)aiButton.addEventListener("click",runGeminiMarketAnalysis);
   window.addEventListener("jml:territory-updated",event=>{territory=event.detail||territory;render()});
   fetch("/api/market-climate",{cache:"no-store"}).then(r=>r.json()).then(data=>{credit=data;render()}).catch(()=>{credit=null;render()});
   render();
