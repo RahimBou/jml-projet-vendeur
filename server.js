@@ -2463,7 +2463,38 @@ app.post("/api/market-climate/analysis", async (req,res) => {
     /maison/i.test(selectedType)?/maison/i.test(x.type):
     /terrain/i.test(selectedType)?/terrain/i.test(x.type):true
   );
-  const eligibleSales=sales.filter(typeMatches);
+  let eligibleSales=sales.filter(typeMatches);
+  let verifiedDvfSource=txt(marketRaw.source,120)||"Source DVF non précisée";
+  let verifiedDvfPeriod=txt(marketRaw.period,80)||"Période non précisée";
+  let serverDvfFallbackUsed=false;
+  // Si le navigateur ne transmet pas assez de ventes datées pour comparer deux périodes,
+  // le serveur recharge lui-même le marché communal DVF. Cela évite de conclure sur un
+  // échantillon tronqué côté interface et conserve DVF comme source de référence vendeur.
+  if(eligibleSales.length<16){
+    try{
+      const requestedCity=txt(territoryRaw.city,100);
+      if(requestedCity){
+        const resolved=await resolveTerritoryCommune(requestedCity);
+        if(resolved&&resolved.nom&&resolved.code){
+          const verifiedMarket=await getCommuneMarketData(resolved.nom,resolved.code);
+          const serverSales=(Array.isArray(verifiedMarket.recentSales)?verifiedMarket.recentSales:[]).map(x=>({
+            date:String(x?.date||"").slice(0,10),
+            priceM2:num(x?.pricePerM2??x?.price_per_m2,1,100000),
+            type:txt(x?.type??x?.propertyType,40)
+          })).filter(x=>/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date)&&x.priceM2!==null&&/^20\\d{2}-/.test(x.date));
+          const serverEligible=serverSales.filter(typeMatches);
+          if(serverEligible.length>eligibleSales.length){
+            eligibleSales=serverEligible;
+            serverDvfFallbackUsed=true;
+            verifiedDvfSource=txt(verifiedMarket.source,120)||"DVF communal vérifié côté serveur";
+            verifiedDvfPeriod=txt(verifiedMarket.period,80)||verifiedDvfPeriod;
+          }
+        }
+      }
+    }catch(error){
+      console.warn("JML market analysis DVF server fallback:",String(error?.message||error).slice(0,180));
+    }
+  }
   const trendEnd=new Date();
   const trendStart=new Date(trendEnd.getTime());trendStart.setDate(trendStart.getDate()-365);
   const priorStart=new Date(trendStart.getTime());priorStart.setDate(priorStart.getDate()-365);
@@ -2491,9 +2522,10 @@ app.post("/api/market-climate/analysis", async (req,res) => {
     localMarket:{
       communalPrice:num(marketRaw.communalPrice,1,100000),housePrice:num(marketRaw.housePrice,1,100000),
       apartmentPrice:num(marketRaw.apartmentPrice,1,100000),transactions:num(marketRaw.transactions,0,10000000),
-      period:txt(marketRaw.period,80),source:txt(marketRaw.source,120),
+      period:verifiedDvfPeriod,source:verifiedDvfSource,
       comparableCount:num(comparableRaw.matchCount,0,100000),comparableMedian:num(comparableRaw.median,1,10000000),
-      comparableSource:txt(comparableRaw.source,120),trend
+      comparableSource:txt(comparableRaw.source,120),trend,
+      dvfSalesUsed:eligibleSales.length,dvfServerFallbackUsed:serverDvfFallbackUsed
     }
   };
   const cacheKey=crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
@@ -2545,6 +2577,9 @@ app.post("/api/market-climate/analysis", async (req,res) => {
     parsed.asOf=txt(parsed.asOf,80)||"Période non précisée";
     if(!parsed.summary||parsed.signals.length===0) return res.status(502).json({ok:false,code:"AI_INCOMPLETE",error:"L’analyse reçue est incomplète. Les chiffres bruts restent disponibles."});
     const value={ok:true,analysis:parsed,provider:"gemini",model:result.model,generatedAt:new Date().toISOString(),
+      evidence:{dvfSalesUsed:data.localMarket.dvfSalesUsed,dvfServerFallbackUsed:data.localMarket.dvfServerFallbackUsed,
+        trendAvailable:data.localMarket.trend.available,recentPeriodCount:data.localMarket.trend.recent.count,
+        previousPeriodCount:data.localMarket.trend.previous.count,source:data.localMarket.source,period:data.localMarket.period},
       dataSources:[{name:"Banque de France · Webstat",url:"https://webstat.banque-france.fr/fr/catalogue/mir1/"},
       {name:"DVF · données de ventes immobilières",url:"https://www.data.gouv.fr/datasets/demandes-de-valeurs-foncieres"}]};
     marketAiCache.set(cacheKey,{expiresAt:Date.now()+6*60*60*1000,value});
