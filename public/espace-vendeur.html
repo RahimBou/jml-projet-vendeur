@@ -1111,6 +1111,17 @@ body.guide-modal-open{overflow:hidden}
           <p class="seller-credit-explanation" id="sellerCreditExplanation">Nous vérifions la dernière publication de la Banque de France. Les taux nationaux ne correspondent pas forcément au taux proposé à chaque acheteur.</p>
           <div class="seller-credit-foot"><span id="sellerCreditUpdated">Mise à jour à l’ouverture de l’espace</span><a id="sellerCreditSource" href="https://www.banque-france.fr/fr/publications-et-statistiques/statistiques/credit" target="_blank" rel="noopener noreferrer">Consulter la Banque de France ↗</a></div>
         </section>
+        <section class="seller-market-barometer" aria-labelledby="sellerBarometerTitle">
+          <div class="seller-barometer-head">
+            <div><span class="seller-panel-kicker">📊 AIDE À LA DÉCISION</span><h5 id="sellerBarometerTitle">Le moment est-il favorable pour vendre ou acheter ?</h5><p>Les signaux locaux et nationaux, avec leurs limites clairement indiquées.</p></div>
+            <span class="seller-barometer-verdict" id="sellerBarometerVerdict">Analyse en cours…</span>
+          </div>
+          <p class="seller-barometer-summary" id="sellerBarometerSummary">Nous croisons les ventes DVF disponibles et les indicateurs de financement. Le diagnostic restera partiel si les données locales sont insuffisantes.</p>
+          <div class="seller-barometer-grid" id="sellerBarometerGrid" aria-live="polite">
+            <div class="seller-barometer-row"><span class="seller-barometer-dot"></span><div><strong>Prix locaux</strong><small>Recherche des données communales…</small></div><b>En cours</b></div>
+          </div>
+          <div class="seller-barometer-foot">Un indicateur national ne prédit pas le prix de votre bien. Les annonces ne sont pas des ventes et une période favorable ne garantit pas une vente.</div>
+        </section>
       </section>
 
       <section class="seller-panel seller-advice-panel">
@@ -1560,9 +1571,9 @@ async function loadSellerCreditClimate(force){
     metrics.innerHTML=[
       ["Taux moyen du crédit",fmt(rate),"Nouveaux crédits à l’habitat · "+String(data.period||"dernière période")],
       ["Évolution mensuelle",Number.isFinite(previous)?fmt(previous)+" → "+fmt(rate):"Non disponible",Number.isFinite(delta)?(delta>0?"Hausse":delta<0?"Baisse":"Stable")+" par rapport au mois précédent":"Comparaison indisponible"],
-      ["Lecture du financement",label,"Indicateur national, pas une garantie de vente"]
+      ["Nouveaux crédits",Number.isFinite(Number(data.productionBillions))?Number(data.productionBillions).toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1})+" Md€":"Non disponible",data.productionPeriod||"Production mensuelle nationale"]
     ].map(x=>'<div class="seller-credit-metric"><span>'+x[0]+'</span><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>').join("");
-    if(explanation)explanation.textContent=detail+" "+String(data.note||"")+visitChange;
+    if(explanation)explanation.textContent=detail+" "+String(data.interpretation||"")+" "+String(data.note||"")+visitChange;
     if(updated)updated.textContent="Publication : "+String(data.publishedAt||data.period||"date non précisée")+" · Vérifié le "+new Date().toLocaleDateString("fr-FR");
     if(sourceLink&&data.sourceUrl)sourceLink.href=data.sourceUrl;
     metrics.dataset.loaded="1";
@@ -2330,5 +2341,95 @@ function updateSellerProjectSummary(d){
 }
 @media(prefers-reduced-motion:reduce){.seller-market-panel .seller-market-tabs button{transition:none}}
 </style>
+<style id="jml-market-barometer-style">
+.seller-market-barometer{margin-top:16px;padding:17px;border:1px solid #e7ddca;border-radius:17px;background:linear-gradient(145deg,#fffdf8,#f8f3e8)}
+.seller-barometer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.seller-barometer-head h5{margin:5px 0 5px;color:#1b352a;font-size:17px;line-height:1.3}
+.seller-barometer-head p{margin:0;color:#72756e;font-size:11px;line-height:1.5}
+.seller-barometer-verdict{flex-shrink:0;max-width:155px;padding:7px 10px;border:1px solid #e7d7b7;border-radius:999px;background:#fff8e9;color:#866125;font-size:10px;font-weight:800;text-align:center}
+.seller-barometer-summary{margin:13px 0;padding:11px 12px;border-left:3px solid #b8944e;border-radius:0 10px 10px 0;background:#fff;color:#454d45;font-size:12px;line-height:1.6}
+.seller-barometer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.seller-barometer-row{display:flex;align-items:flex-start;gap:8px;min-width:0;padding:10px;border:1px solid #eae4d9;border-radius:12px;background:#fff}
+.seller-barometer-dot{width:8px;height:8px;flex:0 0 8px;margin-top:4px;border-radius:50%;background:#aaa}
+.seller-barometer-row[data-state="positive"] .seller-barometer-dot{background:#3d865b}
+.seller-barometer-row[data-state="negative"] .seller-barometer-dot{background:#bd6c50}
+.seller-barometer-row[data-state="mixed"] .seller-barometer-dot{background:#c49a45}
+.seller-barometer-row>div{flex:1;min-width:0}
+.seller-barometer-row strong,.seller-barometer-row small{display:block}
+.seller-barometer-row strong{color:#233a30;font-size:11px;line-height:1.35}
+.seller-barometer-row small{margin-top:4px;color:#767970;font-size:10px;line-height:1.45}
+.seller-barometer-row b{max-width:100px;color:#676b62;font-size:9px;line-height:1.35;text-align:right}
+.seller-barometer-row[data-state="positive"] b{color:#287448}
+.seller-barometer-row[data-state="negative"] b{color:#a64e36}
+.seller-barometer-row[data-state="mixed"] b{color:#8a6826}
+.seller-barometer-foot{margin-top:12px;color:#818077;font-size:9px;line-height:1.5}
+@media(max-width:540px){.seller-market-barometer{padding:13px}.seller-barometer-head{display:block}.seller-barometer-verdict{display:inline-block;margin-top:9px}.seller-barometer-grid{grid-template-columns:1fr}.seller-barometer-row b{max-width:115px}}
+</style>
+<script id="jml-market-barometer-script">
+(function(){
+  const grid=document.getElementById("sellerBarometerGrid");
+  const verdict=document.getElementById("sellerBarometerVerdict");
+  const summary=document.getElementById("sellerBarometerSummary");
+  if(!grid||!verdict||!summary)return;
+  let territory=window.jmlSellerTerritoryData||null;
+  let credit=null;
+  const fmtPrice=value=>{const n=Number(value);return Number.isFinite(n)&&n>0?n.toLocaleString("fr-FR",{maximumFractionDigits:0})+" €/m²":"Données insuffisantes"};
+  function row(title,detail,status,state){
+    return {title,detail,status,state:state||"unknown"};
+  }
+  function render(){
+    const data=territory||{};
+    const market=data.market||{};
+    const comparables=data.comparables||{};
+    const tx=Number(market.transactions);
+    const count=Number(comparables.matchCount||0);
+    const rate=Number(credit?.averageNewMortgageRate);
+    const rateDelta=Number(credit?.monthlyChangePoints);
+    const production=Number(credit?.productionBillions);
+    const productionDelta=Number(credit?.productionChangePercent);
+    const hasRate=credit?.ok&&Number.isFinite(rate);
+    const hasProduction=credit?.ok&&Number.isFinite(production);
+    const price=Number(market.communalPrice||market.housePrice||market.apartmentPrice);
+    const items=[];
+    items.push(row("Prix locaux",Number.isFinite(price)&&price>0?"Repère communal : "+fmtPrice(price)+". Cela situe le marché, mais ne donne pas à lui seul une tendance.":"Aucun prix communal exploitable dans la réponse actuelle.","Repère disponible",Number.isFinite(price)&&price>0?"mixed":"unknown"));
+    items.push(row("Activité des ventes",Number.isFinite(tx)&&tx>0?tx.toLocaleString("fr-FR")+" transaction(s) recensée(s) dans les données disponibles. L’évolution récente n’est pas déduite d’un total seul.":"Le nombre de ventes utilisable n’est pas disponible.","Ventes recensées",Number.isFinite(tx)&&tx>0?"mixed":"unknown"));
+    items.push(row("Comparables proches",count>=3?count+" vente(s) comparable(s) identifiée(s). Vérifier le type, la surface et la proximité.":count>0?count+" comparable(s) seulement : base trop réduite pour conclure solidement.":"Pas assez de comparables proches pour conclure.",""+(count>=3?"Base exploitable":count>0?"Échantillon faible":"Données insuffisantes"),count>=3?"positive":count>0?"mixed":"unknown"));
+    items.push(row("Concurrence des annonces","Le nombre de maisons ou appartements concurrents n’est pas encore mesuré de façon homogène ici. Les annonces affichées ne sont pas des ventes.","À mesurer","unknown"));
+    items.push(row("Taux de crédit",hasRate?(rate.toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})+" % · "+String(credit.period||"dernière période")+". "+(Number.isFinite(rateDelta)?(rateDelta<0?"Le taux a baissé sur le mois observé.":rateDelta>0?"Le taux a augmenté sur le mois observé.":"Le taux est stable sur le mois observé."):"Évolution mensuelle indisponible")):"La dernière observation officielle n’est pas disponible.",""+(hasRate&&Number.isFinite(rateDelta)?rateDelta<0?"En baisse":rateDelta>0?"En hausse":"Stable":"Données insuffisantes"),hasRate&&Number.isFinite(rateDelta)?rateDelta<0?"positive":rateDelta>0?"negative":"mixed":"unknown"));
+    items.push(row("Production de nouveaux crédits",hasProduction?(production.toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1})+" Md€ · production mensuelle nationale"+(Number.isFinite(productionDelta)?". "+(productionDelta>0?"En hausse de ":productionDelta<0?"En baisse de ":"Stable : ")+Math.abs(productionDelta).toLocaleString("fr-FR",{maximumFractionDigits:1})+" % par rapport à la période précédente.":".")):"L’indicateur de production n’est pas disponible tant que l’API Webstat n’est pas configurée ou si la série est indisponible.",""+(hasProduction&&Number.isFinite(productionDelta)?productionDelta>0?"En hausse":productionDelta<0?"En baisse":"Stable":"Données insuffisantes"),hasProduction&&Number.isFinite(productionDelta)?productionDelta>0?"positive":productionDelta<0?"negative":"mixed":"unknown"));
+    let affordabilityDetail="Les taux et la production de crédit donnent un contexte national, mais ne mesurent pas le budget réel des acheteurs de votre commune.";
+    let affordabilityStatus="À interpréter avec prudence",affordabilityState="mixed";
+    if(hasRate&&Number.isFinite(rateDelta)&&hasProduction&&Number.isFinite(productionDelta)){
+      if(rateDelta<0&&productionDelta>0){affordabilityStatus="Signaux plutôt favorables";affordabilityState="positive";affordabilityDetail="Taux en baisse et production de crédits en hausse : combinaison qui peut soutenir certains acheteurs. Cela ne prouve pas une hausse de la demande locale.";}
+      else if(rateDelta>0&&productionDelta<0){affordabilityStatus="Signaux plus contraints";affordabilityState="negative";affordabilityDetail="Taux en hausse et production de crédits en baisse : combinaison qui peut freiner certains projets. Il faut la confirmer avec les ventes locales.";}
+    }else{affordabilityStatus="Données partielles";}
+    items.push(row("Capacité de financement",affordabilityDetail,affordabilityStatus,affordabilityState));
+    items.push(row("Facilité de vente","Aucune durée de vente locale suffisamment vérifiée n’est intégrée à ce diagnostic. Elle ne doit pas être estimée à partir de la seule durée de présence d’une annonce.","Données insuffisantes","unknown"));
+    grid.replaceChildren();
+    items.forEach(item=>{
+      const el=document.createElement("div");el.className="seller-barometer-row";el.dataset.state=item.state;
+      const dot=document.createElement("span");dot.className="seller-barometer-dot";
+      const body=document.createElement("div");const title=document.createElement("strong");title.textContent=item.title;const detail=document.createElement("small");detail.textContent=item.detail;body.append(title,detail);
+      const status=document.createElement("b");status.textContent=item.status;el.append(dot,body,status);grid.append(el);
+    });
+    const known=items.filter(x=>x.state!=="unknown");
+    const localHasTrend=false; // Les niveaux communaux disponibles ne suffisent pas à établir une tendance temporelle.
+    if(known.length<3||!hasRate||!hasProduction){
+      verdict.textContent="Lecture partielle";
+      summary.textContent="Les données disponibles donnent des repères, mais ne suffisent pas à déclarer la période globalement favorable ou défavorable. Pour conseiller le vendeur, il faut encore confirmer la tendance des ventes locales et la concurrence des annonces.";
+    }else if(Number.isFinite(rateDelta)&&Number.isFinite(productionDelta)&&((rateDelta<0&&productionDelta>0)||(rateDelta>0&&productionDelta<0))){
+      verdict.textContent="Signaux contrastés";
+      summary.textContent="Le financement donne un signal "+(rateDelta<0?"plutôt favorable":"plus contraint")+", mais les indicateurs nationaux ne remplacent pas la tendance des prix, les ventes récentes et la concurrence dans la commune. Le bon positionnement du bien reste déterminant.";
+    }else{
+      verdict.textContent="Contexte à surveiller";
+      summary.textContent="Les indicateurs de financement ne montrent pas à eux seuls une direction suffisante. La décision doit surtout s’appuyer sur les ventes DVF comparables, la concurrence locale et les caractéristiques du bien.";
+    }
+  }
+  window.addEventListener("jml:territory-updated",event=>{territory=event.detail||territory;render()});
+  fetch("/api/market-climate",{cache:"no-store"}).then(r=>r.json()).then(data=>{credit=data;render()}).catch(()=>{credit=null;render()});
+  render();
+})();
+</script>
+
 </body>
 </html>
