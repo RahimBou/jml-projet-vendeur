@@ -2336,10 +2336,10 @@ async function fetchJmlAgencyListings(){
  const hrefs=[...html.matchAll(/href=["']([^"'#]*\/vente\/[^"'#]+)["']/gi)].map(m=>{try{return new URL(jmlDecodeHtml(m[1]),homepage).href.split("#")[0]}catch(_e){return ""}}).filter(Boolean);
  // The homepage can contain featured properties that are already under compromise.
  // Inspect a small candidate pool and keep only listings whose page does not signal a sale/compromise.
- const urls=[...new Set(hrefs)].filter(u=>{try{const x=new URL(u);const parts=x.pathname.split("/").filter(Boolean);return x.hostname==="www.jml-immobilier.fr"&&parts[0]==="vente"&&parts.length>=4&&/^\d{1,5}[-_]/i.test(parts[parts.length-1]);}catch(_e){return false}}).slice(0,12);
+ const urls=[...new Set(hrefs)].filter(u=>{try{const x=new URL(u);const parts=x.pathname.split("/").filter(Boolean);return x.hostname==="www.jml-immobilier.fr"&&parts[0]==="vente"&&parts.length>=4&&/^\d{1,5}[-_]/i.test(parts[parts.length-1]);}catch(_e){return false}}) .slice(0,20);
  const results=[];let cursor=0;
  async function worker(){
-  while(cursor<urls.length&&results.length<3){
+  while(cursor<urls.length&&results.length<5){
    const order=cursor++,url=urls[order];
    try{
     const page=await jmlFetchText(url,6500),plain=jmlPlainHtml(page),front=plain.slice(0,10000);
@@ -2361,7 +2361,7 @@ async function fetchJmlAgencyListings(){
   }
  }
  await Promise.all([worker(),worker(),worker()]);
- const items=results.sort((a,b)=>a.order-b.order).slice(0,3).map(({order,...item})=>item);
+ const items=results.sort((a,b)=>a.order-b.order).slice(0,5).map(({order,...item})=>item);
  return {ok:true,source:"Site officiel JML Immobilier",sourceUrl:homepage,fetchedAt:new Date().toISOString(),items};
 }
 app.get("/api/jml-listings",async(req,res)=>{
