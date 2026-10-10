@@ -1851,7 +1851,8 @@ function renderCharacteristicAnalysis(analysis){
  '</div>'+
  '<div class="agent-adjustment-rows">'+rowHtml+'</div>'+
  '<p class="agent-adjustment-note">'+esc(a.explanation||"")+'</p>'+
- '<div class="agent-adjustment-meta">Confiance : <b>'+esc(p.confidence||"Faible")+'</b> · '+esc(String(a.evidence?.dvfComparables||0))+' ventes DVF · '+esc(String(a.evidence?.listingsComparableCount||0))+' annonces comparables · '+esc(String(a.evidence?.sameStreet||0))+' même rue</div>'+
+ '<div class="agent-adjustment-meta">Fiabilité du repère DVF : <b>'+esc(p.confidence||"Faible")+'</b> · '+esc(String(a.evidence?.dvfComparables||0))+' ventes DVF · '+esc(String(a.evidence?.listingsComparableCount||0))+' annonces comparables · '+esc(String(a.evidence?.sameStreet||0))+' même rue</div>'+
+ '<p class="agent-adjustment-note">Cette fiabilité décrit la quantité et la cohérence des ventes utilisées ; elle ne garantit pas le prix final. Le garage, le DPE et l’état du bien ne sont chiffrés séparément que si les données disponibles permettent de mesurer leur effet sans inventer de valeur.</p>'+
  '</div>';
 }
 async function pollListingResearch(token){
