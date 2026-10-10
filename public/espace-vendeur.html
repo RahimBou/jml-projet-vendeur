@@ -1174,7 +1174,7 @@ body.guide-modal-open{overflow:hidden}
             <span class="seller-barometer-verdict" id="sellerBarometerVerdict">Analyse en cours…</span>
           </div>
           <p class="seller-barometer-summary" id="sellerBarometerSummary">Nous croisons les ventes DVF disponibles et les indicateurs de financement. Le diagnostic restera partiel si les données locales sont insuffisantes.</p>
-          <div style="display:flex;justify-content:flex-end;margin:10px 0 8px"><button type="button" id="sellerGeminiMarketAnalyze" class="seller-credit-refresh">Interpréter les données avec Gemini</button></div>
+          <div class="seller-gemini-cta-wrap"><button type="button" id="sellerGeminiMarketAnalyze" class="seller-gemini-cta">Interpréter les données avec Gemini</button><p class="seller-gemini-cta-help">Obtenez une lecture claire des signaux du marché et de ce qu’ils impliquent pour votre vente.</p></div>
           <section id="sellerGeminiMarketPanel" aria-live="polite" hidden style="border:1px solid #e3dfd2;border-radius:12px;padding:14px;margin:8px 0 12px;background:#fffdf8">
             <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><strong id="sellerGeminiMarketTitle">Analyse du marché</strong><span id="sellerGeminiMarketBadge" style="font-size:11px;font-weight:700;border-radius:20px;padding:5px 9px;background:#eee8da">Diagnostic en préparation</span></div>
             <p id="sellerGeminiMarketSummary" style="font-size:13px;line-height:1.65;margin:10px 0"></p>
@@ -2501,6 +2501,19 @@ function updateSellerProjectSummary(d){
 }
 @media(prefers-reduced-motion:reduce){.seller-market-panel .seller-market-tabs button{transition:none}}
 </style>
+<style id="jml-gemini-cta-style">
+.seller-gemini-cta-wrap{margin:16px 0 14px;padding:12px;border:1px solid #d8c18b;border-radius:15px;background:linear-gradient(135deg,#f8f0df 0%,#fffdf8 72%);box-shadow:0 5px 16px rgba(23,59,49,.08)}
+.seller-gemini-cta{position:relative;display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:60px;padding:15px 48px 15px 20px;border:1px solid #c5a35d;border-radius:12px;background:linear-gradient(110deg,#173b31 0%,#245342 100%);box-shadow:0 5px 0 #c6a663,0 8px 18px rgba(23,59,49,.19);color:#fffdf8;font:800 15px/1.35 inherit;text-align:center;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+.seller-gemini-cta:before{content:"✦";position:absolute;left:17px;top:50%;transform:translateY(-50%);color:#e6c77f;font-size:21px;line-height:1}
+.seller-gemini-cta:after{content:"↗";position:absolute;right:17px;top:50%;transform:translateY(-50%);color:#f0d99c;font-size:20px;font-weight:800}
+.seller-gemini-cta:hover{filter:brightness(1.08);transform:translateY(-2px);box-shadow:0 7px 0 #c6a663,0 12px 22px rgba(23,59,49,.23)}
+.seller-gemini-cta:focus-visible{outline:3px solid #d4ad59;outline-offset:4px}
+.seller-gemini-cta:active{transform:translateY(2px);box-shadow:0 2px 0 #c6a663,0 4px 10px rgba(23,59,49,.17)}
+.seller-gemini-cta:disabled{opacity:.8;cursor:wait;filter:saturate(.7);transform:none}
+.seller-gemini-cta-help{margin:10px 5px 0;color:#526257;font-size:11px;line-height:1.5;text-align:center}
+@media(max-width:600px){.seller-gemini-cta-wrap{margin:14px 0 12px;padding:9px}.seller-gemini-cta{min-height:58px;padding:14px 38px 14px 35px;font-size:13px}.seller-gemini-cta:before{left:12px;font-size:19px}.seller-gemini-cta:after{right:12px;font-size:18px}.seller-gemini-cta-help{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.seller-gemini-cta{transition:none}}
+</style>
 <style id="jml-market-barometer-style">
 .seller-market-barometer{margin-top:16px;padding:17px;border:1px solid #e7ddca;border-radius:17px;background:linear-gradient(145deg,#fffdf8,#f8f3e8)}
 .seller-barometer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -2659,7 +2672,7 @@ function updateSellerProjectSummary(d){
       const sourceNotes=sourceChecks.filter(x=>/CCI|Notaires/i.test(String(x.name||""))).map(x=>String(x.name)+" : "+(x.status==="accessible"?"page accessible, sans chiffre extrait":"donnée non récupérée"));
       aiMeta.textContent="Période : "+(a.asOf||"non précisée")+" · Confiance : "+(a.confidence||"faible")+" · "+dvfCount+" ventes DVF examinées · "+trendLabel+dvfSource+" · "+populationLabel+" · "+externalSourceLabel+(sourceNotes.length?" · "+sourceNotes.join(" ; "):"")+" · Gemini. Les repères externes ne remplacent pas les ventes DVF.";
     }catch(error){aiLoading.classList.remove("is-visible");aiTitle.textContent="Analyse non disponible";aiBadge.textContent="Données brutes conservées";aiSummary.textContent=String(error?.message||"Gemini n’a pas pu interpréter les données. Les indicateurs chiffrés restent affichés ci-dessus.");aiMeta.textContent="Aucun chiffre de remplacement n’a été inventé.";}
-    finally{aiLoading.classList.remove("is-visible");aiButton.disabled=false;aiButton.textContent="Réinterpréter avec Gemini";}
+    finally{aiLoading.classList.remove("is-visible");aiButton.disabled=false;aiButton.textContent="Interpréter les données avec Gemini";}
   }
   if(aiButton)aiButton.addEventListener("click",runGeminiMarketAnalysis);
   window.addEventListener("jml:territory-updated",event=>{territory=event.detail||territory;render()});
