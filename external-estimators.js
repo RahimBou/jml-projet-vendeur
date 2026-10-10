@@ -286,15 +286,17 @@ function parseNotairesBenchmark(text, propertyType) {
   const match = source.match(headingPattern);
   if (!match || match.index == null) return null;
 
-  const segment = source.slice(match.index, match.index + 700);
+  // La page affiche trois repères après le titre : borne basse, médiane, borne haute.
+  // On démarre après le titre pour ne jamais confondre le nombre de ventes avec un prix.
+  const afterHeading = match.index + match[0].length;
+  const segment = source.slice(afterHeading, afterHeading + 500);
   const amounts = [...segment.matchAll(/(\d[\d\s\u00a0\u202f]*)\s*€/g)]
     .map(x => numberFrom(x[1]))
     .filter(x => Number.isFinite(x) && x > 100 && x < 20000);
-  if (!amounts.length) return null;
+  if (amounts.length < 3) return null;
 
   const count = numberFrom(match[1]);
-  // Prend le premier montant associé au libellé de médiane, sans inventer de valeur.
-  const median = amounts[0];
+  const median = amounts[1];
   if (!Number.isFinite(median) || median <= 0) return null;
   return {
     type: isApartment ? "Appartement" : "Maison",
