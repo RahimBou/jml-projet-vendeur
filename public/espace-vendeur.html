@@ -1154,15 +1154,22 @@ body.guide-modal-open{overflow:hidden}
           <a class="seller-watch-link" href="/vendeur-secteur.html" id="sellerWatchSectorLink">Approfondir les repères locaux →</a>
         </section>
         <section class="seller-market-watch seller-agency-carousel seller-agency-stack" aria-labelledby="sellerAgencyCarouselTitle">
-          <div class="seller-watch-heading seller-agency-carousel-head"><div><span class="seller-panel-kicker">🏡 SÉLECTION DE L’AGENCE</span><h5 id="sellerAgencyCarouselTitle">Les 3 dernières annonces JML</h5><p>Une sélection récente du catalogue officiel.</p></div><a href="https://www.jml-immobilier.fr/" target="_blank" rel="noopener noreferrer" class="seller-agency-all">Tout voir ↗</a></div>
+          <div class="seller-watch-heading seller-agency-carousel-head"><div><span class="seller-panel-kicker">🏡 SÉLECTION DE L’AGENCE</span><h5 id="sellerAgencyCarouselTitle">3 biens JML à découvrir</h5><p>Des biens dont la fiche ne signale pas de vente ou de compromis.</p></div><a href="https://www.jml-immobilier.fr/" target="_blank" rel="noopener noreferrer" class="seller-agency-all">Tout voir ↗</a></div>
           <div class="seller-agency-carousel-stage seller-agency-list" id="sellerAgencyCarouselStage" aria-live="polite"><div class="seller-agency-loading"><span></span><strong>Chargement des annonces JML…</strong></div></div>
           <p class="seller-agency-source" id="sellerAgencySource">Annonces récupérées depuis le site officiel de JML Immobilier. Prix et disponibilité à vérifier sur chaque fiche.</p>
+        </section>
+        <section class="seller-market-watch seller-sidebar-progress" aria-labelledby="sellerSidebarProgressTitle">
+          <div class="seller-watch-heading"><span class="seller-panel-kicker">✅ VOTRE DOSSIER</span><h5 id="sellerSidebarProgressTitle">Préparer ma vente</h5><p>Avancez à votre rythme, étape par étape.</p></div>
+          <div class="seller-sidebar-progress-track" role="progressbar" aria-label="Progression du dossier vendeur" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"><span id="sellerSidebarProgressBar"></span></div>
+          <div class="seller-sidebar-progress-meta"><strong id="sellerSidebarProgressCount">0 / 6 étapes</strong><span id="sellerSidebarProgressPercent">0 %</span></div>
+          <a class="seller-watch-link seller-sidebar-progress-link" href="#sellerChecklist">Continuer mon dossier →</a>
+          <p class="seller-sidebar-note">Les cases cochées suivent votre préparation. Elles ne remplacent pas les documents officiels nécessaires à la vente.</p>
         </section>
       </section>
     </div>
 
-    <section class="seller-panel seller-checklist">
-      <div class="seller-panel-head"><div><span class="seller-panel-kicker">✅ Mon dossier</span><h4>Préparer ma vente étape par étape</h4><p>Votre progression est enregistrée dans votre espace.</p></div><span class="seller-source-badge" id="sellerChecklistCount">0 / 6</span></div>
+    <section class="seller-panel seller-checklist" id="sellerChecklist">
+      <div class="seller-panel-head"><div><span class="seller-panel-kicker">✅ Mon dossier</span><h4>Préparer ma vente étape par étape</h4><p>Suivez les étapes de préparation et retrouvez votre progression dans votre espace vendeur.</p></div><span class="seller-source-badge" id="sellerChecklistCount">0 / 6</span></div>
       <div class="seller-progress"><i id="sellerChecklistProgress"></i></div>
       <div class="seller-progress-label"><span>Progression</span><strong id="sellerChecklistPercent">0 %</strong></div>
       <div class="seller-check-grid" id="sellerChecklistGrid">
@@ -1657,7 +1664,7 @@ function updateSellerProjectSummary(d){
    const done=Array.isArray(list)?list.map(Number):[];
    document.querySelectorAll(".seller-check").forEach(function(btn){const on=done.includes(Number(btn.dataset.check));btn.classList.toggle("done",on);const mark=btn.querySelector(".seller-check-mark");if(mark)mark.textContent=on?"✓":"○";});
    const n=done.length,p=Math.round(n/6*100),bar=document.getElementById("sellerChecklistProgress"),count=document.getElementById("sellerChecklistCount"),pct=document.getElementById("sellerChecklistPercent");
-   if(bar)bar.style.width=p+"%";if(count)count.textContent=n+" / 6";if(pct)pct.textContent=p+" %";updateSellerNextAction(done);
+   if(bar)bar.style.width=p+"%";if(count)count.textContent=n+" / 6";if(pct)pct.textContent=p+" %";const sideBar=document.getElementById("sellerSidebarProgressBar"),sideCount=document.getElementById("sellerSidebarProgressCount"),sidePct=document.getElementById("sellerSidebarProgressPercent"),sideTrack=document.querySelector(".seller-sidebar-progress-track");if(sideBar)sideBar.style.width=p+"%";if(sideCount)sideCount.textContent=n+" / 6 étapes";if(sidePct)sidePct.textContent=p+" %";if(sideTrack)sideTrack.setAttribute("aria-valuenow",String(n));updateSellerNextAction(done);
  }
  async function saveSellerChecklist(){
    const d=getSellerSpace(),token=d.token;if(!token)return;
@@ -2043,6 +2050,15 @@ function updateSellerProjectSummary(d){
 .seller-agency-stack .seller-agency-cta{margin-top:6px;font-size:9px}
 .seller-agency-stack .seller-agency-status{font-size:8px;left:5px;top:5px;padding:4px 6px}
 .seller-agency-stack .seller-agency-source{font-size:9px}
+.seller-sidebar-progress{margin-top:12px;padding:14px;background:linear-gradient(145deg,#fffdf8,#f5f0e5);border-color:#e4d7ba}
+.seller-sidebar-progress .seller-watch-heading p{margin:5px 0 10px;font-size:11px;line-height:1.45;color:var(--muted)}
+.seller-sidebar-progress-track{height:7px;border-radius:99px;background:#e5e0d5;overflow:hidden}
+.seller-sidebar-progress-track span{display:block;width:0;height:100%;border-radius:99px;background:linear-gradient(90deg,#173f34,#b8944e);transition:width .2s ease}
+.seller-sidebar-progress-meta{display:flex;justify-content:space-between;gap:8px;margin-top:7px;font-size:10px;color:var(--muted)}
+.seller-sidebar-progress-meta strong{color:#173b31}
+.seller-sidebar-progress-link{display:block;margin-top:10px;text-align:center;border:1px solid #d7c59f;border-radius:9px;padding:9px 10px;background:#fff;color:#173b31;font-size:11px;font-weight:800;text-decoration:none}
+.seller-sidebar-note{margin:8px 0 0;color:var(--muted);font-size:9px;line-height:1.45}
+
 .seller-agency-stack .seller-agency-image-wrap.no-image:before{content:"Photo indisponible";font-size:9px;text-align:center;padding:5px;box-sizing:border-box}
 @media(max-width:760px){.seller-agency-stack .seller-agency-card-link{grid-template-columns:96px minmax(0,1fr)}.seller-agency-stack .seller-agency-image-wrap{min-height:108px}}
 </style>
