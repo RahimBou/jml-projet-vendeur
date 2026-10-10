@@ -1775,11 +1775,16 @@ function updateSellerProjectSummary(d){
       ["Ventes communales",Number(market.transactions||0)>0?Number(market.transactions).toLocaleString("fr-FR")+" recensées":"Données insuffisantes"]
     ].map(a=>"<div><span>"+escText(a[0])+"</span><strong>"+escText(a[1])+"</strong></div>").join("");
     if(next){
-      let message=count>0?count.toLocaleString("fr-FR")+" vente(s) comparable(s) ont été retenues par la recherche. Il reste à vérifier leur type, leur surface et leur proximité.":"Les comparables précis ne sont pas encore suffisants. L’adresse et les caractéristiques détaillées permettront d’affiner la recherche.";
-      next.innerHTML="<strong>À suivre</strong><p>"+escText(message)+"</p>";
+      let message=count>0
+        ?count.toLocaleString("fr-FR")+" vente(s) DVF comparable(s) ont été retenues autour du bien. Le nombre de transactions communales affiché séparément correspond à toute la commune : il ne signifie pas que toutes ces ventes ressemblent à votre maison."
+        :"Les "+(Number(market.transactions||0)>0?Number(market.transactions).toLocaleString("fr-FR")+" ventes communales":"transactions communales disponibles")+" donnent le contexte général, mais aucune vente n’a encore été retenue comme suffisamment comparable à votre bien. Ce n’est pas une estimation à zéro : il faut affiner la recherche à partir de l’adresse géolocalisée, du type de bien, de la surface et des pièces.";
+      next.innerHTML="<strong>"+(count>0?"Lecture des résultats":"Pourquoi ce prix manque")+"</strong><p>"+escText(message)+"</p>";
     }
     const sectorLink=document.getElementById("sellerWatchSectorLink");
-    if(sectorLink&&d.token)sectorLink.href="/vendeur-secteur.html?token="+encodeURIComponent(d.token);
+    if(sectorLink){
+      if(d.token)sectorLink.href="/vendeur-secteur.html?token="+encodeURIComponent(d.token);
+      sectorLink.textContent=count>0?"Voir les ventes comparables et le secteur →":"Affiner l’analyse avec l’adresse et les caractéristiques →";
+    }
   }
   window.addEventListener("jml:territory-updated",event=>renderSellerMarketWatch(event.detail));
   renderSellerMarketWatch(window.jmlSellerTerritoryData||marketData);
