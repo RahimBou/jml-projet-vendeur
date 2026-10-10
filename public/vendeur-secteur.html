@@ -2076,6 +2076,8 @@ async function run(){
       ?"L’Agent DVF calcule ce repère à partir des ventes réelles comparables et privilégie les transactions les plus proches, notamment celles de la même rue."
       :"L’Agent DVF n’a pas obtenu assez de transactions comparables ; le prix communal est utilisé uniquement comme contexte de secours."
   });
+  // Réévaluer immédiatement l'analyse enregistrée avec le nombre de ventes du calcul qui vient de répondre.
+  renderCharacteristicAnalysis(d.estimatorAgent?.valuationAnalysis||null);
   if(territory.ok!==false) $("#status").textContent="Données marché + comparables chargés";
   else $("#status").textContent="Marché communal chargé · comparables en mode dégradé";
   try{
