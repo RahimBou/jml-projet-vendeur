@@ -270,7 +270,8 @@ async function readSource(name,url,propertyType,surface,parser){
     url:page.url||url,
     note:"Repère public au m² de la commune ; ce n'est pas une saisie personnalisée dans le formulaire d'estimation.",
     level:"commune",
-    quality:"benchmark",
+    quality:parsed.comparablesCount ? "notarial_median" : "benchmark",
+    comparablesCount:Number.isFinite(Number(parsed.comparablesCount))?Number(parsed.comparablesCount):null,
     personalized:false,
     automatic:true
   };
