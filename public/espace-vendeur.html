@@ -1002,6 +1002,19 @@ body.guide-modal-open{overflow:hidden}
  .seller-panel-head p{font-size:12px;line-height:1.5}
  .seller-metric small{font-size:10.5px;line-height:1.4}
 }
+
+/* Fenêtre flottante dédiée à l'interprétation Gemini */
+.jml-gemini-modal{position:fixed;inset:0;z-index:10020;display:none;padding:20px;box-sizing:border-box}
+.jml-gemini-modal.is-open{display:flex;align-items:center;justify-content:center}
+.jml-gemini-backdrop{position:absolute;inset:0;background:rgba(8,30,25,.68);backdrop-filter:blur(5px)}
+.jml-gemini-dialog{position:relative;display:flex;flex-direction:column;width:min(760px,100%);max-height:min(88vh,900px);overflow:hidden;border:1px solid #c9ad72;border-radius:20px;background:#fffdf8;box-shadow:0 24px 70px rgba(0,0,0,.32)}
+.jml-gemini-header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:20px 22px 14px;border-bottom:1px solid #e8e0d1;background:#f8f4eb}
+.jml-gemini-kicker{font-size:10px;letter-spacing:.12em;font-weight:800;color:#8a6b2e;text-transform:uppercase}
+.jml-gemini-heading{margin:5px 0 0;color:#173b31;font-size:clamp(19px,3vw,25px);line-height:1.25}
+.jml-gemini-close{flex:0 0 38px;width:38px;height:38px;border:0;border-radius:50%;background:#eee4cf;color:#173b31;font-size:25px;cursor:pointer}
+.jml-gemini-content{overflow:auto;padding:18px 22px 24px;overscroll-behavior:contain}
+#sellerGeminiMarketPanel{margin:0!important;border:0!important;padding:0!important;background:transparent!important}
+@media(max-width:600px){.jml-gemini-modal{padding:10px}.jml-gemini-dialog{max-height:92vh;border-radius:16px}.jml-gemini-header{padding:15px}.jml-gemini-content{padding:15px}.jml-gemini-heading{font-size:19px}}
 </style>
 </head>
 <body>
@@ -2562,10 +2575,22 @@ function updateSellerProjectSummary(d){
   const aiTitle=document.getElementById("sellerGeminiMarketTitle"), aiBadge=document.getElementById("sellerGeminiMarketBadge");
   const aiSummary=document.getElementById("sellerGeminiMarketSummary"), aiSignals=document.getElementById("sellerGeminiMarketSignals");
   const aiAdvice=document.getElementById("sellerGeminiMarketAdvice"), aiUnknowns=document.getElementById("sellerGeminiMarketUnknowns"), aiMeta=document.getElementById("sellerGeminiMarketMeta");
+  const aiModal=document.createElement("div");
+  aiModal.className="jml-gemini-modal";
+  aiModal.id="sellerGeminiMarketModal";
+  aiModal.setAttribute("role","presentation");
+  aiModal.innerHTML='<div class="jml-gemini-backdrop" data-gemini-close></div><section class="jml-gemini-dialog" role="dialog" aria-modal="true" aria-labelledby="sellerGeminiModalHeading"><header class="jml-gemini-header"><div><div class="jml-gemini-kicker">JML Immobilier · Aide à la décision</div><h2 class="jml-gemini-heading" id="sellerGeminiModalHeading">Interprétation du marché avec Gemini</h2></div><button type="button" class="jml-gemini-close" aria-label="Fermer l’interprétation" data-gemini-close>×</button></header><div class="jml-gemini-content" id="sellerGeminiModalContent"></div></section>';
+  document.body.appendChild(aiModal);
+  const aiModalContent=aiModal.querySelector("#sellerGeminiModalContent");
+  if(aiPanel)aiModalContent.appendChild(aiPanel);
+  function openAiModal(){aiModal.classList.add("is-open");document.body.style.overflow="hidden";aiModal.querySelector(".jml-gemini-close")?.focus();}
+  function closeAiModal(){aiModal.classList.remove("is-open");document.body.style.overflow="";}
+  aiModal.querySelectorAll("[data-gemini-close]").forEach(el=>el.addEventListener("click",closeAiModal));
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&aiModal.classList.contains("is-open"))closeAiModal();});
   function appendAiText(parent,tag,value,style){const el=document.createElement(tag);el.textContent=String(value||"");if(style)el.style.cssText=style;parent.appendChild(el);return el;}
   async function runGeminiMarketAnalysis(){
     if(!aiButton||!aiPanel)return;
-    aiButton.disabled=true;aiButton.textContent="Analyse en cours…";aiPanel.hidden=false;
+    openAiModal();aiButton.disabled=true;aiButton.textContent="Analyse en cours…";aiPanel.hidden=false;
     aiTitle.textContent="Analyse du marché";aiBadge.textContent="Vérification des données";aiSummary.textContent="Gemini interprète uniquement les chiffres récupérés par JML. Les données manquantes ne seront pas estimées.";aiSignals.replaceChildren();aiAdvice.replaceChildren();aiUnknowns.textContent="";aiMeta.textContent="";
     try{
       const d=territory||{}, market=d.market||{}, comps=d.comparables||{};
