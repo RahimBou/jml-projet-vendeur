@@ -1084,7 +1084,7 @@ async function loadServerSpace(){
 }
 
 const pageData={market:null,reference:null,assets:null,comparables:null,space:null};
-const PAGE_BUILD="2026-10-02-mon-secteur-dvf-strict-v5";
+const PAGE_BUILD="2026-10-10-rnb-diagnostics-v1";
 const diagnostics=[];
 function addDiag(source,code,detail){
  diagnostics.push({source,code,detail:String(detail||"")});
@@ -1239,9 +1239,18 @@ function renderComps(c){
  pageData.comparables=c;
  const d=c.diagnostics||{}, dpeLabel=c.dpe?.label||"";
  const dpeChecked=Number(d.dpeCheckedCount||0), dpeFound=Number(d.dpeFoundCount||0);
+ const rnb=c.rnb||d.rnb||{};
+ const rnbStatus=rnb.exactAddressMatch
+  ? "Bâtiment identifié par adresse exacte"
+  : rnb.available
+   ? "Pas de correspondance exacte · "+Number(rnb.candidateCount||0)+" candidat(s) examiné(s)"
+   : "Aucun résultat RNB reçu";
+ const originLabel=c.originSource||d.originSource||(c.origin?.lat!=null?"Adresse géolocalisée":"Centre de la commune");
  summaryNode.innerHTML=
  '<div class="ref-main seller-comps-main"><span class="reference-kicker">VENTES COMPARABLES</span><h3>Repère des ventes proches</h3><div class="ref-value">'+esc(c.weightedPriceM2!=null?m2(c.weightedPriceM2):"—")+'</div><p>'+esc(c.message||c.method||"Les ventes les plus pertinentes autour de l'adresse servent de base au repère.")+'</p></div>'+
  '<div class="ref-list"><div class="ref-row"><b>Adresse géolocalisée</b><span>'+esc(c.origin?.lat!=null?"Oui":"Non")+'</span></div>'+
+ '<div class="ref-row"><b>Précision de localisation</b><span>'+esc(originLabel)+'</span></div>'+
+ '<div class="ref-row"><b>Rapprochement RNB</b><span>'+esc(rnbStatus)+'</span></div>'+
  '<div class="ref-row"><b>Périmètre retenu</b><span>'+esc(c.searchScope||"—")+'</span></div>'+
  '<div class="ref-row"><b>Ventes compatibles analysées</b><span>'+esc(d.candidateCount??c.totalCandidates??"—")+'</span></div>'+
  '<div class="ref-row"><b>Comparables affichés</b><span>'+esc(d.top40??c.matchCount??"—")+'</span></div>'+
