@@ -2031,6 +2031,12 @@ async function buildComparableSales(market,property){
     const surfaceBasisComparable=isLand || Boolean(property?.surfaceBasis && sale?.surfaceBasis && property.surfaceBasis===sale.surfaceBasis);
     if(surfaceBasisComparable&&targetSurface!==null&&comparableSurface===null)return null;
     const surfaceRatio=surfaceBasisComparable&&targetSurface!==null&&comparableSurface!==null?Math.abs(comparableSurface-targetSurface)/targetSurface:null;
+    // Même si la surface habitable saisie et la surface bâtie DVF ne sont pas
+    // strictement interchangeables, leur écart reste un signal utile de similarité.
+    // On ne rejette pas sur ce seul écart lorsque les bases diffèrent, mais on
+    // réduit nettement l'influence des biens de gabarit très différent.
+    const surfaceSignalRatio=targetSurface!==null&&comparableSurface!==null
+      ?Math.abs(comparableSurface-targetSurface)/targetSurface:null;
     if(surfaceBasisComparable&&surfaceRatio!==null&&surfaceRatio>0.30)return null;
 
     // La surface de terrain est un signal secondaire : la surface DVF peut
@@ -2061,7 +2067,11 @@ async function buildComparableSales(market,property){
 
     const distanceSim=Math.exp(-dist/0.75);
     const recencySim=Math.exp(-age/36);
-    const surfaceSim=surfaceRatio===null?0.55:expSim(surfaceRatio,0.18);
+    const surfaceSim=surfaceRatio!==null
+      ?expSim(surfaceRatio,0.18)
+      :surfaceSignalRatio!==null
+        ?0.25+0.75*expSim(surfaceSignalRatio,0.35)
+        :0.55;
     const roomsSim=isLand?0.65:(roomDiff===null?0.65:expSim(roomDiff,1.2));
     // Sous 100 m² renseignés, on neutralise le terrain dans le score :
     // il est trop sensible à la façon dont la parcelle a été déclarée dans DVF.
@@ -2077,7 +2087,7 @@ async function buildComparableSales(market,property){
     const exactBonus=sameAddress&&fresh12m&&surfaceRatio!==null&&surfaceRatio<=0.15?12:0;
     const raw=20+24*distanceSim+20*surfaceSim+12*roomsSim+10*landSim+9*recencySim+freshBonus+exactBonus+(sameStreet?5:0);
     const score=Math.round(Math.min(100,raw));
-    return {...sale,pricePerM2:effectivePriceM2,score,sameStreet,sameAddress,fresh12m,surfaceGap:surfaceRatio,landGap:landRatio,roomDiff,ageMonths:Number(age.toFixed(1)),tierId:dist<=0.5?"A":dist<=1?"B":dist<=2?"C":"D",tier:dist<=0.5?"0–500 m":dist<=1?"500 m–1 km":dist<=2?"1–2 km":"2–3 km"};
+    return {...sale,pricePerM2:effectivePriceM2,score,sameStreet,sameAddress,fresh12m,surfaceGap:surfaceRatio,surfaceSignalGap:surfaceSignalRatio,surfaceBasisComparable,landGap:landRatio,roomDiff,ageMonths:Number(age.toFixed(1)),tierId:dist<=0.5?"A":dist<=1?"B":dist<=2?"C":"D",tier:dist<=0.5?"0–500 m":dist<=1?"500 m–1 km":dist<=2?"1–2 km":"2–3 km"};
   };
 
   const sourceRows=[...(Array.isArray(freshDvfPlus)?freshDvfPlus:[]),...(Array.isArray(market?.recentSales)?market.recentSales:[]),...(Array.isArray(local)?local:[])];
