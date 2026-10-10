@@ -2532,7 +2532,7 @@ function updateSellerProjectSummary(d){
    const image=x.image?'<img class="seller-agency-image" src="'+esc(x.image)+'" alt="'+esc(x.title)+'" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.classList.add(\'no-image\')">':'';
    return '<article class="seller-agency-card"><a class="seller-agency-card-link" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Consulter '+esc(x.title)+' sur le site JML Immobilier"><div class="seller-agency-image-wrap">'+image+'<span class="seller-agency-status">'+esc(x.status||"À découvrir")+'</span></div><div class="seller-agency-body"><p class="seller-agency-price">'+esc(money(x.price))+'</p><h6 class="seller-agency-title">'+esc(x.title)+'</h6><p class="seller-agency-location">'+esc(x.city||"Ardennes")+(x.postalCode?" ("+esc(x.postalCode)+")":"")+'</p><div class="seller-agency-details">'+(x.surface?'<span>⌂ '+esc(x.surface)+' m²</span>':'')+'<span>Annonce JML</span></div><div class="seller-agency-cta"><span>Voir le bien sur JML</span><span aria-hidden="true">↗</span></div></div></a></article>';
   }).join("");
-  if(source)source.textContent="Source : site officiel JML Immobilier · "+items.length+" annonce(s) récente(s). Prix et disponibilité à confirmer sur la fiche de l’agence.";
+  if(source)source.textContent="Source : site officiel JML Immobilier · "+items.length+" bien(s) affiché(s). Le statut peut évoluer : vérifiez la fiche de l’agence.";
  }
  fetch("/api/jml-listings",{cache:"no-store"}).then(r=>r.json()).then(data=>{
   if(!data.ok||!Array.isArray(data.items)||!data.items.length)throw new Error(data.error||"Aucune annonce disponible");
