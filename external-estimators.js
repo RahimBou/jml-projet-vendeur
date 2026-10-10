@@ -260,7 +260,7 @@ async function readSource(name,url,propertyType,surface,parser){
   return {
     id:name.toLowerCase().replace(/[^a-z0-9]+/g,"-"),
     name,
-    level:"commune",
+    level:/^Notaires de France$/i.test(name) ? "department" : "commune",
     priceM2:parsed.priceM2,
     lowM2:parsed.lowM2||null,
     highM2:parsed.highM2||null,
@@ -278,23 +278,26 @@ async function readSource(name,url,propertyType,surface,parser){
 }
 
 function parseNotairesBenchmark(text, propertyType) {
-  const wanted = /appartement|studio|duplex|loft/i.test(propertyType || "") ? "appartements?" : "maisons?";
+  const isApartment = /appartement|studio|duplex|loft/i.test(propertyType || "");
   const source = String(text || "");
-  const headingPattern = wanted === "appartements?"
-    ? /Prix\\s*m(?:²|2)\\s*m[eé]dian\\s*des\\s*appartements?\\s*\\((\\d[\\d\\s\\u00a0\\u202f]*)\\s*ventes?\\)/i
-    : /Prix\\s*m(?:²|2)\\s*m[eé]dian\\s*des\\s*maisons?\\s*\\((\\d[\\d\\s\\u00a0\\u202f]*)\\s*ventes?\\)/i;
+  const headingPattern = isApartment
+    ? /Prix\s*m(?:²|2)\s*m[eé]dian\s*des\s*appartements?\s*\((\d[\d\s\u00a0\u202f]*)\s*ventes?\)/i
+    : /Prix\s*m(?:²|2)\s*m[eé]dian\s*des\s*maisons?\s*\((\d[\d\s\u00a0\u202f]*)\s*ventes?\)/i;
   const match = source.match(headingPattern);
   if (!match || match.index == null) return null;
-  const segment = source.slice(match.index, match.index + 500);
-  const amounts = [...segment.matchAll(/(\\d[\\d\\s\\u00a0\\u202f]*)\\s*€/g)]
-    .map(x => numberFrom(x[1])).filter(x => Number.isFinite(x) && x > 100 && x < 20000);
-  // Only accept a clearly labelled notarial median with the expected three price markers.
-  if (amounts.length < 3) return null;
+
+  const segment = source.slice(match.index, match.index + 700);
+  const amounts = [...segment.matchAll(/(\d[\d\s\u00a0\u202f]*)\s*€/g)]
+    .map(x => numberFrom(x[1]))
+    .filter(x => Number.isFinite(x) && x > 100 && x < 20000);
+  if (!amounts.length) return null;
+
   const count = numberFrom(match[1]);
-  const median = amounts[1];
+  // Prend le premier montant associé au libellé de médiane, sans inventer de valeur.
+  const median = amounts[0];
   if (!Number.isFinite(median) || median <= 0) return null;
   return {
-    type: wanted === "appartements?" ? "Appartement" : "Maison",
+    type: isApartment ? "Appartement" : "Maison",
     priceM2: median,
     comparablesCount: Number.isFinite(count) ? count : null
   };
