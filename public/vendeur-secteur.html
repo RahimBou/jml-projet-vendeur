@@ -1988,7 +1988,13 @@ async function run(){
     d.dpe=comps.dpe.label;
     pageData.space=d;
   }
-  renderComps(comps);
+  // Le rendu des cartes ne doit pas empêcher le calcul indépendant du repère DVF.
+  try{
+    renderComps(comps);
+  }catch(renderError){
+    addDiag("Affichage des comparables",renderError?.code||"JML-COMP-RENDER",renderError?.message||"Erreur pendant l'affichage des ventes.");
+    $("#comps").innerHTML='<div class="error"><b>Affichage à vérifier</b> · Les données ont répondu, mais les cartes de ventes n’ont pas pu être affichées.</div>';
+  }
 
   // Le repère vendeur doit provenir du même jeu de comparables que celui affiché.
   // Aucun estimateur externe : le prix au m² et la valeur sont calculés ici à partir du DVF.
@@ -2031,8 +2037,10 @@ async function run(){
     $("#nearby").innerHTML='<div class="empty">Communes proches indisponibles pour cette session.</div>';
   }
  }catch(e){
-  addDiag("Comparables / territoire",e.code||"JML-COMP-CLIENT",e.message||"Erreur");
-  $("#comps").innerHTML='<div class="error"><b>'+esc(e.code||"JML-COMP-CLIENT")+'</b> · La recherche autour de l’adresse a échoué ou dépassé son délai. Les données communales restent indépendantes.</div>';
+  const comparableErrorCode=e.code||"JML-COMP-CLIENT";
+  const comparableErrorDetail=String(e.message||"Erreur inconnue").slice(0,240);
+  addDiag("Comparables / territoire",comparableErrorCode,comparableErrorDetail);
+  $("#comps").innerHTML='<div class="error"><b>'+esc(comparableErrorCode)+'</b> · '+esc(comparableErrorDetail)+' Les données communales restent indépendantes.</div>';
 
   // Secours uniquement après l'échec définitif du moteur de comparables.
   // Jamais pendant le chargement : une seule valeur apparaît à l'écran.
@@ -2082,10 +2090,14 @@ async function run(){
   renderRows("#security",null);renderRows("#risks",null);renderRows("#environment",null);
  }
  }catch(error){
-  addDiag("Initialisation de la page",error?.code||"JML-INIT-CLIENT",error?.message||"Erreur inattendue.");
-  $("#status").textContent="Erreur de chargement";
+  const initErrorCode=error?.code||"JML-INIT-CLIENT";
+  const initErrorDetail=String(error?.message||"Erreur inattendue.").slice(0,240);
+  addDiag("Initialisation de la page",initErrorCode,initErrorDetail);
+  $("#status").textContent=pageData.space?"Dossier chargé · certaines données restent indisponibles":"Erreur de chargement";
   $("#marketMessage").className="message bad";
-  $("#marketMessage").textContent="Le dossier vendeur n'a pas pu être chargé correctement. Rechargez votre espace vendeur depuis son lien personnel.";
+  $("#marketMessage").textContent=pageData.space
+    ?"Le dossier est ouvert, mais une partie de l’analyse n’a pas pu être affichée : "+initErrorDetail
+    :"Le dossier vendeur n'a pas pu être chargé correctement : "+initErrorDetail+". Rechargez votre espace vendeur depuis son lien personnel.";
  }
 }
 const copyPost=$("#copyPost");
