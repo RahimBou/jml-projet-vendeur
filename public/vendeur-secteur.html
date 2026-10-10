@@ -1316,6 +1316,7 @@ function renderComps(c){
     '<div class="comp-characteristics">'+esc(characteristics||"Caractéristiques non disponibles")+'</div>'+
     '<div class="comp-m2">'+esc(temporalNote)+'</div>'+
     '<div class="comp-note"><b>'+esc(reasonTitle)+'</b><span>'+esc(reasonText)+'</span></div>'+
+    '<div class="comp-note comp-influence"><b>Influence sur le calcul : '+(s.inValuation?esc(Number(s.influencePct||0).toLocaleString("fr-FR")+" %"):"0 %")+'</b><span>'+esc(s.influenceReason||"Poids calculé selon les critères de comparaison.")+'</span></div>'+
     '</article>';
  }).join("");
  const visibleRows=rows.slice(0,6);
