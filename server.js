@@ -11,6 +11,7 @@ const registerPublicEventsRoute = require("./events");
 const { registerGoogleCalendarRoutes, getGoogleCalendarBusy } = require("./google-calendar");
 const { getPublicMarketBenchmarks } = require("./external-estimators");
 const { collectMarketIntelligence } = require("./market-intelligence");
+const { searchRnbBuildings } = require("./rnb-buildings");
 const { runEstimatorAgent } = require("./estimator-agent");
 const { collectComparableListings } = require("./listing-agent");
 
@@ -233,6 +234,34 @@ ${JSON.stringify(answers)}`;
   }catch(error){
     console.error("JML seller guide Gemini synthesis:",String(error?.message||error));
     return res.status(502).json({ok:false,code:"AI_SYNTHESIS_ERROR",error:"Impossible de générer la synthèse Gemini pour le moment."});
+  }
+});
+// Recherche RNB pour identifier un bâtiment et préparer les rapprochements DVF/DPE.
+const rnbAttempts = new Map();
+app.get("/api/rnb/buildings", async (req,res) => {
+  res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+  const clientKey=String(req.ip||req.socket?.remoteAddress||"unknown").slice(0,120);
+  const now=Date.now();
+  const recent=(rnbAttempts.get(clientKey)||[]).filter(ts=>now-ts<60*1000);
+  if(recent.length>=12) return res.status(429).json({ok:false,code:"RATE_LIMIT",error:"Trop de recherches de bâtiments. Réessayez dans une minute."});
+  recent.push(now); rnbAttempts.set(clientKey,recent);
+  try{
+    const address=String(req.query.address||"").replace(/[<>\u0000-\u001f\u007f]/g," ").trim().slice(0,240);
+    const lat=Number(req.query.lat), lon=Number(req.query.lon);
+    const radiusRaw=Number(req.query.radius||500);
+    let result;
+    if(address){
+      result=await searchRnbBuildings({address});
+    }else if(Number.isFinite(lat)&&lat>=-90&&lat<=90&&Number.isFinite(lon)&&lon>=-180&&lon<=180){
+      result=await searchRnbBuildings({lat,lon,radius:Number.isFinite(radiusRaw)?Math.max(0,Math.min(1000,radiusRaw)):500});
+    }else{
+      return res.status(400).json({ok:false,code:"MISSING_SEARCH",error:"Fournissez address ou lat et lon. Exemple : /api/rnb/buildings?address=10%20rue%20de%20la%20Paix%2C%20Charleville-Mézières"});
+    }
+    return res.status(200).json({ok:true,source:"Référentiel national des bâtiments (RNB)",retrievedAt:new Date().toISOString(),...result});
+  }catch(error){
+    const status=Number(error?.statusCode)===429?429:502;
+    console.warn("JML RNB search:",String(error?.message||error).slice(0,240));
+    return res.status(status).json({ok:false,code:error?.code||"RNB_UNAVAILABLE",error:status===429?"Le service RNB limite temporairement les requêtes. Réessayez plus tard.":"Le service RNB n'a pas pu répondre. Aucun bâtiment n'a été supposé.",detail:String(error?.message||"Erreur RNB").slice(0,240)});
   }
 });
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "public", "pro-login.html")));
