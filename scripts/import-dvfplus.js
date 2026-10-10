@@ -211,7 +211,9 @@ async function main() {
              COUNT(*) FILTER (WHERE comparable_eligible)::int AS eligible_comparables,
              COUNT(*) FILTER (WHERE NOT comparable_eligible)::int AS retained_but_excluded_from_comparables,
              MIN(sale_date)::text AS first_sale, MAX(sale_date)::text AS last_sale,
-             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2)::numeric, 2) AS median_price_per_m2
+             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2)::numeric, 2) AS median_price_per_m2_all_retained,
+             ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2)
+               FILTER (WHERE comparable_eligible)::numeric, 2) AS median_price_per_m2_eligible
       FROM jml_dvfplus_sales
       GROUP BY source_year, property_type
       ORDER BY source_year, property_type
