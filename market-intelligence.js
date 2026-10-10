@@ -20,18 +20,24 @@ async function fetchJson(url, timeoutMs = 5000) {
 async function checkReference(name, url, role) {
   try {
     const response = await fetch(url, {headers: DEFAULT_HEADERS, signal: AbortSignal.timeout(4500), redirect: "follow"});
+    const accessible = response.ok;
+    const status = accessible ? "accessible_sans_extraction" : "http_erreur";
     return {
-      name, url, role,
-      status: response.ok ? "accessible" : "indisponible",
-      httpStatus: response.status,
+      name, url, role, status, httpStatus: response.status,
       numericDataRetrieved: false,
-      note: response.ok
-        ? "Page accessible ; aucune valeur chiffrée n'est déduite de cette seule vérification."
-        : "Page non récupérée ; ne pas utiliser comme preuve chiffrée."
+      reasonCode: accessible ? "EXTRACTOR_NOT_CONFIGURED" : "HTTP_" + response.status,
+      note: accessible
+        ? "Le test actuel vérifie seulement la réponse HTTP. Aucun extracteur de statistiques, tableau ou PDF n'est branché sur cette source ; la page accessible ne signifie donc pas que des chiffres ont été récupérés."
+        : "La requête a répondu HTTP " + response.status + ". Vérifier l'URL, les redirections, le blocage anti-robot ou l'accès requis avant de conclure que la source est inutilisable."
     };
   } catch (error) {
-    return {name, url, role, status: "non_verifiee", numericDataRetrieved: false,
-      note: "Accès automatisé non confirmé. Ne pas inventer de valeur."};
+    const timedOut = error?.name === "TimeoutError" || error?.name === "AbortError";
+    return {name, url, role, status: timedOut ? "delai_depasse" : "erreur_reseau",
+      numericDataRetrieved: false, reasonCode: timedOut ? "TIMEOUT_4500MS" : "NETWORK_ERROR",
+      note: timedOut
+        ? "La source n'a pas répondu dans le délai de 4,5 secondes. Cela ne prouve pas que les données sont absentes ; augmenter le délai ou utiliser une API/un fichier officiel."
+        : "Échec de la requête réseau (" + String(error?.cause?.code || error?.name || "erreur inconnue") + "). Aucun chiffre n'a été récupéré."
+    };
   }
 }
 
@@ -76,8 +82,8 @@ async function collectMarketIntelligence({city, communeCode, propertyType} = {})
 
   const referenceChecks = await Promise.all([
     checkReference("INSEE — dossier du département des Ardennes", "https://www.insee.fr/fr/statistiques/2011101?geo=DEP-08", "Contexte démographique et économique officiel"),
-    checkReference("CCI Marne Ardennes — M.A Data Clés", "https://www.marneardennes.cci.fr/produit/ma-data-cles", "Contexte économique local ; accès aux exports à vérifier"),
-    checkReference("Notaires de France — immobilier", "https://www.immobilier.notaires.fr/", "Référence notariale ; aucune statistique locale extraite automatiquement ici"),
+    checkReference("CCI Marne Ardennes — M.A Data Clés", "https://www.marneardennes.cci.fr/produit/ma-data-cles", "Contexte économique local ; le code actuel ne télécharge ni ne parse les tableaux/exports M.A Data Clés"),
+    checkReference("Notaires de France — immobilier", "https://www.immobilier.notaires.fr/", "Référence notariale ; le code actuel ne récupère ni ne parse les statistiques locales Notaires"),
     checkReference("DVF — données de ventes", "https://explore.data.gouv.fr/fr/immobilier", "Référence des transactions ; les ventes DVF calculées par JML restent prioritaires")
   ]);
 
