@@ -2069,9 +2069,11 @@ async function buildComparableSales(market,property){
     const recencySim=Math.exp(-age/36);
     const surfaceSim=surfaceRatio!==null
       ?expSim(surfaceRatio,0.18)
+      // Surface habitable déclarée et surface bâtie DVF : signal utile, mais
+      // incertain. Un écart important doit nettement réduire le poids du comparable.
       :surfaceSignalRatio!==null
-        ?0.25+0.75*expSim(surfaceSignalRatio,0.35)
-        :0.55;
+        ?0.15+0.85*expSim(surfaceSignalRatio,0.20)
+        :0.40;
     const roomsSim=isLand?0.65:(roomDiff===null?0.65:expSim(roomDiff,1.2));
     // Sous 100 m² renseignés, on neutralise le terrain dans le score :
     // il est trop sensible à la façon dont la parcelle a été déclarée dans DVF.
@@ -2195,12 +2197,19 @@ async function buildComparableSales(market,property){
   const q1=values.length?values[Math.floor((values.length-1)*0.25)]:null,q3=values.length?values[Math.floor((values.length-1)*0.75)]:null;
   const spreadPct=median&&q1!=null&&q3!=null?Math.round((q3-q1)/median*1000)/10:null;
   const strictCount=top40.filter(x=>Number(x.distanceKm)<=0.5&&x.score>=70).length;
+  // Pour qualifier la confiance, on exige aussi un gabarit et un nombre de pièces
+  // raisonnablement proches. La proximité géographique seule ne suffit pas.
+  const strictComparableCount=top40.filter(x=>
+    Number(x.distanceKm)<=0.5&&x.score>=70&&
+    x.surfaceSignalGap!==null&&x.surfaceSignalGap!==undefined&&x.surfaceSignalGap<=0.25&&
+    (x.roomDiff===null||x.roomDiff===undefined||x.roomDiff<=1)
+  ).length;
   const tierCounts={A:top40.filter(x=>x.tierId==="A").length,B:top40.filter(x=>x.tierId==="B").length,C:top40.filter(x=>x.tierId==="C").length,D:top40.filter(x=>x.tierId==="D").length};
   const outlierCount=top40.filter(x=>x.statisticalOutlier).length;
 
   let confidence="Faible";
-  if(valuationSales.length>=10&&strictCount>=3&&(spreadPct===null||spreadPct<=35))confidence="Bonne";
-  else if(valuationSales.length>=5&&strictCount>=1)confidence="Intermédiaire";
+  if(valuationSales.length>=10&&strictComparableCount>=3&&(spreadPct===null||spreadPct<=35))confidence="Bonne";
+  else if(valuationSales.length>=5&&strictComparableCount>=1)confidence="Intermédiaire";
 
   let rangeLow=null,rangeHigh=null;
   if(centralPriceM2!==null){
