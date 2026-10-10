@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Audit DVF — JML</title>
+<style>
+:root{color-scheme:light;--ink:#17342d;--muted:#65736e;--line:#d9e2dd;--paper:#f5f7f5;--gold:#bd9650}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:#20332d;font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1200px;margin:auto;padding:22px}h1,h2{color:var(--ink);line-height:1.2}h1{font-size:clamp(1.6rem,3vw,2.3rem)}h2{font-size:1.25rem;margin-top:26px}
+.note{background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);padding:12px 14px;border-radius:8px}
+form,.panel{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}label{display:grid;gap:5px;font-size:.9rem;color:var(--muted)}input,select{width:100%;padding:10px;border:1px solid #cbd6d0;border-radius:7px;background:#fff;color:#20332d;font:inherit}
+button{border:0;border-radius:8px;background:var(--ink);color:#fff;padding:11px 16px;font:inherit;font-weight:650;cursor:pointer}button:disabled{opacity:.55;cursor:wait}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px}.metric{background:#f7f9f7;border:1px solid var(--line);border-radius:9px;padding:12px}.metric small{display:block;color:var(--muted)}.metric strong{font-size:1.3rem;color:var(--ink)}
+.status{padding:10px 12px;border-radius:8px;background:#eef3ef;color:var(--ink);white-space:pre-wrap}.status.error{background:#fff0ed;color:#8a2f20}
+.table-wrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:9px}table{border-collapse:collapse;width:100%;font-size:.86rem;white-space:nowrap}th,td{text-align:left;padding:9px 10px;border-bottom:1px solid #e6ece8}th{background:#eff4f0;color:#334c42;position:sticky;top:0}tr.used{background:#f3faf5}tr.excluded{color:#77817c}code{font-size:.9em}.small{color:var(--muted);font-size:.88rem}
+.badge{display:inline-block;border-radius:20px;padding:2px 8px;background:#e5f2e8;color:#1f6238}.badge.no{background:#f4e8e4;color:#8a3c29}
+@media(max-width:600px){main{padding:12px}.panel,form{padding:12px}}
+</style>
+</head>
+<body><main>
+<h1>Audit du calcul DVF</h1>
+<p class="note"><strong>Mode diagnostic uniquement.</strong> Cette page appelle le moteur actuel sans modifier ses coefficients ni écrire en base. Elle compare des variantes de surface et de nombre de pièces, puis expose les ventes et poids retournés par l'API.</p>
+<form id="params">
+<div class="fields">
+<label>Commune<input name="city" value="Charleville-Mézières" required></label>
+<label>Adresse<input name="address" value="6 rue Payer Guillemain" required></label>
+<label>Type de bien<select name="propertyType"><option selected>Maison</option><option>Appartement</option><option>Terrain</option></select></label>
+<label>Surface (m²)<input name="surface" type="number" value="150" min="1" required></label>
+<label>Pièces<input name="rooms" type="number" value="6" min="1" required></label>
+<label>Terrain (m², facultatif)<input name="landSurface" type="number" min="0" placeholder="Non renseigné"></label>
+</div>
+<div class="actions"><button id="run" type="submit">Lancer l'audit et les tests de sensibilité</button></div>
+</form>
+<div id="status" class="status" role="status">Prêt. L'audit lancera six calculs sur les paramètres indiqués.</div>
+<section id="results" hidden>
+<h2>1. Résultat de référence</h2><div id="baseline" class="cards"></div>
+<h2>2. Sensibilité — comparaison des scénarios</h2>
+<p class="small">Chaque ligne relance le même endpoint avec une seule caractéristique modifiée. Les écarts de prix sont comparés au calcul de référence. Un résultat stable ne prouve pas à lui seul un prix codé en dur : il faut aussi comparer la liste et les poids des ventes.</p>
+<div id="scenarios" class="table-wrap"></div>
+<h2>3. Traçabilité du calcul de référence</h2><div id="traceSummary" class="panel"></div>
+<div class="table-wrap"><table id="sales"><thead><tr>
+<th>Utilisée</th><th>Date</th><th>Adresse / ID</th><th>Prix vente</th><th>Prix €/m²</th><th>Surface DVF</th><th>Pièces</th><th>Distance</th><th>Âge (mois)</th><th>Score</th><th>Cohérence prix</th><th>Poids</th><th>Influence %</th><th>Atout / exclusion</th>
+</tr></thead><tbody></tbody></table></div>
+<h2>4. Revalorisation temporelle</h2><div id="temporal" class="panel"></div>
+</section>
+<p class="small">Les transactions DVF peuvent comporter des différences de définition de surface et des mutations multi-lots. Les résultats sont des repères statistiques, pas une expertise immobilière. Les ventes partageant une adresse ne sont pas fusionnées ici par cette page.</p>
+</main>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const money=v=>Number.isFinite(Number(v))?Math.round(Number(v)).toLocaleString("fr-FR")+" €":"—";
+const num=(v,d=1)=>Number.isFinite(Number(v))?Number(v).toLocaleString("fr-FR",{maximumFractionDigits:d}):"—";
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function paramsFromForm(){const f=new FormData($("#params"));return Object.fromEntries(f.entries());}
+function makeUrl(p){const q=new URLSearchParams();["city","address","propertyType","surface","rooms","landSurface"].forEach(k=>{if(p[k]!==undefined&&p[k]!==null&&String(p[k]).trim()!=="")q.set(k,String(p[k]));});return "/api/territory-comparables?"+q.toString();}
+async function request(p){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),40000);try{const response=await fetch(makeUrl(p),{cache:"no-store",signal:controller.signal});const data=await response.json();if(!response.ok||!data.comparables)throw new Error(data.error||"Réponse API invalide (HTTP "+response.status+")");return data;}finally{clearTimeout(timer);}}
+function summary(data){const c=data.comparables||{};return {price:Number(c.weightedPriceM2)||null,median:Number(c.median)||null,candidates:Number(c.totalCandidates??c.matchCount??0),used:Number(c.valuationCount??c.valuationSales?.length??0),strict:Number(c.strictComparableCount||0),confidence:c.confidence||"—",spread:c.spreadPct,low:c.rangeLow,high:c.rangeHigh,ids:(c.valuationSales||[]).map(x=>String(x.id||[x.date,x.address,x.price].join("|"))).sort().join(",")};}
+function metric(label,value){return '<div class="metric"><small>'+esc(label)+'</small><strong>'+esc(value)+'</strong></div>';}
+function renderBaseline(data,p){const c=data.comparables||{},s=summary(data);$("#baseline").innerHTML=metric("Repère DVF",money(s.price&&s.price*Number(p.surface)))+metric("Prix pondéré / m²",money(s.price))+metric("Candidats",s.candidates)+metric("Ventes utilisées",s.used)+metric("Comparables stricts",s.strict)+metric("Fiabilité",s.confidence)+metric("Fourchette €/m²",money(s.low)+" – "+money(s.high))+metric("Dispersion Q1–Q3",s.spread==null?"—":num(s.spread)+" %");}
+function renderScenarios(rows,base,p){const b=summary(base);$("#scenarios").innerHTML='<table><thead><tr><th>Scénario</th><th>Surface / pièces</th><th>Prix €/m²</th><th>Valeur sur surface scénario</th><th>Écart vs base</th><th>Candidats</th><th>Utilisées</th><th>Comparables changés</th><th>Statut</th></tr></thead><tbody>'+rows.map(x=>{if(x.error)return '<tr><td>'+esc(x.label)+'</td><td colspan="7">Échec : '+esc(x.error)+'</td><td><span class="badge no">Erreur</span></td></tr>';const s=summary(x.data),delta=s.price!=null&&b.price!=null?s.price-b.price:null;const same=s.ids===b.ids;return '<tr><td>'+esc(x.label)+'</td><td>'+esc(x.p.surface+' m² / '+x.p.rooms+' pièces')+'</td><td>'+money(s.price)+'</td><td>'+money(s.price&&s.price*Number(x.p.surface))+'</td><td>'+ (delta==null?'—':(delta>0?'+':'')+money(delta)+'/m²')+'</td><td>'+s.candidates+'</td><td>'+s.used+'</td><td><span class="badge '+(same?'':'no')+'">'+(same?'Même sélection':'Sélection différente')+'</span></td><td>'+esc(s.confidence)+'</td></tr>';}).join("")+'</tbody></table>';}
+function renderTrace(data){const c=data.comparables||{},d=c.diagnostics||{},sales=Array.isArray(c.sales)?c.sales:[];$("#traceSummary").innerHTML='<p><strong>Version moteur :</strong> '+esc(c.engineVersion||data.version||"non fournie")+' · <strong>Origine :</strong> '+esc(c.originSource||"—")+' · <strong>Rayon :</strong> '+esc(c.criteria?.maxRadiusKm??d.maxRadiusKm??"—")+' km · <strong>Âge max :</strong> '+esc(d.maxAgeMonths??"—")+' mois</p><p><strong>Sources brutes :</strong> PostgreSQL '+esc(d.postgresRows??"—")+' lignes ; DVF+ récent '+esc(d.freshRows??"—")+' ; marché communal '+esc(d.marketRows??"—")+' ; secours externe '+esc(d.externalRows??"—")+'.</p><p><strong>Étapes :</strong> candidats après filtres '+esc(c.totalCandidates??"—")+' ; visibles '+esc(c.matchCount??sales.length)+' ; utilisés pour la valeur '+esc(c.valuationCount??c.valuationSales?.length??"—")+' ; atypiques '+esc(d.outlierCount??"—")+'.</p><p><strong>Formule de poids du moteur :</strong> (score / 100)² × (0,35 + 0,65 × cohérence du prix). La valeur centrale est la médiane pondérée des prix €/m² retenus, puis multipliée par la surface déclarée.</p><p><strong>Limite actuelle :</strong> l'API fournit les scores et poids finaux mais pas toutes les contributions intermédiaires à chaque score. Ce tableau rend chaque vente traçable ; il n'affirme pas que chaque sous-terme est exposé.</p>';
+$("#sales tbody").innerHTML=sales.map(x=>{const used=Boolean(x.inValuation);return '<tr class="'+(used?'used':'excluded')+'"><td>'+(used?'<span class="badge">Oui</span>':'<span class="badge no">Non</span>')+'</td><td>'+esc(x.date||"—")+'</td><td>'+esc(x.address||x.id||"—")+'<br><span class="small">'+esc(x.id||"")+'</span></td><td>'+money(x.price)+'</td><td>'+money(x.pricePerM2)+'</td><td>'+esc(x.surface??"—")+'</td><td>'+esc(x.rooms??"—")+'</td><td>'+num(x.distanceKm,2)+' km</td><td>'+num(x.ageMonths,1)+'</td><td>'+esc(x.score??"—")+'</td><td>'+num(x.priceCoherence,3)+'</td><td>'+num(x.weight,5)+'</td><td>'+num(x.influencePct,1)+' %</td><td>'+esc(x.influenceReason||"—")+(x.statisticalOutlier?' · Atypique':'')+'</td></tr>';}).join("");const t=c.temporalRevaluation||{};$("#temporal").innerHTML='<p><strong>Disponible :</strong> '+(t.available?'oui':'non')+' · <strong>Année de référence :</strong> '+esc(t.referenceYear||"—")+' · <strong>Médiane de référence :</strong> '+money(t.referenceMedian)+'</p><p>'+esc(t.method||"Aucune explication fournie")+' · Plafond annoncé : ±'+esc(t.capPct??"—")+' %</p><div class="table-wrap"><table><thead><tr><th>Année</th><th>Ventes</th><th>Médiane €/m²</th></tr></thead><tbody>'+((t.years||[]).map(y=>'<tr><td>'+esc(y.year)+'</td><td>'+esc(y.count)+'</td><td>'+money(y.median)+'</td></tr>').join("")||'<tr><td colspan="3">Aucune série annuelle retournée.</td></tr>')+'</tbody></table></div>';}
+$("#params").addEventListener("submit",async e=>{e.preventDefault();const button=$("#run"),status=$("#status");button.disabled=true;$("#results").hidden=true;const original=paramsFromForm();status.className="status";status.textContent="Calcul 1/6 : référence DVF…";try{const baseline=await request(original);if(baseline.ok===false)throw new Error(baseline.error||baseline.detail||"Moteur en mode dégradé");const scenarios=[{label:"Surface −20 %",p:{...original,surface:String(Number(original.surface)*.8)}},{label:"Surface −10 %",p:{...original,surface:String(Number(original.surface)*.9)}},{label:"Surface +10 %",p:{...original,surface:String(Number(original.surface)*1.1)}},{label:"Surface +20 %",p:{...original,surface:String(Number(original.surface)*1.2)}},{label:"Pièces −1",p:{...original,rooms:String(Math.max(1,Number(original.rooms)-1))}},{label:"Pièces +1",p:{...original,rooms:String(Number(original.rooms)+1)}}];const rows=[];for(let i=0;i<scenarios.length;i++){status.textContent="Calcul "+(i+2)+"/7 : "+scenarios[i].label+"…";try{rows.push({...scenarios[i],data:await request(scenarios[i].p)});}catch(error){rows.push({...scenarios[i],error:error.name==="AbortError"?"Délai dépassé":error.message});}}renderBaseline(baseline,original);renderScenarios(rows,baseline,original);renderTrace(baseline);$("#results").hidden=false;const failed=rows.filter(x=>x.error).length;status.textContent="Audit terminé. Référence + "+(rows.length-failed)+" scénarios réussis, "+failed+" échec(s). Aucun coefficient ni aucune donnée n'a été modifié.";if(failed)status.className="status error";}catch(error){status.className="status error";status.textContent="Audit impossible : "+(error.message||String(error))+". Vérifie que le serveur Render est réveillé puis relance."; }finally{button.disabled=false;}});
+</script>
+</body></html>
