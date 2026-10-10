@@ -2624,7 +2624,10 @@ app.post("/api/market-climate/analysis", async (req,res) => {
     const value={ok:true,analysis:parsed,provider:"gemini",model:result.model,generatedAt:new Date().toISOString(),
       evidence:{dvfSalesUsed:data.localMarket.dvfSalesUsed,dvfServerFallbackUsed:data.localMarket.dvfServerFallbackUsed,
         trendAvailable:data.localMarket.trend.available,recentPeriodCount:data.localMarket.trend.recent.count,
-        previousPeriodCount:data.localMarket.trend.previous.count,source:data.localMarket.source,period:data.localMarket.period},
+        previousPeriodCount:data.localMarket.trend.previous.count,source:data.localMarket.source,period:data.localMarket.period,
+        externalBenchmarksRetrieved:externalBenchmarks.length,
+        territoryPopulationRetrieved:Number.isFinite(Number(data.externalContext?.territory?.population))&&Number(data.externalContext.territory.population)>0,
+        externalSourceChecks:(Array.isArray(data.externalContext?.sourceChecks)?data.externalContext.sourceChecks:[]).map(x=>({name:x.name,status:x.status,numericDataRetrieved:x.numericDataRetrieved===true}))},
       dataSources:[
         {name:"Banque de France · Webstat",url:"https://webstat.banque-france.fr/fr/catalogue/mir1/",role:"financement national"},
         {name:"DVF · données de ventes immobilières",url:"https://explore.data.gouv.fr/fr/immobilier",role:"transactions"},
