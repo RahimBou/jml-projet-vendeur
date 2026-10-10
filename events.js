@@ -14,11 +14,23 @@ function parseDate(value) {
 async function refresh() {
   if (Date.now() - cache.at < 6 * 60 * 60 * 1000) return cache.events;
   const found = [];
-  for (let page = 1; page <= 25; page++) {
+  // Keep the first dashboard request bounded: fetch a few agenda pages in parallel,
+  // with a timeout, instead of walking up to 25 pages sequentially.
+  const pages = await Promise.all(Array.from({ length: 5 }, async (_, index) => {
+    const page = index + 1;
     const url = page === 1 ? SOURCE : SOURCE + "page/" + page + "/";
-    const response = await fetch(url, { headers: { "User-Agent": "JML-Projet-Vendeur/1.0" } });
-    if (!response.ok) continue;
-    const html = await response.text();
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "JML-Projet-Vendeur/1.0" },
+        signal: AbortSignal.timeout(4500)
+      });
+      return response.ok ? await response.text() : "";
+    } catch (_error) {
+      return "";
+    }
+  }));
+  for (const html of pages) {
+    if (!html) continue;
     const links = [...html.matchAll(/<a[^>]+href=["'](https?:\/\/www\.ardennes\.com\/agenda\/[^"']+)["'][^>]*>([\s\S]{1,500}?)<\/a>/gi)];
     for (const match of links) {
       const title = textOf(match[2]);
@@ -34,7 +46,9 @@ async function refresh() {
     }
   }
   const seen = new Set();
-  cache = { at: Date.now(), events: found.filter(e => { const key = e.title + "|" + e.city + "|" + e.start; if (seen.has(key)) return false; seen.add(key); return true; }).sort((a,b) => new Date(a.start) - new Date(b.start)) };
+  const freshEvents = found.filter(e => { const key = e.title + "|" + e.city + "|" + e.start; if (seen.has(key)) return false; seen.add(key); return true; }).sort((a,b) => new Date(a.start) - new Date(b.start));
+  if (!freshEvents.length && cache.events.length) return cache.events;
+  cache = { at: Date.now(), events: freshEvents };
   return cache.events;
 }
 module.exports = function registerPublicEventsRoute(app, clean) {
