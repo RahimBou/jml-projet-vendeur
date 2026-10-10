@@ -1150,13 +1150,15 @@ function renderReference(ref){
    :"Repère construit à partir des ventes DVF comparables";
  pageData.reference=r;
  const comparable=!!r.fromComparables;
- const txLabel=comparable?(r.transactions??"—"):"Contexte communal";
+ const currentComparables=pageData.comparables||{};
+ const candidateCount=Number(currentComparables.diagnostics?.candidateCount??currentComparables.totalCandidates??0);
+ const usedCount=Number(currentComparables.valuationCount??currentComparables.valuationSales?.length??r.transactions??0);
+ const txLabel=comparable?(usedCount||"—"):"Contexte communal";
  const nature=r.referenceSource|| (comparable?"Ventes DVF comparables":"Repère communal de secours");
  const methodText=r.valuationBlend?.method||"Ventes DVF comparables et données officielles disponibles";
- const sameStreet=Array.isArray(pageData.comparables?.sameStreet)?pageData.comparables.sameStreet.length:0;
- const candidateCount=Number(pageData.comparables?.diagnostics?.candidateCount||pageData.comparables?.totalCandidates||0);
+ const sameStreet=Array.isArray(currentComparables.sameStreet)?currentComparables.sameStreet.length:0;
  const statusText=comparable
-   ?("🤖 Agent DVF · "+String(txLabel)+" ventes analysées · "+String(sameStreet)+" même rue · source officielle DVF+ Cerema")
+   ?("🤖 Agent DVF · "+String(candidateCount||"—")+" ventes compatibles · "+String(txLabel)+" retenues pour la valeur · "+String(sameStreet)+" même rue · source officielle DVF+ Cerema")
    :"🤖 Agent DVF · recherche officielle en cours ou données communales de secours";
  referenceNode.innerHTML=
  '<div class="ref-main seller-reference-main">'+
@@ -1169,8 +1171,8 @@ function renderReference(ref){
  '</div>'+
  '<div class="ref-list seller-reference-details">'+
    '<div class="ref-row"><b>🤖 Agent DVF</b><span>'+esc(statusText)+'</span></div>'+
-   '<div class="ref-row"><b>Ventes compatibles</b><span>'+esc(candidateCount||"—")+'</span></div>'+
-   '<div class="ref-row"><b>Ventes utilisées pour la valeur</b><span>'+esc(txLabel)+'</span></div>'+
+   '<div class="ref-row"><b>Ventes compatibles analysées</b><span>'+esc(candidateCount||"—")+'</span></div>'+
+   '<div class="ref-row"><b>Ventes retenues dans le calcul</b><span>'+esc(txLabel)+'</span></div>'+
    '<div class="ref-row"><b>Ventes même rue</b><span>'+esc(sameStreet)+'</span></div>'+
    '<div class="ref-row"><b>Fiabilité</b><span>'+esc(r.confidence||"Faible")+'</span></div>'+
    '<div class="ref-row"><b>Source</b><span>DVF+ · Cerema</span></div>'+
@@ -1836,6 +1838,15 @@ function renderCharacteristicAnalysis(analysis){
    return;
  }
  const p=a.positioning||{},base=a.baseline||{},rows=Array.isArray(a.adjustments)?a.adjustments:[];
+ const currentComp=pageData.comparables||{};
+ const currentUsed=Number(currentComp.valuationCount??currentComp.valuationSales?.length??currentComp.matchCount??0);
+ const analysisUsed=Number(a.evidence?.dvfComparables||0);
+ if(currentUsed>0&&analysisUsed>0&&currentUsed!==analysisUsed){
+   el.innerHTML='<div class="agent-adjustment"><div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Synchronisation des données nécessaire</b></div>'+
+    '<p class="agent-adjustment-note">L’analyse des caractéristiques enregistrée repose sur '+esc(String(analysisUsed))+' ventes DVF, tandis que l’Agent DVF principal en a retenu '+esc(String(currentUsed))+' pour le calcul actuel. Les deux résultats ne sont donc pas directement comparables. Les ajustements DPE, garage et état sont masqués jusqu’à synchronisation afin de ne pas présenter une fiabilité contradictoire.</p>'+
+    '<div class="agent-adjustment-grid"><div><small>REPÈRE DVF ACTUEL</small><strong>'+esc(eur(currentValue))+'</strong><span>'+esc(Number.isFinite(Number(currentComp.weightedPriceM2))?Math.round(Number(currentComp.weightedPriceM2)).toLocaleString("fr-FR")+" €/m²":"Ventes comparables actualisées")+'</span></div></div></div>';
+   return;
+ }
  const rowHtml=rows.map(x=>{
    const pct=Number(x.effectPct||0), eurv=Number(x.effectEur||0);
    const cls=pct>0?"up":pct<0?"down":"neutral";
