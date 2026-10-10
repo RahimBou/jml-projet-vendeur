@@ -49,39 +49,79 @@ async function importYear(client, year){
   await client.query("BEGIN");
   await client.query("DELETE FROM jml_dvf_sales WHERE source_year=$1",[year]);
 
-  const rows=[];
+  // On analyse toutes les lignes de la mutation avant de retenir une maison/appartement.
+  // La valeur foncière est celle de la mutation : si plusieurs biens sont présents,
+  // l'attribuer à chaque ligne fausse le prix au m². En cas d'ambiguïté, on exclut
+  // toute la mutation du moteur de prix plutôt que d'inventer une ventilation.
+  const transactionRows=new Map();
+  let invalidRows=0;
   for(let i=1;i<lines.length;i++){
     const r=parseCsvLine(lines[i]);
     if(r[idx.nature_mutation]!=="Vente") continue;
-    const type=r[idx.type_local];
-    if(type!=="Maison"&&type!=="Appartement") continue;
-    const price=num(r[idx.valeur_fonciere]), surface=num(r[idx.surface_reelle_bati]);
+    const mutationId=text(r[idx.id_mutation])||[
+      r[idx.date_mutation],r[idx.valeur_fonciere],r[idx.adresse_numero],
+      r[idx.adresse_nom_voie],r[idx.code_commune]
+    ].join("|");
+    const type=text(r[idx.type_local])||"Sans local";
+    const price=num(r[idx.valeur_fonciere]);
+    const surface=num(r[idx.surface_reelle_bati]);
+    const landSurface=num(r[idx.surface_terrain]);
     const lat=num(r[idx.latitude]), lon=num(r[idx.longitude]);
-    if(!(price>0&&surface>0&&lat!=null&&lon!=null)) continue;
-    rows.push({
-      mutation_id:text(r[idx.id_mutation])||[r[idx.date_mutation],r[idx.adresse_numero],r[idx.adresse_nom_voie],r[idx.id_parcelle]].join("|"),
+    const address=[r[idx.adresse_numero],r[idx.adresse_suffixe],r[idx.adresse_nom_voie]]
+      .map(text).filter(Boolean).join(" ")||null;
+    const row={
+      mutation_id:mutationId,
       sale_date:text(r[idx.date_mutation]),
       property_type:type,
       price,surface,
       rooms:num(r[idx.nombre_pieces_principales]),
-      land_surface:num(r[idx.surface_terrain]),
+      land_surface:landSurface,
       latitude:lat,longitude:lon,
-      address:[r[idx.adresse_numero],r[idx.adresse_suffixe],r[idx.adresse_nom_voie]].map(text).filter(Boolean).join(" ")||null,
+      address,
       street:text(r[idx.adresse_nom_voie]),
       postal_code:text(r[idx.code_postal]),
       commune_code:text(r[idx.code_commune]),
       commune_name:text(r[idx.nom_commune]),
       parcel_id:text(r[idx.id_parcelle]),
       source_year:year
-    });
+    };
+    if(!transactionRows.has(mutationId)) transactionRows.set(mutationId,[]);
+    transactionRows.get(mutationId).push(row);
   }
 
-  const unique=new Map();
-  for(const r of rows){
-    const key=[r.mutation_id,r.property_type,r.price,r.surface,r.address||"",r.parcel_id||""].join("|");
-    if(!unique.has(key)) unique.set(key,r);
+  const data=[];
+  let ambiguousMutations=0;
+  let collapsedDuplicateRows=0;
+  for(const [mutationId,rows] of transactionRows){
+    // Le numéro de parcelle est volontairement exclu de cette signature :
+    // une même maison peut toucher plusieurs parcelles cadastrales.
+    const signatures=new Map();
+    for(const r of rows){
+      const signature=[
+        r.property_type,r.surface??"",r.rooms??"",r.land_surface??"",
+        String(r.address||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim()
+      ].join("|");
+      if(!signatures.has(signature)) signatures.set(signature,r);
+      else collapsedDuplicateRows++;
+    }
+    // Plusieurs lignes réellement distinctes dans une mutation : prix total non
+    // ventilable avec certitude. Ne pas réutiliser ce prix sur chaque logement.
+    if(signatures.size!==1){
+      ambiguousMutations++;
+      continue;
+    }
+    const r=[...signatures.values()][0];
+    if(!["Maison","Appartement"].includes(r.property_type)) continue;
+    if(!(r.price>0&&r.surface>0&&r.latitude!=null&&r.longitude!=null)){
+      invalidRows++;
+      continue;
+    }
+    data.push(r);
   }
-  const data=[...unique.values()];
+  console.log("DVF "+year+": "+transactionRows.size+" mutations analysées; "+
+    ambiguousMutations+" mutations multi-lignes ambiguës exclues; "+
+    collapsedDuplicateRows+" lignes répétées regroupées; "+invalidRows+
+    " lignes résidentielles incomplètes exclues.");
   const chunk=500;
   for(let i=0;i<data.length;i+=chunk){
     const part=data.slice(i,i+chunk);
