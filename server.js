@@ -2523,32 +2523,32 @@ app.post("/api/market-climate/analysis", async (req,res) => {
       propertyType:selectedType
     });
     const postalCode=externalContext?.territory?.postalCodes?.[0]||txt(territoryRaw.city,100).match(/\b\d{5}\b/)?.[0]||"";
-    if(postalCode){
-      const benchmarkPromise=getPublicMarketBenchmarks({
-        city:externalContext?.territory?.commune||resolvedForContext?.nom||txt(territoryRaw.city,100),
-        postalCode,
-        communeCode:resolvedForContext?.code||externalContext?.territory?.communeCode||"",
-        propertyType:selectedType
-      });
-      const timeoutPromise=new Promise(resolve=>setTimeout(()=>resolve([]),9500));
-      const benchmarkRows=await Promise.race([benchmarkPromise,timeoutPromise]);
-      externalBenchmarks=(Array.isArray(benchmarkRows)?benchmarkRows:[]).slice(0,6).map(x=>({
-        name:txt(x?.name,100),priceM2:num(x?.priceM2,1,100000),lowM2:num(x?.lowM2,1,100000),
-        highM2:num(x?.highM2,1,100000),url:txt(x?.url,400),quality:txt(x?.quality,60),
-        confidence:txt(x?.confidence,40),comparablesCount:num(x?.comparablesCount,0,100000),
-        note:txt(x?.note,300),retrievedAt:new Date().toISOString()
-      })).filter(x=>x.name&&x.priceM2!==null);
-      const notarialCheck=(Array.isArray(externalContext?.sourceChecks)?externalContext.sourceChecks:[])
-        .find(x=>/notaires de france/i.test(String(x?.name||"")));
-      const notarialBenchmark=externalBenchmarks.find(x=>/notaires de france/i.test(String(x?.name||"")));
-      if(notarialCheck){
-        notarialCheck.status=notarialBenchmark?"donnee_recuperee":"accessible_sans_extraction";
-        notarialCheck.numericDataRetrieved=Boolean(notarialBenchmark);
-        notarialCheck.reasonCode=notarialBenchmark?"NOTARIAL_MEDIAN_EXTRACTED":"NOTARIAL_PATTERN_NOT_MATCHED";
-        notarialCheck.note=notarialBenchmark
-          ? "Repère médian notarial extrait : "+notarialBenchmark.priceM2+" €/m² ; "+(notarialBenchmark.comparablesCount??"effectif non lu")+" ventes indiquées. Vérifier la période et le champ sur la page source."
-          : "La page de référence a été vérifiée, mais aucun repère médian n'a correspondu au format attendu. Le contenu peut être rendu côté navigateur ou avoir changé ; aucun chiffre n'a été inventé.";
-      }
+    // Toujours lancer la récupération : le baromètre Notaires départemental
+    // ne nécessite pas de géocodage ni de code postal.
+    const benchmarkPromise=getPublicMarketBenchmarks({
+      city:externalContext?.territory?.commune||resolvedForContext?.nom||txt(territoryRaw.city,100),
+      postalCode,
+      communeCode:resolvedForContext?.code||externalContext?.territory?.communeCode||"",
+      propertyType:selectedType
+    });
+    const timeoutPromise=new Promise(resolve=>setTimeout(()=>resolve([]),9500));
+    const benchmarkRows=await Promise.race([benchmarkPromise,timeoutPromise]);
+    externalBenchmarks=(Array.isArray(benchmarkRows)?benchmarkRows:[]).slice(0,6).map(x=>({
+      name:txt(x?.name,100),priceM2:num(x?.priceM2,1,100000),lowM2:num(x?.lowM2,1,100000),
+      highM2:num(x?.highM2,1,100000),url:txt(x?.url,400),quality:txt(x?.quality,60),
+      confidence:txt(x?.confidence,40),comparablesCount:num(x?.comparablesCount,0,100000),
+      note:txt(x?.note,300),retrievedAt:new Date().toISOString()
+    })).filter(x=>x.name&&x.priceM2!==null);
+    const notarialCheck=(Array.isArray(externalContext?.sourceChecks)?externalContext.sourceChecks:[])
+      .find(x=>/notaires de france/i.test(String(x?.name||"")));
+    const notarialBenchmark=externalBenchmarks.find(x=>/notaires de france/i.test(String(x?.name||"")));
+    if(notarialCheck){
+      notarialCheck.status=notarialBenchmark?"donnee_recuperee":"accessible_sans_extraction";
+      notarialCheck.numericDataRetrieved=Boolean(notarialBenchmark);
+      notarialCheck.reasonCode=notarialBenchmark?"NOTARIAL_MEDIAN_EXTRACTED":"NOTARIAL_PATTERN_NOT_MATCHED";
+      notarialCheck.note=notarialBenchmark
+        ? "Repère médian notarial extrait : "+notarialBenchmark.priceM2+" €/m² ; "+(notarialBenchmark.comparablesCount??"effectif non lu")+" ventes indiquées. Vérifier la période et le champ sur la page source."
+        : "La page de référence a été vérifiée, mais aucun repère médian n'a correspondu au format attendu. Le contenu peut être rendu côté navigateur ou avoir changé ; aucun chiffre n'a été inventé.";
     }
   }catch(error){
     console.warn("JML external market intelligence:",String(error?.message||error).slice(0,220));
