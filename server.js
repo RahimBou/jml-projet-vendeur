@@ -2250,37 +2250,98 @@ app.get("/api/territory-nearby", async (req,res) => {
  * On découvre la dernière page mensuelle depuis l'index officiel : pas de taux figé dans le code.
  */
 const jmlCreditClimateCache={expiresAt:0,data:null};
+const WEBSTAT_BASE="https://webstat.banque-france.fr/api/explore/v2.1/catalog/datasets/observations/records";
+const WEBSTAT_RATE_SERIES="MIR1.M.FR.B.A22HR.A.R.A.2254U6.EUR.N";
+const WEBSTAT_PRODUCTION_SERIES="MIR1.M.FR.B.A22.A.5.A.2254U6.EUR.N";
+function webstatNumber(value){
+  if(value===null||value===undefined||value==="")return null;
+  const normalized=typeof value==="string"?value.replace(/\s/g,"").replace(",","."):value;
+  const number=Number(normalized);
+  return Number.isFinite(number)?number:null;
+}
+function webstatPeriod(value){
+  const raw=String(value||"");
+  const match=raw.match(/^(20\d{2})[-/](\d{1,2})/);
+  if(!match)return raw||null;
+  const date=new Date(Number(match[1]),Number(match[2])-1,1);
+  return date.toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+}
+async function fetchWebstatSeries(seriesKey,limit=2){
+  const url=new URL(WEBSTAT_BASE);
+  url.searchParams.set("where",'series_key="'+seriesKey+'"');
+  url.searchParams.set("order_by","time_period_start desc");
+  url.searchParams.set("limit",String(limit));
+  const apiKey=String(process.env.WEBSTAT_API_KEY||"").trim();
+  if(!apiKey)throw new Error("WEBSTAT_API_KEY manquante");
+  const response=await fetch(url,{headers:{"Authorization":"Apikey "+apiKey,"Accept":"application/json"},signal:AbortSignal.timeout(12000)});
+  if(!response.ok)throw new Error("Webstat HTTP "+response.status);
+  const payload=await response.json();
+  const records=Array.isArray(payload.results)?payload.results:Array.isArray(payload.records)?payload.records:[];
+  return records.map(row=>({
+    value:webstatNumber(row.obs_value??row.value??row.observation_value),
+    period:String(row.time_period_start??row.period_start??row.time_period??""),
+    status:String(row.obs_status??row.observation_status??"")
+  })).filter(row=>row.value!==null&&!/^(M|NA|N\/A|-)$/i.test(row.status));
+}
+async function fetchWebstatMarketClimate(){
+  const [rates,production]=await Promise.all([
+    fetchWebstatSeries(WEBSTAT_RATE_SERIES,2),
+    fetchWebstatSeries(WEBSTAT_PRODUCTION_SERIES,2)
+  ]);
+  if(!rates.length)throw new Error("Observation de taux absente");
+  const latestRate=rates[0],previousRate=rates[1]||null;
+  if(latestRate.value<0.5||latestRate.value>10)throw new Error("Taux hors plage attendue");
+  const latestProduction=production[0]||null,previousProduction=production[1]||null;
+  const delta=previousRate?Math.round((latestRate.value-previousRate.value)*100):null;
+  const productionChange=latestProduction&&previousProduction&&previousProduction.value!==0
+    ?Math.round(((latestProduction.value-previousProduction.value)/Math.abs(previousProduction.value))*1000)/10:null;
+  return {
+    ok:true,apiMode:"webstat",source:"Banque de France · API Webstat",
+    sourceUrl:"https://webstat.banque-france.fr/fr/catalogue/mir1/"+WEBSTAT_RATE_SERIES,
+    productionSourceUrl:"https://webstat.banque-france.fr/fr/catalogue/mir1/"+WEBSTAT_PRODUCTION_SERIES,
+    period:webstatPeriod(latestRate.period),publishedAt:null,
+    averageNewMortgageRate:latestRate.value,previousRate:previousRate?previousRate.value:null,
+    monthlyChangePoints:delta,
+    productionBillions:latestProduction?latestProduction.value:null,
+    previousProductionBillions:previousProduction?previousProduction.value:null,
+    productionChangePercent:productionChange,
+    productionPeriod:latestProduction?webstatPeriod(latestProduction.period):null,
+    interpretation:delta===null?"Dernière donnée nationale publiée.":delta>0?"Le coût moyen du crédit a augmenté sur la période observée.":delta<0?"Le coût moyen du crédit a baissé sur la période observée.":"Le coût moyen du crédit est stable sur la période observée.",
+    note:"Taux moyen national des nouveaux crédits à l’habitat hors renégociations. Le volume de crédits est une production mensuelle nationale corrigée des variations saisonnières, exprimée en milliards d’euros. Ces indicateurs décrivent le financement national, pas les prix locaux ni la solvabilité d’un acheteur précis."
+  };
+}
 app.get("/api/market-climate",async(req,res)=>{
   res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
   if(!req.query.refresh&&jmlCreditClimateCache.data&&jmlCreditClimateCache.expiresAt>Date.now())return res.json({...jmlCreditClimateCache.data,cache:true});
-  const seriesUrl="https://webstat.banque-france.fr/fr/catalogue/mir1/MIR1.M.FR.B.A22HR.A.R.A.2254U6.EUR.N";
   const indexUrl="https://www.banque-france.fr/fr/statistiques/credit";
+  const apiKey=String(process.env.WEBSTAT_API_KEY||"").trim();
   try{
-    const response=await fetch(seriesUrl,{headers:{"Accept":"text/html","User-Agent":"JML-Projet-Vendeur/3.10.0"},signal:AbortSignal.timeout(12000)});
-    if(!response.ok)throw new Error("Série officielle HTTP "+response.status);
-    const html=await response.text();
-    const plain=html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;|&#160;|&#8239;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ");
-    const rowMatches=[...plain.matchAll(/(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(20\d{2})\s+([0-9]+[,.][0-9]+)/gi)];
-    if(!rowMatches.length)throw new Error("Valeur de série officielle introuvable");
-    const latest=rowMatches[0], previous=rowMatches[1];
-    const period=latest[1].charAt(0).toUpperCase()+latest[1].slice(1)+" "+latest[2];
-    const rate=Number(latest[3].replace(",",".")), previousRate=previous?Number(previous[3].replace(",",".")):null;
-    if(!Number.isFinite(rate)||rate<0.5||rate>10)throw new Error("Valeur de taux officielle invalide");
-    const delta=Number.isFinite(previousRate)?Math.round((rate-previousRate)*100):null;
-    const publicationMatch=plain.match(/Dernière mise à jour\s*:?\s*([0-9]{1,2}\s+[A-Za-zéûô]+\s+20\d{2})/i);
-    const data={
-      ok:true,source:"Banque de France · Webstat",sourceUrl:seriesUrl,
-      period,publishedAt:publicationMatch?.[1]||null,
-      averageNewMortgageRate:rate,previousRate:Number.isFinite(previousRate)?previousRate:null,
-      monthlyChangePoints:delta,productionBillions:null,averageDuration:null,
-      interpretation:delta===null?"Dernière donnée nationale publiée.":delta>0?"Le coût moyen du crédit a légèrement augmenté sur le mois observé.":delta<0?"Le coût moyen du crédit a légèrement baissé sur le mois observé.":"Le coût moyen du crédit est stable sur le mois observé.",
-      note:"Taux national moyen des nouveaux crédits à l’habitat hors renégociations, hors frais et assurance. Le taux proposé à un acheteur dépend de son dossier, de la durée et de la banque."
-    };
+    let data;
+    if(apiKey){
+      data=await fetchWebstatMarketClimate();
+    }else{
+      // Mode de continuité tant que la clé Webstat n’a pas encore été ajoutée dans Render.
+      const seriesUrl="https://webstat.banque-france.fr/fr/catalogue/mir1/"+WEBSTAT_RATE_SERIES;
+      const response=await fetch(seriesUrl,{headers:{"Accept":"text/html","User-Agent":"JML-Projet-Vendeur/3.11.0"},signal:AbortSignal.timeout(12000)});
+      if(!response.ok)throw new Error("Série officielle HTTP "+response.status);
+      const html=await response.text();
+      const plain=html.replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/&nbsp;|&#160;|&#8239;/gi," ").replace(/&amp;/gi,"&").replace(/\s+/g," ");
+      const rowMatches=[...plain.matchAll(/(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+(20\d{2})\s+([0-9]+[,.][0-9]+)/gi)];
+      if(!rowMatches.length)throw new Error("Valeur de série officielle introuvable");
+      const latest=rowMatches[0],previous=rowMatches[1];
+      const period=latest[1].charAt(0).toUpperCase()+latest[1].slice(1)+" "+latest[2];
+      const rate=Number(latest[3].replace(",",".")),previousRate=previous?Number(previous[3].replace(",",".")):null;
+      if(!Number.isFinite(rate)||rate<0.5||rate>10)throw new Error("Valeur de taux officielle invalide");
+      const delta=Number.isFinite(previousRate)?Math.round((rate-previousRate)*100):null;
+      const publicationMatch=plain.match(/Dernière mise à jour\s*:?\s*([0-9]{1,2}\s+[A-Za-zéûô]+\s+20\d{2})/i);
+      data={ok:true,apiMode:"fallback-public-page",source:"Banque de France · Webstat",sourceUrl:seriesUrl,period,publishedAt:publicationMatch?.[1]||null,averageNewMortgageRate:rate,previousRate:Number.isFinite(previousRate)?previousRate:null,monthlyChangePoints:delta,productionBillions:null,previousProductionBillions:null,productionChangePercent:null,productionPeriod:null,interpretation:delta===null?"Dernière donnée nationale publiée.":delta>0?"Le coût moyen du crédit a augmenté sur la période observée.":delta<0?"Le coût moyen du crédit a baissé sur la période observée.":"Le coût moyen du crédit est stable sur la période observée.",note:"Mode provisoire sans clé API. Ajoutez WEBSTAT_API_KEY dans Render pour récupérer aussi la production mensuelle de nouveaux crédits via l’API officielle."};
+    }
     jmlCreditClimateCache.data=data;jmlCreditClimateCache.expiresAt=Date.now()+6*60*60*1000;
     return res.json(data);
   }catch(error){
     console.warn("JML market climate Banque de France:",String(error?.message||error));
-    return res.status(200).json({ok:false,source:"Banque de France",sourceUrl:indexUrl,message:"La dernière donnée officielle n’a pas pu être récupérée. Réessayez plus tard ; aucun taux n’est inventé."});
+    if(jmlCreditClimateCache.data)return res.status(200).json({...jmlCreditClimateCache.data,cache:true,stale:true,message:"La source est temporairement indisponible ; dernière donnée mise en cache affichée."});
+    return res.status(200).json({ok:false,source:"Banque de France",sourceUrl:indexUrl,message:"La dernière donnée officielle n’a pas pu être récupérée. Réessayez plus tard ; aucun chiffre n’est inventé."});
   }
 });
 
