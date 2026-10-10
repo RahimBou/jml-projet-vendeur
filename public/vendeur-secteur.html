@@ -1838,7 +1838,12 @@ function renderCharacteristicAnalysis(analysis){
  const rowHtml=rows.map(x=>{
    const pct=Number(x.effectPct||0), eurv=Number(x.effectEur||0);
    const cls=pct>0?"up":pct<0?"down":"neutral";
-   const amount=pct===0?"Neutre":(pct>0?"+":"")+Math.round(pct*10)/10+" % · "+(eurv>0?"+":"")+Math.round(eurv).toLocaleString("fr-FR")+" €";
+   let amount;
+   if(pct!==0) amount=(pct>0?"+":"")+Math.round(pct*10)/10+" % · "+(eurv>0?"+":"")+Math.round(eurv).toLocaleString("fr-FR")+" €";
+   else if(/surface\s*\/\s*pièces\s*\/\s*terrain/i.test(String(x.factor||""))) amount="Déjà intégré";
+   else if(/classe de référence/i.test(String(x.note||""))) amount="Référence";
+   else if(/non mesurable|insuffisant/i.test(String(x.confidence||""))) amount="Non mesurable";
+   else amount="Aucun ajustement chiffré";
    return '<div class="agent-adjustment-row"><div><b>'+esc(x.factor)+'</b><small>'+esc(x.note||"")+'</small></div><strong class="'+cls+'">'+esc(amount)+'</strong><em>'+esc(x.confidence||"")+'</em></div>';
  }).join("");
  const low=p.low!=null?eur(p.low):"—",high=p.high!=null?eur(p.high):"—";
