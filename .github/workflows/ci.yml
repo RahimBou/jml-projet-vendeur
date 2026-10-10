@@ -15,4 +15,5 @@ jobs:
           node-version: 20
       - run: npm install --no-audit --no-fund
       - run: node --check server.js
+      - run: node --check market-intelligence.js
       - run: node --check scripts/import-dvf.js
