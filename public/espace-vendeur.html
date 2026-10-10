@@ -2615,7 +2615,7 @@ function updateSellerProjectSummary(d){
     try{
       const d=territory||{}, market=d.market||{}, comps=d.comparables||{};
       const payload={territory:{city:d.city||d.communeName||"",propertyType:d.propertyType||""},
-        market:{communalPrice:market.communalPrice,housePrice:market.housePrice,apartmentPrice:market.apartmentPrice,transactions:market.transactions,period:market.period,source:market.source},
+        market:{communalPrice:market.communalPrice,housePrice:market.housePrice,apartmentPrice:market.apartmentPrice,transactions:market.transactions,period:market.period,source:market.source,sales:(Array.isArray(market.recentSales)?market.recentSales:[]).slice(0,500).map(x=>({date:x.date,pricePerM2:x.pricePerM2??x.price_per_m2,type:x.type??x.propertyType}))},
         comparables:{matchCount:comps.matchCount,median:comps.median,source:comps.source},credit:credit||{}};
       const response=await fetch("/api/market-climate/analysis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),cache:"no-store"});
       const result=await response.json();if(!response.ok||!result.ok||!result.analysis)throw new Error(result.error||"Analyse indisponible");
