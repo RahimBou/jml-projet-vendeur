@@ -183,9 +183,11 @@ async function main() {
       }
       const rawParcels = cleanText(get("l_idparmut"));
       const complexity = [];
-      if (num(get("nbcomm")) !== 1) complexity.push("plusieurs_communes");
-      if (num(get("nbparmut")) !== 1) complexity.push("plusieurs_parcelles");
-      if (num(get("nblocmut")) !== 1) complexity.push("plusieurs_locaux");
+      if (num(get("nbcomm")) > 1) complexity.push("plusieurs_communes");
+      // Pour les appartements en copropriété, nbparmut peut valoir 0 :
+      // zéro signifie ici « aucune parcelle mutée renseignée », pas « vente multiple ».
+      if (num(get("nbparmut")) > 1) complexity.push("plusieurs_parcelles");
+      if (num(get("nblocmut")) > 1) complexity.push("plusieurs_locaux");
       const comparableEligible = complexity.length === 0;
       if (!comparableEligible) stats.rejectedComplex++;
       batch.push([
