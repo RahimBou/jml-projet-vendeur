@@ -18,10 +18,10 @@ jobs:
       - name: Vérifier et décompresser le fichier DVF+
         run: |
           set -euo pipefail
-          test -s data/dvfplus_ardennes_residential.csv.gz
-          gzip -t data/dvfplus_ardennes_residential.csv.gz
+          test -s dvfplus_ardennes_residential.csv.gz
+          gzip -t dvfplus_ardennes_residential.csv.gz
           mkdir -p /tmp/jml-dvfplus
-          gzip -dc data/dvfplus_ardennes_residential.csv.gz > /tmp/jml-dvfplus/dvf_plus.csv
+          gzip -dc dvfplus_ardennes_residential.csv.gz > /tmp/jml-dvfplus/dvf_plus.csv
           test -s /tmp/jml-dvfplus/dvf_plus.csv
           echo "CSV décompressé : $(wc -l < /tmp/jml-dvfplus/dvf_plus.csv) lignes"
       - name: Installer les dépendances
