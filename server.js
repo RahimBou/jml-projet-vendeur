@@ -2448,8 +2448,39 @@ app.post("/api/market-climate/analysis", async (req,res) => {
   const marketRaw=raw.market&&typeof raw.market==="object"?raw.market:{};
   const comparableRaw=raw.comparables&&typeof raw.comparables==="object"?raw.comparables:{};
   const territoryRaw=raw.territory&&typeof raw.territory==="object"?raw.territory:{};
+  // Tendance DVF calculée côté serveur à partir de ventes datées réellement fournies.
+  // Seuil minimal par période pour éviter une conclusion sur quelques ventes seulement.
+  const rawSales=Array.isArray(marketRaw.sales)?marketRaw.sales.slice(0,500):[];
+  const sales=rawSales.map(x=>{
+    const date=String(x?.date||"").slice(0,10);
+    const priceM2=num(x?.pricePerM2??x?.price_per_m2,1,100000);
+    const type=txt(x?.type??x?.propertyType,40);
+    return {date,priceM2,type};
+  }).filter(x=>/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date)&&x.priceM2!==null&&/^20\\d{2}-/.test(x.date));
+  const selectedType=txt(territoryRaw.propertyType,50);
+  const typeMatches=x=>!selectedType||/tous|bien/i.test(selectedType)||(
+    /appartement|studio|duplex/i.test(selectedType)?/appartement/i.test(x.type):
+    /maison/i.test(selectedType)?/maison/i.test(x.type):
+    /terrain/i.test(selectedType)?/terrain/i.test(x.type):true
+  );
+  const eligibleSales=sales.filter(typeMatches);
+  const trendEnd=new Date();
+  const trendStart=new Date(trendEnd.getTime());trendStart.setDate(trendStart.getDate()-365);
+  const priorStart=new Date(trendStart.getTime());priorStart.setDate(priorStart.getDate()-365);
+  const iso=d=>d.toISOString().slice(0,10);
+  const recentPeriod=eligibleSales.filter(x=>x.date>=iso(trendStart)&&x.date<=iso(trendEnd));
+  const previousPeriod=eligibleSales.filter(x=>x.date>=iso(priorStart)&&x.date<iso(trendStart));
+  const medianOf=items=>{const a=items.map(x=>x.priceM2).sort((a,b)=>a-b);if(!a.length)return null;const m=Math.floor(a.length/2);return Math.round(a.length%2?a[m]:(a[m-1]+a[m])/2);};
+  const recentMedian=medianOf(recentPeriod),previousMedian=medianOf(previousPeriod);
+  const trendComparable=recentPeriod.length>=8&&previousPeriod.length>=8&&recentMedian>0&&previousMedian>0;
+  const trendPercent=trendComparable?Math.round(((recentMedian-previousMedian)/previousMedian)*1000)/10:null;
+  const trend={available:trendComparable,method:"Médiane du prix au m² DVF, périodes glissantes de 12 mois",propertyType:selectedType||"Tous biens",
+    recent:{from:iso(trendStart),to:iso(trendEnd),count:recentPeriod.length,medianPriceM2:recentMedian},
+    previous:{from:iso(priorStart),to:iso(trendStart),count:previousPeriod.length,medianPriceM2:previousMedian},
+    changePercent:trendPercent,status:!trendComparable?"donnees_insuffisantes":trendPercent>=2?"hausse":trendPercent<=-2?"baisse":"stable_ou_faible_variation",
+    limitation:"Variation indicative : composition des ventes, saisonnalité et délai de publication DVF peuvent influencer le résultat."};
   const data={
-    territory:{city:txt(territoryRaw.city,100),department:"Ardennes (08)",propertyType:txt(territoryRaw.propertyType,50)},
+    territory:{city:txt(territoryRaw.city,100),department:"Ardennes (08)",propertyType:selectedType},
     finance:{
       source:txt(creditRaw.source,100),period:txt(creditRaw.period,50),publishedAt:txt(creditRaw.publishedAt,50),
       averageNewMortgageRate:num(creditRaw.averageNewMortgageRate,0,15),previousRate:num(creditRaw.previousRate,0,15),
@@ -2462,7 +2493,7 @@ app.post("/api/market-climate/analysis", async (req,res) => {
       apartmentPrice:num(marketRaw.apartmentPrice,1,100000),transactions:num(marketRaw.transactions,0,10000000),
       period:txt(marketRaw.period,80),source:txt(marketRaw.source,120),
       comparableCount:num(comparableRaw.matchCount,0,100000),comparableMedian:num(comparableRaw.median,1,10000000),
-      comparableSource:txt(comparableRaw.source,120),trend:"Non fournie sauf si explicitement présente dans les données"
+      comparableSource:txt(comparableRaw.source,120),trend
     }
   };
   const cacheKey=crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
@@ -2474,7 +2505,8 @@ app.post("/api/market-climate/analysis", async (req,res) => {
     "OBJECTIF : expliquer au vendeur comment le financement des acheteurs (taux et production de crédit) interagit avec les repères immobiliers locaux. Ne prédis jamais la vente d'un bien.",
     "RÈGLES ABSOLUES : n'invente aucun chiffre, date, source, tendance ou donnée absente.",
     "Une donnée nationale sur le crédit ne prouve pas une hausse ou une baisse de la demande dans les Ardennes.",
-    "Un niveau de prix communal ou un total de transactions n'établit pas une tendance. Pour affirmer une hausse/baisse des prix, il faut une comparaison temporelle explicite et comparable ; sinon indique que la tendance n'est pas établie.",
+    "Un niveau de prix communal ou un total de transactions n'établit pas une tendance. Utilise en priorité localMarket.trend, calculée sur les ventes DVF datées : deux fenêtres glissantes de 12 mois, médianes au m² et effectifs. Si available=false, ne conclus pas sur la tendance des prix. Si available=true, cite les périodes, les effectifs et la variation, en rappelant que la composition des ventes et le délai de publication peuvent influer. Ne présente pas cette variation comme une prévision.",
+    "Ne compare que des biens du type demandé lorsque le type est renseigné. Les ventes de types différents ne doivent pas être mélangées pour conclure sur les maisons ou appartements.",
     "Une hausse des taux peut réduire la capacité d'emprunt à mensualité égale ; elle ne prouve pas que tous les acheteurs deviennent réticents. Une hausse de la production de crédit ne prouve pas que les acheteurs locaux sont plus nombreux.",
     "Ne qualifie pas la période de favorable ou défavorable si les données locales sont insuffisantes ou contradictoires : verdict diagnostic_partiel.",
     "N'affirme rien sur la concurrence des annonces ou les délais de vente sans données fiables. Distingue faits, interprétation prudente et inconnues. Conseils pratiques, équilibrés, non alarmistes.",
