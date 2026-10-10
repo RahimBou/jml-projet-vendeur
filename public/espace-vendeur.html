@@ -1215,13 +1215,7 @@ body.guide-modal-open{overflow:hidden}
           <div class="seller-agency-carousel-stage seller-agency-list" id="sellerAgencyCarouselStage" aria-live="polite"><div class="seller-agency-loading"><span></span><strong>Chargement des annonces JML…</strong></div></div>
           <p class="seller-agency-source" id="sellerAgencySource">Annonces récupérées depuis le site officiel de JML Immobilier. Prix et disponibilité à vérifier sur chaque fiche.</p>
         </section>
-        <section class="seller-market-watch seller-sidebar-progress" aria-labelledby="sellerSidebarProgressTitle">
-          <div class="seller-watch-heading"><span class="seller-panel-kicker">✅ VOTRE DOSSIER</span><h5 id="sellerSidebarProgressTitle">Préparer ma vente</h5><p>Avancez à votre rythme, étape par étape.</p></div>
-          <div class="seller-sidebar-progress-track" role="progressbar" aria-label="Progression du dossier vendeur" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0"><span id="sellerSidebarProgressBar"></span></div>
-          <div class="seller-sidebar-progress-meta"><strong id="sellerSidebarProgressCount">0 / 6 étapes</strong><span id="sellerSidebarProgressPercent">0 %</span></div>
-          <a class="seller-watch-link seller-sidebar-progress-link" href="#sellerChecklist">Continuer mon dossier →</a>
-          <p class="seller-sidebar-note">Les cases cochées suivent votre préparation. Elles ne remplacent pas les documents officiels nécessaires à la vente.</p>
-        </section>
+        
       </section>
     </div>
 
@@ -2655,7 +2649,7 @@ function updateSellerProjectSummary(d){
  }
  fetch("/api/jml-listings",{cache:"no-store"}).then(r=>r.json()).then(data=>{
   if(!data.ok||!Array.isArray(data.items)||!data.items.length)throw new Error(data.error||"Aucune annonce disponible");
-  render(data.items.slice(0,5));
+  render(data.items.slice(0,8));
   if(data.stale&&source)source.textContent=(data.message||"Dernière liste disponible affichée.")+" Disponibilité à confirmer sur le site de l’agence.";
  }).catch(()=>{
   stage.innerHTML='<div class="seller-agency-empty"><strong>Les annonces ne sont pas disponibles pour le moment.</strong><br>Consultez le catalogue officiel de JML Immobilier.</div>';
