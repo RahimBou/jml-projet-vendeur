@@ -1137,6 +1137,8 @@ function renderSales(rows){
 
 
 function renderReference(ref){
+ const referenceNode=$("#reference");
+ if(!referenceNode)throw Object.assign(new Error("Le bloc #reference est absent du HTML."),{code:"JML-REFERENCE-DOM"});
  const r=ref||{};
  const value=r.referenceValue;
  const d=pageData.space||{};
@@ -1155,7 +1157,7 @@ function renderReference(ref){
  const statusText=comparable
    ?("🤖 Agent DVF · "+String(txLabel)+" ventes analysées · "+String(sameStreet)+" même rue · source officielle DVF+ Cerema")
    :"🤖 Agent DVF · recherche officielle en cours ou données communales de secours";
- $("#reference").innerHTML=
+ referenceNode.innerHTML=
  '<div class="ref-main seller-reference-main">'+
    '<span class="reference-kicker">🤖 AGENT DVF · SOURCE OFFICIELLE</span>'+
    '<h3>Valeur calculée à partir des ventes réelles</h3>'+
@@ -1177,6 +1179,8 @@ function renderReference(ref){
 }
 function renderSellerReading(r){
  const el=$("#sellerReading"); if(!el)return;
+ let readingGrid=el.querySelector(".seller-reading-grid");
+ if(!readingGrid){readingGrid=document.createElement("div");readingGrid.className="seller-reading-grid";el.appendChild(readingGrid);}
  const d=pageData.space||{}, c=pageData.comparables||{}, m=pageData.market||{};
  const cd=d.conditionData&&typeof d.conditionData==="object"?d.conditionData:{};
  const type=d.propertyType||"bien", commune=d.city||"la commune";
@@ -1215,7 +1219,7 @@ function renderSellerReading(r){
    : '<div class="comparable-proof"><div class="comparable-proof-head"><div><span>VENTES COMPARABLES</span><b>Les ventes utilisées pour le repère</b></div></div><p>Les données comparables apparaîtront ici dès qu’elles sont disponibles.</p></div>';
  const factorsUp='<div class="factor-card up"><b>Ce qui peut faire augmenter la valeur</b><ul><li>Très bon état ou rénovation récente</li><li>DPE performant et équipements récents</li><li>Emplacement, environnement et accessibilité recherchés</li><li>Luminosité, exposition et vue dégagée</li><li>Terrain, jardin, terrasse, garage ou dépendances</li><li>Qualité des prestations et absence de travaux importants</li></ul></div>';
  const factorsDown='<div class="factor-card down"><b>Ce qui peut faire baisser la valeur</b><ul><li>Travaux importants ou rénovation à prévoir</li><li>DPE faible, isolation ou chauffage à revoir</li><li>Nuisances, vis-à-vis ou mauvaise exposition</li><li>Manque de stationnement</li><li>Contraintes du terrain ou du bâtiment</li><li>Emplacement moins recherché</li></ul></div>';
- el.querySelector(".seller-reading-grid").innerHTML=
+ readingGrid.innerHTML=
  '<div class="reading-panel reading-panel-how"><div class="reading-number">1</div><p class="reading-title">COMMENT LE REPÈRE DE '+esc(eur(r.referenceValue))+' EST CONSTRUIT</p><h3>Une analyse basée sur des ventes réelles</h3><p>Le moteur JML part des ventes DVF comparables. Le résultat est un <b>prix repère médian</b> : il aide à démarrer l’analyse, mais ne remplace pas l’étude complète du bien.</p><div class="reading-steps">'+
  '<div class="reading-step"><b>1</b><span><strong>Recherche des ventes comparables</strong><small>'+(count?esc(count+" ventes analysées"):"Ventes disponibles")+" autour du bien."+'</small></span></div>'+
  '<div class="reading-step"><b>2</b><span><strong>Sélection selon plusieurs critères</strong><small>Type, surface, pièces, distance et date de vente.</small></span></div>'+
@@ -1236,11 +1240,13 @@ function renderSellerReading(r){
  '<div class="jml-legal"><b>JML Immobilier</b> — Titulaire de la carte professionnelle <b>CPI 0801 2018 000 026 788</b> — CCI Marne Ardennes — N° unique d’identification : 512 955 105 — Agent commercial RSAC : 898 398 136 — Siège social : 42 rue du Théâtre, 08000 Charleville-Mézières. <b>Abderrahim Boujnikh est agent commercial et ne peut pas recevoir de fonds.</b></div>';
 }
 function renderComps(c){
+ const summaryNode=$("#compSummary"), compsNode=$("#comps");
+ if(!summaryNode||!compsNode)throw Object.assign(new Error("Bloc HTML manquant : "+(!summaryNode?"#compSummary ":"")+" "+(!compsNode?"#comps":"")), {code:"JML-COMP-DOM"});
  c=c||{};
  pageData.comparables=c;
  const d=c.diagnostics||{}, dpeLabel=c.dpe?.label||"";
  const dpeChecked=Number(d.dpeCheckedCount||0), dpeFound=Number(d.dpeFoundCount||0);
- $("#compSummary").innerHTML=
+ summaryNode.innerHTML=
  '<div class="ref-main seller-comps-main"><span class="reference-kicker">VENTES COMPARABLES</span><h3>Repère des ventes proches</h3><div class="ref-value">'+esc(c.weightedPriceM2!=null?m2(c.weightedPriceM2):"—")+'</div><p>'+esc(c.message||c.method||"Les ventes les plus pertinentes autour de l'adresse servent de base au repère.")+'</p></div>'+
  '<div class="ref-list"><div class="ref-row"><b>Adresse géolocalisée</b><span>'+esc(c.origin?.lat!=null?"Oui":"Non")+'</span></div>'+
  '<div class="ref-row"><b>Périmètre retenu</b><span>'+esc(c.searchScope||"—")+'</span></div>'+
@@ -1254,7 +1260,7 @@ function renderComps(c){
  '<div class="ref-row"><b>Même rue</b><span>'+esc(Array.isArray(c.sameStreet)?c.sameStreet.length:"0")+'</span></div>'+
  '<div class="ref-row"><b>Source officielle</b><span>DVF+ · Cerema</span></div></div>';
  const rows=Array.isArray(c.sales)?c.sales:[];
- if(!rows.length){$("#comps").innerHTML='<div class="empty">Aucun comparable exploitable dans le délai disponible. Les chiffres communaux restent affichés séparément.</div>';return}
+ if(!rows.length){compsNode.innerHTML='<div class="empty">Aucun comparable exploitable dans le délai disponible. Les chiffres communaux restent affichés séparément.</div>';return}
  const renderCompRows=(list)=>list.map(s=>{
   const distance=Number(s.distanceKm);
   const surface=Number(s.surface);
@@ -1309,7 +1315,7 @@ function renderComps(c){
  const moreBlock=extraRows.length
   ? '<details class="comps-more"><summary>Voir les '+extraRows.length+' autres ventes analysées</summary><div class="comps-grid">'+renderCompRows(extraRows)+'</div></details>'
   : "";
- $("#comps").innerHTML='<div class="comps-note"><b>Comment lire :</b> ces ventes ont des caractéristiques proches de votre bien et servent à situer son niveau de prix.'+
+ compsNode.innerHTML='<div class="comps-note"><b>Comment lire :</b> ces ventes ont des caractéristiques proches de votre bien et servent à situer son niveau de prix.'+
  '</div><div class="comps-grid">'+renderCompRows(visibleRows)+'</div>'+moreBlock;
 }
 function renderNearby(rows){
@@ -1980,8 +1986,10 @@ async function run(){
 
  await marketPromise;
 
- // 2. Comparables : appel séparé.
+ // 2. Comparables : appel séparé. On trace l’étape pour ne plus confondre erreur API et erreur d’affichage.
+ let comparableStage="préparation";
  try{
+  comparableStage="appel API comparables";
   const territory=await getData("/api/territory-comparables?"+base.toString(),35000,"Comparables / territoire");
   const comps=territory.comparables||{};
   if(!d.dpe && comps.dpe?.label){
@@ -1990,6 +1998,7 @@ async function run(){
   }
   // Le rendu des cartes ne doit pas empêcher le calcul indépendant du repère DVF.
   try{
+    comparableStage="affichage des cartes";
     renderComps(comps);
   }catch(renderError){
     addDiag("Affichage des comparables",renderError?.code||"JML-COMP-RENDER",renderError?.message||"Erreur pendant l'affichage des ventes.");
@@ -1998,6 +2007,7 @@ async function run(){
 
   // Le repère vendeur doit provenir du même jeu de comparables que celui affiché.
   // Aucun estimateur externe : le prix au m² et la valeur sont calculés ici à partir du DVF.
+  comparableStage="calcul du repère vendeur";
   const compM2=Number(comps.weightedPriceM2);
   const referenceM2=Number.isFinite(compM2)&&compM2>0?compM2:null;
   const surf=Number(d.surface);
@@ -2031,6 +2041,7 @@ async function run(){
   if(territory.ok!==false) $("#status").textContent="Données marché + comparables chargés";
   else $("#status").textContent="Marché communal chargé · comparables en mode dégradé";
   try{
+    comparableStage="chargement des communes proches";
     const nearby=await getData("/api/territory-nearby?"+new URLSearchParams({city:d.city,address:d.address}).toString(),9000,"Communes proches");
     if(Array.isArray(nearby.nearby))renderNearby(nearby.nearby);
   }catch(_nearbyError){
@@ -2038,9 +2049,10 @@ async function run(){
   }
  }catch(e){
   const comparableErrorCode=e.code||"JML-COMP-CLIENT";
-  const comparableErrorDetail=String(e.message||"Erreur inconnue").slice(0,240);
+  const comparableErrorDetail="Étape : "+comparableStage+" — "+String(e.message||"Erreur inconnue").slice(0,220);
   addDiag("Comparables / territoire",comparableErrorCode,comparableErrorDetail);
-  $("#comps").innerHTML='<div class="error"><b>'+esc(comparableErrorCode)+'</b> · '+esc(comparableErrorDetail)+' Les données communales restent indépendantes.</div>';
+  const compsErrorNode=$("#comps");
+  if(compsErrorNode)compsErrorNode.innerHTML='<div class="error"><b>'+esc(comparableErrorCode)+'</b> · '+esc(comparableErrorDetail)+' Les données communales restent indépendantes.</div>';
 
   // Secours uniquement après l'échec définitif du moteur de comparables.
   // Jamais pendant le chargement : une seule valeur apparaît à l'écran.
