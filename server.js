@@ -644,6 +644,7 @@ function normalizeExternalDvfRow(row, fallbackCity=""){
     type,
     price:value,
     surface,
+    surfaceBasis:type==="Terrain"?"surface_terrain_dvf":"surface_batie_dvf",
     rooms:Number(row?.nombre_pieces_principales)||null,
     land:Number.isFinite(land)&&land>0?land:null,
     lat:Number(row?.latitude)||null,
@@ -986,7 +987,7 @@ async function getCommuneMarketData(city,code){
       const s=summary.rows[0]||{};
       if(Number(s.transactions||0)>0){
         const recent=await db(`SELECT mutation_id AS id,TO_CHAR(sale_date,'YYYY-MM-DD') AS date,property_type AS type,
-          price::float8 AS price,surface::float8 AS surface,rooms::float8 AS rooms,land_surface::float8 AS land,
+          price::float8 AS price,surface::float8 AS surface,'surface_batie_dvf' AS "surfaceBasis",rooms::float8 AS rooms,land_surface::float8 AS land,
           latitude AS lat,longitude AS lon,address,street,postal_code AS postal,commune_code AS code,
           commune_name AS city,price_per_m2::float8 AS "pricePerM2",source
           FROM jml_dvf_sales WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '24 months'
@@ -1069,7 +1070,7 @@ async function getLocalDvfComparables(origin,maxKm=3,communeCode="",propertyType
     params.push(wantedType);
     typeClause=" AND property_type=$5";
   }
-  const result=await db(`SELECT mutation_id AS id,TO_CHAR(sale_date,'YYYY-MM-DD') AS date,property_type AS type,price::float8 AS price,surface::float8 AS surface,rooms::float8 AS rooms,land_surface::float8 AS land,latitude AS lat,longitude AS lon,address,street,postal_code AS postal,commune_code AS code,commune_name AS city,price_per_m2::float8 AS "pricePerM2",source
+  const result=await db(`SELECT mutation_id AS id,TO_CHAR(sale_date,'YYYY-MM-DD') AS date,property_type AS type,price::float8 AS price,surface::float8 AS surface,'surface_batie_dvf' AS "surfaceBasis",rooms::float8 AS rooms,land_surface::float8 AS land,latitude AS lat,longitude AS lon,address,street,postal_code AS postal,commune_code AS code,commune_name AS city,price_per_m2::float8 AS "pricePerM2",source
     FROM jml_dvf_sales
     WHERE sale_date>=CURRENT_DATE-INTERVAL '48 months'
       AND latitude BETWEEN $1 AND $2
@@ -1832,7 +1833,7 @@ function normalizeDvfPlusRow(row, fallbackCity=""){
   ].filter(v=>v!=null&&String(v).trim()!=="").join(" ").trim();
   return {
     id:String((x.idmutation??x.id_mutation??x.id) || [date,address,price,surface,lat,lon].join("|")),
-    date,type,price,surface,rooms:rooms??null,land:land??null,lat,lon,address,
+    date,type,price,surface,surfaceBasis:type==="Terrain"?"surface_terrain_dvf":"surface_batie_dvf",rooms:rooms??null,land:land??null,lat,lon,address,
     street:String(x.adresse_nom_voie??x.nom_voie??x.street??"").trim(),
     postal:String(x.code_postal??"").trim(),
     code:String(x.code_insee??x.code_commune??"").trim(),
@@ -2025,9 +2026,12 @@ async function buildComparableSales(market,property){
     const saleLand=parsePositiveNumber(sale.land);
     const saleRooms=parsePositiveNumber(sale.rooms);
     const comparableSurface=isLand?saleLand:saleSurface;
-    if(targetSurface!==null&&comparableSurface===null)return null;
-    const surfaceRatio=targetSurface!==null&&comparableSurface!==null?Math.abs(comparableSurface-targetSurface)/targetSurface:null;
-    if(surfaceRatio!==null&&surfaceRatio>0.30)return null;
+    // Le formulaire vendeur demande une surface habitable ; DVF fournit une surface réelle bâtie.
+    // Ces deux mesures ne sont pas interchangeables : comparer la surface uniquement si la base concorde.
+    const surfaceBasisComparable=isLand || Boolean(property?.surfaceBasis && sale?.surfaceBasis && property.surfaceBasis===sale.surfaceBasis);
+    if(surfaceBasisComparable&&targetSurface!==null&&comparableSurface===null)return null;
+    const surfaceRatio=surfaceBasisComparable&&targetSurface!==null&&comparableSurface!==null?Math.abs(comparableSurface-targetSurface)/targetSurface:null;
+    if(surfaceBasisComparable&&surfaceRatio!==null&&surfaceRatio>0.30)return null;
 
     // La surface de terrain est un signal secondaire : la surface DVF peut
     // correspondre à la parcelle cadastrale entière alors que le dossier vendeur
