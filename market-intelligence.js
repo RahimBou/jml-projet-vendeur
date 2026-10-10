@@ -7,7 +7,7 @@ const DEFAULT_HEADERS = {
 };
 
 function normalizeName(value) {
-  return String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
@@ -37,7 +37,7 @@ async function checkReference(name, url, role) {
 
 async function collectMarketIntelligence({city, communeCode, propertyType} = {}) {
   const requestedCity = String(city || "").trim().slice(0, 100);
-  const code = /^\\d{5}$/.test(String(communeCode || "")) ? String(communeCode) : "";
+  const code = /^\d{5}$/.test(String(communeCode || "")) ? String(communeCode) : "";
   let territory = null;
   let territorySource = null;
 
@@ -52,13 +52,13 @@ async function collectMarketIntelligence({city, communeCode, propertyType} = {})
       const wanted = normalizeName(requestedCity);
       rows = rows.filter(row => normalizeName(row.nom) === wanted || String(row.code || "").startsWith("08"));
     }
-    const row = Array.isArray(rows) ? rows.find(x => x && /^\\d{5}$/.test(String(x.code || ""))) : null;
+    const row = Array.isArray(rows) ? rows.find(x => x && /^\d{5}$/.test(String(x.code || ""))) : null;
     if (row) {
       territory = {
         commune: String(row.nom || requestedCity),
         communeCode: String(row.code),
         population: Number.isFinite(Number(row.population)) && Number(row.population) > 0 ? Number(row.population) : null,
-        postalCodes: Array.isArray(row.codesPostaux) ? row.codesPostaux.filter(x => /^\\d{5}$/.test(String(x))).slice(0, 5) : [],
+        postalCodes: Array.isArray(row.codesPostaux) ? row.codesPostaux.filter(x => /^\d{5}$/.test(String(x))).slice(0, 5) : [],
         departmentCode: String(row.departement?.code || String(row.code).slice(0, 2)),
         source: "API officielle geo.api.gouv.fr, données territoriales issues des référentiels publics",
         sourceUrl: "https://geo.api.gouv.fr/communes",
