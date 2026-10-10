@@ -119,23 +119,27 @@ async function main() {
       if (!batch.length) return;
       await client.query("BEGIN");
       try {
-        for (const r of batch) {
-          await client.query(`
-            INSERT INTO jml_dvfplus_sales
-              (mutation_id, sale_date, source_year, property_type, price, surface,
-               price_per_m2, rooms, land_surface, latitude, longitude, commune_code, parcel_ids, comparable_eligible, exclusion_reason, source)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'DVF+ Cerema')
-            ON CONFLICT (mutation_id, source_year) DO UPDATE SET
-              sale_date=EXCLUDED.sale_date, property_type=EXCLUDED.property_type,
-              price=EXCLUDED.price, surface=EXCLUDED.surface,
-              price_per_m2=EXCLUDED.price_per_m2, rooms=EXCLUDED.rooms,
-              land_surface=EXCLUDED.land_surface, latitude=EXCLUDED.latitude,
-              longitude=EXCLUDED.longitude, commune_code=EXCLUDED.commune_code,
-              parcel_ids=EXCLUDED.parcel_ids, comparable_eligible=EXCLUDED.comparable_eligible,
-              exclusion_reason=EXCLUDED.exclusion_reason, imported_at=NOW()
-          `, r);
-          stats.imported++;
-        }
+        const values = [];
+        const rowsSql = batch.map((row, rowIndex) => {
+          const offset = rowIndex * 15;
+          values.push(...row);
+          return `(${offset+1},${offset+2},${offset+3},${offset+4},${offset+5},${offset+6},${offset+7},${offset+8},${offset+9},${offset+10},${offset+11},${offset+12},${offset+13},${offset+14},${offset+15},'DVF+ Cerema')`;
+        });
+        await client.query(`
+          INSERT INTO jml_dvfplus_sales
+            (mutation_id, sale_date, source_year, property_type, price, surface,
+             price_per_m2, rooms, land_surface, latitude, longitude, commune_code, parcel_ids, comparable_eligible, exclusion_reason, source)
+          VALUES ${rowsSql.join(",")}
+          ON CONFLICT (mutation_id, source_year) DO UPDATE SET
+            sale_date=EXCLUDED.sale_date, property_type=EXCLUDED.property_type,
+            price=EXCLUDED.price, surface=EXCLUDED.surface,
+            price_per_m2=EXCLUDED.price_per_m2, rooms=EXCLUDED.rooms,
+            land_surface=EXCLUDED.land_surface, latitude=EXCLUDED.latitude,
+            longitude=EXCLUDED.longitude, commune_code=EXCLUDED.commune_code,
+            parcel_ids=EXCLUDED.parcel_ids, comparable_eligible=EXCLUDED.comparable_eligible,
+            exclusion_reason=EXCLUDED.exclusion_reason, imported_at=NOW()
+        `, values);
+        stats.imported += batch.length;
         await client.query("COMMIT");
       } catch (error) {
         await client.query("ROLLBACK");
