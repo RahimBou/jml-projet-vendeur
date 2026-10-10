@@ -1982,7 +1982,7 @@ async function run(){
 
  // 2. Comparables : appel séparé.
  try{
-  const territory=await getData("/api/territory-comparables?"+base.toString(),20000,"Comparables / territoire");
+  const territory=await getData("/api/territory-comparables?"+base.toString(),35000,"Comparables / territoire");
   const comps=territory.comparables||{};
   if(!d.dpe && comps.dpe?.label){
     d.dpe=comps.dpe.label;
