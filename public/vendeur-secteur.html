@@ -1279,7 +1279,8 @@ function renderComps(c){
   const finalPrice=Number.isFinite(Number(s.price))&&Number(s.price)>0?eur(s.price):"Prix non disponible";
   const roomsText=Number.isFinite(rooms)&&rooms>0?String(Math.round(rooms))+" pièces":"";
   const dpeText=s.dpe?String(s.dpe).toUpperCase():"";
-  const characteristics=[surface?String(Math.round(surface))+" m²":"",roomsText,dpeText?"DPE "+dpeText:""].filter(Boolean).join(" · ");
+  const surfaceText=surface?(s.surfaceBasis==="surface_batie_dvf"?String(Math.round(surface))+" m² bâtis (DVF)":s.surfaceBasis==="surface_habitable"?String(Math.round(surface))+" m² habitables":String(Math.round(surface))+" m² (surface à confirmer)"):"Surface non renseignée";
+  const characteristics=[surfaceText,roomsText,dpeText?"DPE "+dpeText:""].filter(Boolean).join(" · ");
   const adjusted=Number.isFinite(Number(s.pricePerM2))?m2(s.pricePerM2):"—";
   const original=Number.isFinite(Number(s.originalPricePerM2))?m2(s.originalPricePerM2):"";
   const temporalNote=s.temporalRevalued&&original
@@ -1317,7 +1318,7 @@ function renderComps(c){
  const moreBlock=extraRows.length
   ? '<details class="comps-more"><summary>Voir les '+extraRows.length+' autres ventes analysées</summary><div class="comps-grid">'+renderCompRows(extraRows)+'</div></details>'
   : "";
- compsNode.innerHTML='<div class="comps-note"><b>Comment lire :</b> ces ventes ont des caractéristiques proches de votre bien et servent à situer son niveau de prix.'+
+ compsNode.innerHTML='<div class="comps-note"><b>Comment lire :</b> ces ventes réelles servent de repères de marché. La surface DVF correspond à la surface réelle bâtie et n’est pas forcément équivalente à la surface habitable renseignée pour votre bien ; elle n’est donc pas utilisée pour favoriser ou écarter une vente tant que les mesures ne sont pas comparables.'+
  '</div><div class="comps-grid">'+renderCompRows(visibleRows)+'</div>'+moreBlock;
 }
 function renderNearby(rows){
