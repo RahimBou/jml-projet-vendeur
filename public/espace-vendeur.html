@@ -1652,7 +1652,7 @@ function updateSellerProjectSummary(d){
    const pathMatch=location.pathname.match(/^\/espace-vendeur\/([^/]+)/);
    const token=pathMatch?decodeURIComponent(pathMatch[1]):(d.token||"");
    if(!d.submitted && !token)return;
-   if(token && (!d.city||!d.propertyType||!d.surface||!d.dpe)){
+   if(token && (!d.city||!d.address||!String(d.address||"").trim()||!d.propertyType||!d.surface||!d.dpe)){
      try{
        const rr=await fetch("/api/seller-space/"+encodeURIComponent(token),{cache:"no-store"});
        const dd=await rr.json();
