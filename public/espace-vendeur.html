@@ -1035,6 +1035,34 @@ body.guide-modal-open{overflow:hidden}
 .jml-gemini-content{overflow:auto;padding:18px 22px 24px;overscroll-behavior:contain}
 #sellerGeminiMarketPanel{margin:0!important;border:0!important;padding:0!important;background:transparent!important}
 @media(max-width:600px){.jml-gemini-modal{padding:10px}.jml-gemini-dialog{max-height:92vh;border-radius:16px}.jml-gemini-header{padding:15px}.jml-gemini-content{padding:15px}.jml-gemini-heading{font-size:19px}}
+<style id="jml-gemini-novice-layout">
+.jml-gemini-result{margin:10px 0 16px!important;padding:0!important;border:0!important;background:transparent!important}
+.jml-gemini-result-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:17px;border:1px solid #d9c79d;border-radius:15px 15px 0 0;background:linear-gradient(135deg,#f7f0df,#fffdf8)}
+.jml-gemini-result-head>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.jml-gemini-section-label{font-size:10px;letter-spacing:.12em;font-weight:900;color:#8a6b2e}
+#sellerGeminiMarketTitle{font-size:19px;line-height:1.3;color:#173b31}
+.jml-gemini-verdict{display:inline-flex;align-items:center;justify-content:center;max-width:46%;padding:8px 11px;border:1px solid #dfd0ad;border-radius:999px;background:#f3ead5;color:#624d23;font-size:11px;font-weight:800;line-height:1.35;text-align:center}
+.jml-gemini-summary{margin:0!important;padding:17px;border:1px solid #e8dfce;border-top:0;border-radius:0 0 13px 13px;background:#fff;color:#343f36;font-size:14px!important;line-height:1.75!important}
+.jml-gemini-signals-heading{display:flex;flex-direction:column;gap:4px;margin:20px 0 10px}
+.jml-gemini-signals-heading strong{font-size:16px;color:#173b31}
+.jml-gemini-signals-heading span{font-size:11px;color:#77766e;line-height:1.5}
+.jml-gemini-signals{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px!important}
+.jml-gemini-signal-card{min-width:0;padding:13px!important;border:1px solid #e5dfd3!important;border-radius:12px!important;border-top:1px solid #e5dfd3!important;background:#fff}
+.jml-gemini-signal-card:before{content:"";display:block;width:28px;height:3px;margin-bottom:10px;border-radius:4px;background:#b8944e}
+.jml-gemini-signal-card[data-status="favorable"]:before{background:#3d865b}
+.jml-gemini-signal-card[data-status="defavorable"]:before{background:#bd6c50}
+.jml-gemini-signal-card[data-status="inconnu"]:before{background:#9b9b93}
+.jml-gemini-signal-card strong{font-size:13px!important;line-height:1.45}
+.jml-gemini-signal-card p{font-size:12px!important;line-height:1.65!important}
+.jml-gemini-signal-card p:last-child{margin-top:9px!important;padding-top:8px;border-top:1px solid #eee9df;color:#244c3b!important}
+.jml-gemini-advice{margin-top:15px!important;padding:15px;border:1px solid #d8e4d8;border-radius:13px;background:#f2f7f1}
+.jml-gemini-advice strong{font-size:14px!important;color:#204b36}
+.jml-gemini-advice ul{padding-left:19px!important;margin-bottom:0}
+.jml-gemini-advice li{margin:0 0 8px!important;font-size:12px;line-height:1.65}
+.jml-gemini-unknowns{margin-top:12px!important;padding:12px;border:1px solid #e8dfce;border-radius:11px;background:#faf7ef;color:#655b46;font-size:11px;line-height:1.65}
+.jml-gemini-meta{margin-top:12px!important;padding:12px;border:1px solid #e6dfd0;border-radius:10px;background:#f7f4ed;color:#5f625a!important;font-size:10px!important;line-height:1.7!important;overflow-wrap:anywhere}
+@media(max-width:600px){.jml-gemini-result-head{flex-direction:column;gap:10px;padding:14px}.jml-gemini-verdict{max-width:100%;align-self:flex-start}#sellerGeminiMarketTitle{font-size:18px}.jml-gemini-summary{padding:14px;font-size:13px!important}.jml-gemini-signals{grid-template-columns:1fr}.jml-gemini-signal-card{padding:12px!important}.jml-gemini-advice{padding:13px}}
+</style>
 <style id="jml-gemini-evidence-readability">
 #sellerGeminiMarketMeta{margin-top:14px!important;padding:10px 12px;border:1px solid #e6dfd0;border-radius:10px;background:#f7f4ed;color:#5f625a!important;font-size:11px!important;line-height:1.6!important;overflow-wrap:anywhere}
 #sellerGeminiMarketUnknowns{padding:9px 11px;border-radius:9px;background:#f7f4ed}
@@ -1181,11 +1209,12 @@ body.guide-modal-open{overflow:hidden}
           </div>
           <p class="seller-barometer-summary" id="sellerBarometerSummary">Nous croisons les ventes DVF disponibles et les indicateurs de financement. Le diagnostic restera partiel si les données locales sont insuffisantes.</p>
           <div class="seller-gemini-cta-wrap"><button type="button" id="sellerGeminiMarketAnalyze" class="seller-gemini-cta">Interpréter les données avec Gemini</button><p class="seller-gemini-cta-help">Obtenez une lecture claire des signaux du marché et de ce qu’ils impliquent pour votre vente.</p></div>
-          <section id="sellerGeminiMarketPanel" aria-live="polite" hidden style="border:1px solid #e3dfd2;border-radius:12px;padding:14px;margin:8px 0 12px;background:#fffdf8">
-            <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><strong id="sellerGeminiMarketTitle">Analyse du marché</strong><span id="sellerGeminiMarketBadge" style="font-size:11px;font-weight:700;border-radius:20px;padding:5px 9px;background:#eee8da">Diagnostic en préparation</span></div>
-            <p id="sellerGeminiMarketSummary" style="font-size:13px;line-height:1.65;margin:10px 0"></p>
-            <div id="sellerGeminiMarketSignals" style="display:grid;gap:9px"></div><div id="sellerGeminiMarketAdvice" style="margin-top:12px"></div>
-            <div id="sellerGeminiMarketUnknowns" style="margin-top:10px;color:#68685f;font-size:11px;line-height:1.5"></div><div id="sellerGeminiMarketMeta" style="margin-top:10px;color:#818077;font-size:10px"></div>
+          <section id="sellerGeminiMarketPanel" class="jml-gemini-result" aria-live="polite" hidden>
+            <div class="jml-gemini-result-head"><div><span class="jml-gemini-section-label">EN CLAIR</span><strong id="sellerGeminiMarketTitle">Analyse du marché</strong></div><span id="sellerGeminiMarketBadge" class="jml-gemini-verdict">Diagnostic en préparation</span></div>
+            <p id="sellerGeminiMarketSummary" class="jml-gemini-summary"></p>
+            <div class="jml-gemini-signals-heading"><strong>Ce que montrent les indicateurs</strong><span>Les points importants, expliqués simplement</span></div>
+            <div id="sellerGeminiMarketSignals" class="jml-gemini-signals"></div><div id="sellerGeminiMarketAdvice" class="jml-gemini-advice"></div>
+            <div id="sellerGeminiMarketUnknowns" class="jml-gemini-unknowns"></div><div id="sellerGeminiMarketMeta" class="jml-gemini-meta"></div>
           </section>
           <div class="seller-barometer-grid" id="sellerBarometerGrid" aria-live="polite">
             <div class="seller-barometer-row"><span class="seller-barometer-dot"></span><div><strong>Prix locaux</strong><small>Recherche des données communales…</small></div><b>En cours</b></div>
@@ -2660,10 +2689,10 @@ function updateSellerProjectSummary(d){
       const a=result.analysis, labels={plutot_favorable:"Signaux plutôt favorables",signaux_contrastes:"Signaux contrastés",plus_difficile:"Conditions potentiellement plus difficiles",diagnostic_partiel:"Diagnostic partiel"};
       const colors={plutot_favorable:"#e5f2e8",signaux_contrastes:"#f6edda",plus_difficile:"#f8e7e2",diagnostic_partiel:"#eee8da"};
       aiTitle.textContent=a.title||"Lecture du marché";aiBadge.textContent=labels[a.verdict]||labels.diagnostic_partiel;aiBadge.style.background=colors[a.verdict]||colors.diagnostic_partiel;aiSummary.textContent=a.summary;
-      (a.signals||[]).forEach(s=>{const card=document.createElement("div");card.style.cssText="border-top:1px solid #e8e4d9;padding-top:9px";
-        appendAiText(card,"strong",s.title,"display:block;font-size:12px;color:#34372f");
-        appendAiText(card,"p",s.finding,"margin:5px 0;font-size:12px;line-height:1.55;color:#55564e");
-        if(s.implication)appendAiText(card,"p",s.implication,"margin:3px 0;font-size:12px;line-height:1.55;color:#55564e");aiSignals.appendChild(card);});
+      (a.signals||[]).forEach(s=>{const card=document.createElement("div");card.className="jml-gemini-signal-card";card.dataset.status=["favorable","defavorable","inconnu"].includes(s.status)?s.status:"mixte";
+        appendAiText(card,"strong",s.title,"display:block;color:#34372f");
+        appendAiText(card,"p",s.finding,"margin:7px 0 0;color:#55564e");
+        if(s.implication)appendAiText(card,"p",s.implication,"margin:3px 0;color:#244c3b");aiSignals.appendChild(card);});
       if((a.sellerAdvice||[]).length){appendAiText(aiAdvice,"strong","Ce que cela implique pour votre vente","display:block;font-size:12px");
         const list=document.createElement("ul");list.style.cssText="padding-left:18px;font-size:12px;line-height:1.6";a.sellerAdvice.forEach(x=>appendAiText(list,"li",x));aiAdvice.appendChild(list);}
       if((a.unknowns||[]).length)aiUnknowns.textContent="À confirmer : "+a.unknowns.join(" · ");
