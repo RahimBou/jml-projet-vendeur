@@ -926,7 +926,7 @@ async function getCommuneMarketData(city,code){
           latitude AS lat,longitude AS lon,address,street,postal_code AS postal,commune_code AS code,
           commune_name AS city,price_per_m2::float8 AS "pricePerM2",source
           FROM jml_dvf_sales WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '24 months'
-          ORDER BY sale_date DESC LIMIT 12`,[communeCode]);
+          ORDER BY sale_date DESC LIMIT 500`,[communeCode]);
         const history=await db(`SELECT EXTRACT(YEAR FROM sale_date)::int AS year,COUNT(*)::int AS transactions,
           percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2) AS value
           FROM jml_dvf_sales WHERE commune_code=$1 GROUP BY EXTRACT(YEAR FROM sale_date) ORDER BY year`,[communeCode]);
