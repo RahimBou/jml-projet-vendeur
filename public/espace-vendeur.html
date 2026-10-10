@@ -1478,6 +1478,9 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
     const data=await response.json();
     if(!response.ok||!data.ok)throw new Error(data.error||"Données territoriales indisponibles");
     const m=data.market||{};
+    // L’API renvoie les comparables dans market.comparables (et non à la racine).
+    // Garder les deux formes pour rester compatible avec les anciens déploiements.
+    const comps=data.comparables||m.comparables||{};
     const ref=data.sellerReference||{};
     // Source unique partagée avec les onglets : évite qu'un ancien script remplace les cartes.
     window.jmlSellerTerritoryData=data;
@@ -1486,13 +1489,13 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
     const type=String(d.propertyType||"").toLowerCase();
     const typePrice=/appartement|studio|duplex|loft/i.test(type)?m.apartmentPrice:/maison/i.test(type)?m.housePrice:/terrain/i.test(type)?m.terrainPrice:m.communalPrice;
     const transactions=Number(m.transactions||0);
-    const matches=Number(data.comparables?.matchCount||0);
+    const matches=Number(comps.matchCount||0);
     const typeLabel=d.propertyType||"Bien";
     if(marketCards){
-      const localM2=Number(data.comparables?.weightedPriceM2);
+      const localM2=Number(comps.weightedPriceM2);
       const localLabel=Number.isFinite(localM2)&&localM2>0?formatPrice(localM2):"Données insuffisantes";
       const localDetail=matches
-        ?matches.toLocaleString("fr-FR")+" vente(s) comparable(s)"+(data.comparables?.radiusKm?" · rayon "+String(data.comparables.radiusKm).replace(".",",")+" km":"")
+        ?matches.toLocaleString("fr-FR")+" vente(s) comparable(s)"+(comps.radiusKm?" · rayon "+String(comps.radiusKm).replace(".",",")+" km":"")
         :"Adresse ou ventes comparables à préciser";
       marketCards.innerHTML=[
         ["Médiane communale",formatPrice(m.communalPrice),m.period||"Période DVF disponible"],
@@ -1735,7 +1738,7 @@ function updateSellerProjectSummary(d){
     const data=window.jmlSellerTerritoryData;
     const x=data&&data.market?data.market:marketData;
     if(!x)return;
-    const comparables=data&&data.comparables?data.comparables:{};
+    const comparables=data&&(data.comparables||data.market?.comparables)?(data.comparables||data.market.comparables):{};
     const selected={
       communal:{label:"Médiane communale",price:x.communalPrice,note:x.period||"DVF · période disponible"},
       house:{label:"Maison",price:x.housePrice,note:"Médiane DVF des maisons de la commune"},
@@ -1763,7 +1766,7 @@ function updateSellerProjectSummary(d){
     if(!facts)return;
     const d=read();
     const market=(data&&data.market)||(window.jmlSellerTerritoryData&&window.jmlSellerTerritoryData.market)||marketData||{};
-    const comp=(data&&data.comparables)||(window.jmlSellerTerritoryData&&window.jmlSellerTerritoryData.comparables)||{};
+    const comp=(data&&(data.comparables||data.market?.comparables))||(window.jmlSellerTerritoryData&&(window.jmlSellerTerritoryData.comparables||window.jmlSellerTerritoryData.market?.comparables))||market.comparables||{};
     const escText=esc;
     const fmt=v=>Number.isFinite(Number(v))&&Number(v)>0?Number(v).toLocaleString("fr-FR")+" €/m²":"Données insuffisantes";
     const type=String(d.propertyType||"Bien immobilier");
