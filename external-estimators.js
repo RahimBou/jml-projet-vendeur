@@ -276,6 +276,27 @@ async function readSource(name,url,propertyType,surface,parser){
   };
 }
 
+function parseNotairesBenchmark(text, propertyType) {
+  const wanted = /appartement|studio|duplex|loft/i.test(propertyType || "") ? "appartements?" : "maisons?";
+  const heading = new RegExp("Prix\\\\s*m(?:²|2)\\\\s*m[eé]dian\\\\s*des\\\\s*" + wanted + "\\\\s*\\\\((\\\\d[\\\\d\\\\s\\\\u00a0\\\\u202f]*)\\\\s*ventes?\\\\)", "i");
+  const match = String(text || "").match(heading);
+  if (!match || !match.index) return null;
+  const segment = String(text).slice(match.index, match.index + 500);
+  const amounts = [...segment.matchAll(/(\\d[\\d\\s\\u00a0\\u202f]*)\\s*€/g)]
+    .map(x => numberFrom(x[1])).filter(x => Number.isFinite(x) && x > 100 && x < 20000);
+  // The page presents three price markers below the labelled median heading.
+  // Use the central marker only when the three-value pattern is present.
+  if (amounts.length < 3) return null;
+  const count = numberFrom(match[1]);
+  const median = amounts[1];
+  if (!Number.isFinite(median) || median <= 0) return null;
+  return {
+    type: wanted === "appartements?" ? "Appartement" : "Maison",
+    priceM2: median,
+    comparablesCount: Number.isFinite(count) ? count : null
+  };
+}
+
 async function getPublicMarketBenchmarks({city,address,propertyType,surface,postalCode,communeCode,rooms,dpe,condition,terrain}={}){
   const cleanCity=normalizeText(city);
   const postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
@@ -285,6 +306,7 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
       if(!address) return null;
       return await getGeoRegistryEstimate({address,city:cleanCity,postalCode,propertyType,surface,rooms,dpe,condition,terrain});
     })(),
+    readSource("Notaires de France", "https://www.immobilier.notaires.fr/fr/prix-immobilier/pub-services/barometre-data/tendances?codeInsee=08&neuf=A&typeLocalisation=DEPARTEMENT", propertyType, surface, parseNotairesBenchmark).then(row => row ? {...row, quality:"notarial_median", note:"Repère médian issu du baromètre immobilier des Notaires de France pour le département des Ardennes ; période et champ à vérifier sur la source avant comparaison avec DVF."} : null),
     readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
       const direct=pairForType(text,type);
       if(direct) return direct;
@@ -341,4 +363,4 @@ async function getPublicMarketBenchmarks({city,address,propertyType,surface,post
   return results.map(x=>x.status==="fulfilled"?x.value:null).filter(Boolean);
 }
 
-module.exports={getPublicMarketBenchmarks,meilleursAgentsUrl,papUrl,efficityUrl,selogerUrl};
+module.exports={getPublicMarketBenchmarks,meilleursAgentsUrl,papUrl,efficityUrl,selogerUrl,parseNotairesBenchmark};
