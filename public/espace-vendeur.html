@@ -1092,6 +1092,10 @@ body.guide-modal-open{overflow:hidden}
 .jml-gemini-meta{margin-top:12px!important;padding:12px;border:1px solid #e6dfd0;border-radius:10px;background:#f7f4ed;color:#5f625a!important;font-size:10px!important;line-height:1.7!important;overflow-wrap:anywhere}
 @media(max-width:600px){.jml-gemini-result-head{flex-direction:column;gap:10px;padding:14px}.jml-gemini-verdict{max-width:100%;align-self:flex-start}#sellerGeminiMarketTitle{font-size:18px}.jml-gemini-summary{padding:14px;font-size:13px!important}.jml-gemini-signals{grid-template-columns:1fr}.jml-gemini-signal-card{padding:12px!important}.jml-gemini-advice{padding:13px}}
 </style>
+<style id="jml-gemini-verdict-colors">
+.jml-gemini-verdict{max-width:none!important;font-weight:800!important;border-width:1px!important;border-style:solid!important}
+@media(max-width:600px){.jml-gemini-verdict{align-self:flex-start;max-width:100%!important;font-size:11px!important}}
+</style>
 <style id="jml-gemini-final-layout">
 /* Équilibre visuel de la fenêtre Gemini, sans toucher aux sections extérieures */
 @media(min-width:760px){
@@ -2727,9 +2731,10 @@ function updateSellerProjectSummary(d){
       const response=await fetch("/api/market-climate/analysis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),cache:"no-store"});
       const result=await response.json();if(!response.ok||!result.ok||!result.analysis)throw new Error(result.error||"Analyse indisponible");
       aiLoading.classList.remove("is-visible");
-      const a=result.analysis, labels={plutot_favorable:"Signaux plutôt favorables",signaux_contrastes:"Signaux contrastés",plus_difficile:"Conditions potentiellement plus difficiles",diagnostic_partiel:"Diagnostic partiel"};
-      const colors={plutot_favorable:"#e5f2e8",signaux_contrastes:"#f6edda",plus_difficile:"#f8e7e2",diagnostic_partiel:"#eee8da"};
-      aiTitle.textContent=a.title||"Lecture du marché";aiBadge.textContent=labels[a.verdict]||labels.diagnostic_partiel;aiBadge.style.background=colors[a.verdict]||colors.diagnostic_partiel;aiSummary.textContent=a.summary;
+      const a=result.analysis, labels={plutot_favorable:"Plutôt favorable à la vente",signaux_contrastes:"Marché contrasté · prudence",plus_difficile:"Conditions plus difficiles",diagnostic_partiel:"Données insuffisantes pour conclure"};
+      const verdictStyles={plutot_favorable:{background:"#e2f2e7",color:"#17613a",border:"#8dc6a0"},signaux_contrastes:{background:"#fff0cf",color:"#81500c",border:"#e3bd68"},plus_difficile:{background:"#fbe6e4",color:"#9b2f2a",border:"#e2a09a"},diagnostic_partiel:{background:"#ecebe7",color:"#57574f",border:"#c9c7bf"}};
+      const verdictStyle=verdictStyles[a.verdict]||verdictStyles.diagnostic_partiel;
+      aiTitle.textContent=a.title||"Lecture du marché";aiBadge.textContent=labels[a.verdict]||labels.diagnostic_partiel;aiBadge.style.background=verdictStyle.background;aiBadge.style.color=verdictStyle.color;aiBadge.style.borderColor=verdictStyle.border;aiBadge.style.borderWidth="1px";aiBadge.style.borderStyle="solid";aiBadge.style.maxWidth="none";aiBadge.style.fontSize="12px";aiBadge.style.fontWeight="800";aiBadge.style.padding="9px 12px";aiSummary.textContent=a.summary;
       (a.signals||[]).forEach(s=>{const card=document.createElement("div");card.className="jml-gemini-signal-card";card.dataset.status=["favorable","defavorable","inconnu"].includes(s.status)?s.status:"mixte";
         appendAiText(card,"strong",s.title,"display:block;color:#34372f");
         appendAiText(card,"p",s.finding,"margin:7px 0 0;color:#55564e");
