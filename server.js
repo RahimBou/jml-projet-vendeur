@@ -2267,7 +2267,7 @@ app.get("/api/market-climate",async(req,res)=>{
     const rate=Number(latest[3].replace(",",".")), previousRate=previous?Number(previous[3].replace(",",".")):null;
     if(!Number.isFinite(rate)||rate<0.5||rate>10)throw new Error("Valeur de taux officielle invalide");
     const delta=Number.isFinite(previousRate)?Math.round((rate-previousRate)*100):null;
-    const publicationMatch=plain.match(/Dernière mise à jour\\s*:?\\s*([0-9]{1,2}\\s+[A-Za-zéûô]+\\s+20\\d{2})/i);
+    const publicationMatch=plain.match(/Dernière mise à jour\s*:?\s*([0-9]{1,2}\s+[A-Za-zéûô]+\s+20\d{2})/i);
     const data={
       ok:true,source:"Banque de France · Webstat",sourceUrl:seriesUrl,
       period,publishedAt:publicationMatch?.[1]||null,
