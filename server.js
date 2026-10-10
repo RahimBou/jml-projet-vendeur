@@ -2522,7 +2522,7 @@ app.post("/api/market-climate/analysis", async (req,res) => {
       communeCode:resolvedForContext?.code||"",
       propertyType:selectedType
     });
-    const postalCode=externalContext?.territory?.postalCodes?.[0]||txt(territoryRaw.city,100).match(/\\b\\d{5}\\b/)?.[0]||"";
+    const postalCode=externalContext?.territory?.postalCodes?.[0]||txt(territoryRaw.city,100).match(/\b\d{5}\b/)?.[0]||"";
     if(postalCode){
       const benchmarkPromise=getPublicMarketBenchmarks({
         city:externalContext?.territory?.commune||resolvedForContext?.nom||txt(territoryRaw.city,100),
