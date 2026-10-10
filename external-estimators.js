@@ -278,14 +278,16 @@ async function readSource(name,url,propertyType,surface,parser){
 
 function parseNotairesBenchmark(text, propertyType) {
   const wanted = /appartement|studio|duplex|loft/i.test(propertyType || "") ? "appartements?" : "maisons?";
-  const heading = new RegExp("Prix\\\\s*m(?:²|2)\\\\s*m[eé]dian\\\\s*des\\\\s*" + wanted + "\\\\s*\\\\((\\\\d[\\\\d\\\\s\\\\u00a0\\\\u202f]*)\\\\s*ventes?\\\\)", "i");
-  const match = String(text || "").match(heading);
-  if (!match || !match.index) return null;
-  const segment = String(text).slice(match.index, match.index + 500);
+  const source = String(text || "");
+  const headingPattern = wanted === "appartements?"
+    ? /Prix\\s*m(?:²|2)\\s*m[eé]dian\\s*des\\s*appartements?\\s*\\((\\d[\\d\\s\\u00a0\\u202f]*)\\s*ventes?\\)/i
+    : /Prix\\s*m(?:²|2)\\s*m[eé]dian\\s*des\\s*maisons?\\s*\\((\\d[\\d\\s\\u00a0\\u202f]*)\\s*ventes?\\)/i;
+  const match = source.match(headingPattern);
+  if (!match || match.index == null) return null;
+  const segment = source.slice(match.index, match.index + 500);
   const amounts = [...segment.matchAll(/(\\d[\\d\\s\\u00a0\\u202f]*)\\s*€/g)]
     .map(x => numberFrom(x[1])).filter(x => Number.isFinite(x) && x > 100 && x < 20000);
-  // The page presents three price markers below the labelled median heading.
-  // Use the central marker only when the three-value pattern is present.
+  // Only accept a clearly labelled notarial median with the expected three price markers.
   if (amounts.length < 3) return null;
   const count = numberFrom(match[1]);
   const median = amounts[1];
