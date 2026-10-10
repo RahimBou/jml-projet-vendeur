@@ -2143,7 +2143,10 @@ async function buildComparableSales(market,property){
   }
 
   candidates.sort((a,b)=>b.weight-a.weight||b.score-a.score);
-  const top40=candidates.slice(0,40);
+  // Toutes les candidates ayant passé les filtres de type, de distance, de date
+  // et de cohérence sont conservées pour le calcul. Aucun plafond arbitraire de 40.
+  // La liste reste triée par poids pour afficher les meilleures références en premier.
+  const top40=candidates;
   // Le DPE est un enrichissement secondaire : il ne doit jamais bloquer le calcul DVF.
   // On limite donc la vérification aux 4 meilleurs comparables et on la lance en une seule vague.
   // Le prix, le minimum DVF et la valeur centrale sont déjà calculés à partir des données DVF.
@@ -2266,6 +2269,7 @@ async function buildComparableSales(market,property){
       externalRows,
       candidateCount:candidates.length,
       top40:top40.length,
+      analyzedCandidates:candidates.length,
       valuationCount:valuationSales.length,
       strictCount,
       outlierCount,
