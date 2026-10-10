@@ -1151,7 +1151,7 @@ body.guide-modal-open{overflow:hidden}
           <div class="seller-barometer-grid" id="sellerBarometerGrid" aria-live="polite">
             <div class="seller-barometer-row"><span class="seller-barometer-dot"></span><div><strong>Prix locaux</strong><small>Recherche des données communales…</small></div><b>En cours</b></div>
           </div>
-          <div class="seller-barometer-foot">Un indicateur national ne prédit pas le prix de votre bien. Les annonces ne sont pas des ventes et une période favorable ne garantit pas une vente.</div>
+          <div class="seller-barometer-foot">Repères locaux : données DVF disponibles, à interpréter selon leur période et leur périmètre. Repères nationaux : financement Banque de France, qui ne mesure pas directement la demande dans votre commune. Les annonces ne sont pas des ventes ; aucun délai ni prix de vente n’est garanti.</div>
         </section>
       </section>
 
@@ -2479,22 +2479,24 @@ function updateSellerProjectSummary(d){
 .seller-barometer-head p{margin:0;color:#72756e;font-size:11px;line-height:1.5}
 .seller-barometer-verdict{flex-shrink:0;max-width:155px;padding:7px 10px;border:1px solid #e7d7b7;border-radius:999px;background:#fff8e9;color:#866125;font-size:10px;font-weight:800;text-align:center}
 .seller-barometer-summary{margin:13px 0;padding:11px 12px;border-left:3px solid #b8944e;border-radius:0 10px 10px 0;background:#fff;color:#454d45;font-size:12px;line-height:1.6}
-.seller-barometer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.seller-barometer-row{display:flex;align-items:flex-start;gap:8px;min-width:0;padding:10px;border:1px solid #eae4d9;border-radius:12px;background:#fff}
-.seller-barometer-dot{width:8px;height:8px;flex:0 0 8px;margin-top:4px;border-radius:50%;background:#aaa}
+.seller-barometer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
+.seller-barometer-row{display:grid;grid-template-columns:9px minmax(0,1fr);align-content:start;align-items:start;column-gap:9px;row-gap:7px;min-width:0;padding:13px;border:1px solid #e5dfd3;border-radius:12px;background:#fff}
+.seller-barometer-dot{width:8px;height:8px;flex:0 0 8px;margin-top:5px;border-radius:50%;background:#aaa}
 .seller-barometer-row[data-state="positive"] .seller-barometer-dot{background:#3d865b}
 .seller-barometer-row[data-state="negative"] .seller-barometer-dot{background:#bd6c50}
 .seller-barometer-row[data-state="mixed"] .seller-barometer-dot{background:#c49a45}
-.seller-barometer-row>div{flex:1;min-width:0}
+.seller-barometer-row>div{min-width:0}
 .seller-barometer-row strong,.seller-barometer-row small{display:block}
-.seller-barometer-row strong{color:#233a30;font-size:11px;line-height:1.35}
-.seller-barometer-row small{margin-top:4px;color:#767970;font-size:10px;line-height:1.45}
-.seller-barometer-row b{max-width:100px;color:#676b62;font-size:9px;line-height:1.35;text-align:right}
-.seller-barometer-row[data-state="positive"] b{color:#287448}
-.seller-barometer-row[data-state="negative"] b{color:#a64e36}
-.seller-barometer-row[data-state="mixed"] b{color:#8a6826}
-.seller-barometer-foot{margin-top:12px;color:#818077;font-size:9px;line-height:1.5}
-@media(max-width:540px){.seller-market-barometer{padding:13px}.seller-barometer-head{display:block}.seller-barometer-verdict{display:inline-block;margin-top:9px}.seller-barometer-grid{grid-template-columns:1fr}.seller-barometer-row b{max-width:115px}}
+.seller-barometer-row strong{color:#233a30;font-size:12px;line-height:1.4;overflow-wrap:anywhere}
+.seller-barometer-row small{margin-top:6px;color:#62675f;font-size:11px;line-height:1.55;overflow-wrap:anywhere}
+.seller-barometer-row b{grid-column:2;justify-self:start;max-width:100%;padding:4px 7px;border-radius:7px;background:#f4f1e9;color:#676b62;font-size:10px;line-height:1.4;text-align:left;overflow-wrap:anywhere}
+.seller-barometer-row[data-state="positive"] b{background:#eaf4ec;color:#287448}
+.seller-barometer-row[data-state="negative"] b{background:#faeee9;color:#a64e36}
+.seller-barometer-row[data-state="mixed"] b{background:#f8f1df;color:#8a6826}
+.seller-barometer-foot{margin-top:12px;padding:10px 12px;border-radius:9px;background:#f8f5ee;color:#62675f;font-size:10px;line-height:1.6}
+@media(min-width:761px) and (max-width:1100px){.seller-barometer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-barometer-row{padding:12px}}
+@media(max-width:760px){.seller-barometer-grid{grid-template-columns:1fr}.seller-barometer-row{padding:14px}.seller-barometer-row strong{font-size:13px}.seller-barometer-row small{font-size:12px;line-height:1.6}.seller-barometer-row b{font-size:11px}}
+@media(max-width:540px){.seller-market-barometer{padding:13px}.seller-barometer-head{display:block}.seller-barometer-verdict{display:inline-block;margin-top:9px}}
 </style>
 <script id="jml-market-barometer-script">
 (function(){
