@@ -90,6 +90,37 @@ app.get("/api/bpe-status", async (req,res) => {
     res.status(200).json({ok:false,ready:false,total:0,reason:String(error?.message||error)});
   }
 });
+app.get("/api/dvf-quality", async (req,res) => {
+  res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+  const sourceUrl="https://files.data.gouv.fr/geo-dvf/latest/csv/";
+  if(!pool) return res.status(503).json({ok:false,ready:false,reason:"database_unavailable",source:"DVF / data.gouv.fr"});
+  try{
+    const years=await db(`SELECT source_year AS year, COUNT(*)::int AS retained_sales,
+      COUNT(DISTINCT mutation_id)::int AS distinct_mutations,
+      MIN(sale_date)::date AS first_sale_date, MAX(sale_date)::date AS last_sale_date,
+      COUNT(*) FILTER (WHERE price<=0 OR surface<=0 OR price_per_m2<=0)::int AS invalid_price_rows,
+      COUNT(*) FILTER (WHERE price_per_m2<100 OR price_per_m2>20000)::int AS suspicious_price_per_m2_rows,
+      COUNT(*) FILTER (WHERE latitude IS NULL OR longitude IS NULL OR latitude NOT BETWEEN 41 AND 52 OR longitude NOT BETWEEN -6 AND 10)::int AS invalid_coordinates
+      FROM jml_dvf_sales GROUP BY source_year ORDER BY source_year DESC`);
+    const dupes=await db(`SELECT COUNT(*)::int AS duplicate_groups FROM (
+      SELECT source_year, mutation_id FROM jml_dvf_sales GROUP BY source_year,mutation_id HAVING COUNT(*)>1
+    ) d`);
+    const totals=await db(`SELECT COUNT(*)::int AS retained_sales, COUNT(DISTINCT mutation_id)::int AS distinct_mutations,
+      MIN(sale_date)::date AS first_sale_date, MAX(sale_date)::date AS last_sale_date,
+      COUNT(*) FILTER (WHERE price_per_m2<100 OR price_per_m2>20000)::int AS suspicious_price_per_m2_rows
+      FROM jml_dvf_sales`);
+    const yearRows=years.rows.map(r=>({...r,year:Number(r.year),retained_sales:Number(r.retained_sales),distinct_mutations:Number(r.distinct_mutations),invalid_price_rows:Number(r.invalid_price_rows),suspicious_price_per_m2_rows:Number(r.suspicious_price_per_m2_rows),invalid_coordinates:Number(r.invalid_coordinates)}));
+    return res.json({ok:true,ready:yearRows.length>0,source:"DVF — data.gouv.fr",sourceUrl,checkedAt:new Date().toISOString(),
+      totals:{...totals.rows[0],retained_sales:Number(totals.rows[0]?.retained_sales||0),distinct_mutations:Number(totals.rows[0]?.distinct_mutations||0),suspicious_price_per_m2_rows:Number(totals.rows[0]?.suspicious_price_per_m2_rows||0)},
+      duplicateMutationGroups:Number(dupes.rows[0]?.duplicate_groups||0),years:yearRows,
+      interpretation:"Contrôle technique de la base importée, pas une validation automatique de la justesse d’une estimation. Une mutation peut contenir plusieurs biens ; les prix atypiques doivent être examinés, pas supprimés automatiquement.",
+      qualityRules:{suspiciousPricePerM2Below:100,suspiciousPricePerM2Above:20000,coordinatesExpected:"France métropolitaine approximative"}
+    });
+  }catch(error){
+    console.error("JML DVF quality check:",String(error?.message||error));
+    return res.status(503).json({ok:false,ready:false,source:"DVF — data.gouv.fr",error:"Contrôle qualité DVF indisponible. Vérifier la présence et la structure de la table jml_dvf_sales."});
+  }
+});
 app.get("/api/territory-version", (req,res) => {
   res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
   res.status(200).json({
