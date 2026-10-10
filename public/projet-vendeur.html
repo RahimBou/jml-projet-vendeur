@@ -80,10 +80,17 @@ form{display:grid;grid-template-columns:1fr;gap:18px 40px}
 }
 </style>
 </style>
-<style id="jml-full-property-address-v1">
+<style id="jml-full-property-address-v2">
 #form .address-field{grid-column:1/-1;min-width:0}
 #form .address-field .in{width:100%}
 #form .address-hint{display:block;margin-top:6px;color:#6b6f6a;font-size:11px;line-height:1.4}
+#form .address-autocomplete{position:relative;width:100%;min-width:0}
+#form .address-suggestions{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:1000;max-height:260px;overflow-y:auto;background:#fffdf8;border:1px solid #d9c89f;border-radius:10px;box-shadow:0 12px 30px rgba(15,43,34,.18);padding:5px}
+#form .address-suggestions[hidden]{display:none}
+#form .address-suggestion{display:block;width:100%;padding:11px 12px;text-align:left;border:0;border-radius:7px;background:transparent;color:#173b31;font:inherit;font-size:13px;line-height:1.35;cursor:pointer}
+#form .address-suggestion:hover,#form .address-suggestion:focus{background:#f3ead7;outline:none}
+#form .address-suggestion small{display:block;margin-top:3px;color:#6b6f6a;font-size:11px}
+#form .address-status{display:block;padding:10px 12px;color:#6b6f6a;font-size:12px}
 @media(max-width:799px){#form .address-field{grid-column:1}}
 </style>
 <style id="ardenne-identity-final">
@@ -965,14 +972,13 @@ body.seller-modal-open{overflow:hidden}
   </div>
   <form id="form">
     <div class="f"><span class="n">01</span><div><label for="nom">Votre nom et prénom <i>*</i></label><div class="in"><input id="nom" required placeholder="Nom / prénom" autocomplete="name"></div></div></div>
-    <div class="f"><span class="n">02</span><div><label for="ville">Commune de votre bien <i>*</i></label><div class="in"><input id="ville" value="Charleville-Mézières" required autocomplete="address-level2"></div></div></div>
-    <div class="f address-field"><span class="n">03</span><div><label for="adresse">Adresse complète du bien <i>*</i></label><div class="in"><input id="adresse" type="text" required autocomplete="street-address" placeholder="Numéro et nom de rue"></div><small class="address-hint">Pour rechercher les ventes réalisées à proximité de votre bien.</small></div></div>
-    <div class="f"><span class="n">04</span><div><label for="tel">Votre téléphone</label><div class="in"><input id="tel" type="tel" placeholder="Votre numéro de téléphone" autocomplete="tel"></div></div></div>
-    <div class="f"><span class="n">05</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
-    <div class="f"><span class="n">06</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
-    <div class="f"><span class="n">07</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
-    <div class="f compact-property" id="surfaceField"><span class="n">08</span><div><label for="surface" id="surfaceLabel">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div></div>
-    <div class="f compact-property" id="piecesField"><span class="n">09</span><div><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div></div>
+    <div class="f address-field"><span class="n">02</span><div><label for="adresse">Adresse du bien <i>*</i></label><div class="address-autocomplete"><div class="in"><input id="adresse" type="text" required autocomplete="street-address" placeholder="Commencez par le numéro et la rue" aria-autocomplete="list" aria-controls="addressSuggestions" aria-expanded="false"></div><div id="addressSuggestions" class="address-suggestions" role="listbox" hidden></div></div><input id="ville" type="hidden" value=""><small class="address-hint">Saisissez le numéro et la rue, puis sélectionnez l’adresse exacte dans la liste.</small></div></div>
+    <div class="f"><span class="n">03</span><div><label for="tel">Votre téléphone</label><div class="in"><input id="tel" type="tel" placeholder="Votre numéro de téléphone" autocomplete="tel"></div></div></div>
+    <div class="f"><span class="n">04</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
+    <div class="f"><span class="n">05</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
+    <div class="f"><span class="n">06</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
+    <div class="f compact-property" id="surfaceField"><span class="n">07</span><div><label for="surface" id="surfaceLabel">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div></div>
+    <div class="f compact-property" id="piecesField"><span class="n">08</span><div><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div></div>
     <div class="extra edit-only-extra" id="extra" aria-hidden="true">
   <div class="extra-section-title full-extra">INFORMATIONS COMPLÉMENTAIRES — MODIFICATION</div>
   <div class="extra-field" id="terrainField"><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div>
@@ -1084,6 +1090,106 @@ async function loadEditSellerSpace(){
 }
 if(editToken){document.body.classList.add("edit-mode");}
 loadEditSellerSpace();
+
+// Autocomplétion d'adresse : l'utilisateur doit sélectionner un résultat officiel.
+(function(){
+  var input=document.getElementById('adresse');
+  var cityInput=document.getElementById('ville');
+  var list=document.getElementById('addressSuggestions');
+  var form=document.getElementById('form');
+  if(!input||!cityInput||!list||!form)return;
+  var selectedAddress=null;
+  var timer=null;
+  var controller=null;
+  var sequence=0;
+  function closeList(){
+    list.hidden=true;
+    input.setAttribute('aria-expanded','false');
+  }
+  function showStatus(message){
+    list.replaceChildren();
+    var status=document.createElement('div');
+    status.className='address-status';
+    status.textContent=message;
+    list.appendChild(status);
+    list.hidden=false;
+    input.setAttribute('aria-expanded','true');
+  }
+  function chooseSuggestion(item){
+    selectedAddress=item;
+    input.value=item.label;
+    cityInput.value=item.city||'';
+    input.setCustomValidity('');
+    closeList();
+  }
+  input.addEventListener('input',function(){
+    selectedAddress=null;
+    cityInput.value='';
+    input.setCustomValidity('');
+    if(timer)clearTimeout(timer);
+    if(controller)controller.abort();
+    var query=input.value.trim();
+    if(query.length<3){closeList();return;}
+    showStatus('Recherche des adresses…');
+    var requestId=++sequence;
+    timer=setTimeout(async function(){
+      controller=new AbortController();
+      try{
+        var response=await fetch('/api/address-suggest?q='+encodeURIComponent(query),{cache:'no-store',signal:controller.signal});
+        var data=await response.json().catch(function(){return {};});
+        if(requestId!==sequence)return;
+        if(!response.ok||!data.ok)throw new Error(data.error||'Recherche indisponible.');
+        var suggestions=Array.isArray(data.suggestions)?data.suggestions:[];
+        list.replaceChildren();
+        if(!suggestions.length){showStatus('Aucune adresse trouvée. Essayez avec le numéro et le nom de rue.');return;}
+        suggestions.forEach(function(item){
+          var option=document.createElement('button');
+          option.type='button';
+          option.className='address-suggestion';
+          option.setAttribute('role','option');
+          option.textContent=item.label;
+          var detail=document.createElement('small');
+          detail.textContent=[item.postcode,item.city].filter(Boolean).join(' · ');
+          option.appendChild(detail);
+          option.addEventListener('click',function(){chooseSuggestion(item);});
+          list.appendChild(option);
+        });
+        list.hidden=false;
+        input.setAttribute('aria-expanded','true');
+      }catch(error){
+        if(error.name==='AbortError')return;
+        if(requestId===sequence)showStatus('Le service d’adresses est momentanément indisponible. Réessayez.');
+      }
+    },300);
+  });
+  input.addEventListener('keydown',function(event){
+    if(event.key==='Escape'){closeList();return;}
+    if(event.key==='ArrowDown'&&!list.hidden){
+      var first=list.querySelector('button');
+      if(first){event.preventDefault();first.focus();}
+    }
+  });
+  list.addEventListener('keydown',function(event){
+    var options=Array.from(list.querySelectorAll('button'));
+    var index=options.indexOf(document.activeElement);
+    if(event.key==='ArrowDown'&&index<options.length-1){event.preventDefault();options[index+1].focus();}
+    else if(event.key==='ArrowUp'){event.preventDefault();if(index>0)options[index-1].focus();else input.focus();}
+    else if(event.key==='Escape'){closeList();input.focus();}
+  });
+  document.addEventListener('click',function(event){
+    if(!event.target.closest('.address-autocomplete'))closeList();
+  });
+  form.addEventListener('submit',function(event){
+    if(editToken)return;
+    if(!selectedAddress||input.value.trim()!==selectedAddress.label||!cityInput.value){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      input.setCustomValidity('Choisissez une adresse dans la liste proposée pour confirmer la localisation du bien.');
+      input.reportValidity();
+      input.focus();
+    }
+  },true);
+})();
 
 document.getElementById('form').onsubmit=async function(ev){
   ev.preventDefault();
