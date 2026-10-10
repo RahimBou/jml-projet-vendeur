@@ -1832,12 +1832,24 @@ async function buildComparableSales(market,property){
   const targetSurface=isLand?landSurface:surface;
 
   const addressProvided=Boolean(String(property?.address||"").trim());
-  let origin=await geocodeAddress(property?.address,city);
+  // Géocoder l’adresse et résoudre la commune sont deux opérations indépendantes.
+  // Les lancer en parallèle évite d’additionner leurs délais avant la recherche DVF.
+  let origin=null, commune=null;
+  const [geocodedOrigin,resolvedCommune]=await Promise.all([
+    geocodeAddress(property?.address,city).catch(error=>{
+      console.warn("JML comparables géocodage:",String(error?.message||error));
+      return null;
+    }),
+    resolveTerritoryCommune(city,property?.address||"").catch(error=>{
+      console.warn("JML comparables commune:",String(error?.message||error));
+      return null;
+    })
+  ]);
+  origin=geocodedOrigin;
+  commune=resolvedCommune;
   const addressGeocoded=Boolean(origin);
   const addressGeocodeLabel=origin?.label||null;
   let originSource=addressGeocoded?"Adresse":"Centre de la commune";
-  let commune=null;
-  try{ commune=await resolveTerritoryCommune(city,property?.address||""); }catch(_e){ commune=null; }
   if(!origin){
     try{
       const commune=await resolveTerritoryCommune(city,"");
