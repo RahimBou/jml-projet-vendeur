@@ -1092,6 +1092,18 @@ body.guide-modal-open{overflow:hidden}
 .jml-gemini-meta{margin-top:12px!important;padding:12px;border:1px solid #e6dfd0;border-radius:10px;background:#f7f4ed;color:#5f625a!important;font-size:10px!important;line-height:1.7!important;overflow-wrap:anywhere}
 @media(max-width:600px){.jml-gemini-result-head{flex-direction:column;gap:10px;padding:14px}.jml-gemini-verdict{max-width:100%;align-self:flex-start}#sellerGeminiMarketTitle{font-size:18px}.jml-gemini-summary{padding:14px;font-size:13px!important}.jml-gemini-signals{grid-template-columns:1fr}.jml-gemini-signal-card{padding:12px!important}.jml-gemini-advice{padding:13px}}
 </style>
+<style id="jml-gemini-final-layout">
+/* Équilibre visuel de la fenêtre Gemini, sans toucher aux sections extérieures */
+@media(min-width:760px){
+ .jml-gemini-signals{grid-template-columns:repeat(3,minmax(0,1fr))!important;align-items:stretch}
+ .jml-gemini-signal-card{padding:12px!important}
+ .jml-gemini-signal-card p{font-size:11px!important;line-height:1.6!important}
+}
+.jml-gemini-summary{font-size:13px!important;line-height:1.75!important}
+.jml-gemini-unknowns{font-size:11px!important;line-height:1.7!important}
+.jml-gemini-meta{font-size:10px!important;line-height:1.7!important}
+@media(max-width:759px){.jml-gemini-signals{grid-template-columns:1fr!important}}
+</style>
 <style id="jml-gemini-evidence-readability">
 #sellerGeminiMarketMeta{margin-top:14px!important;padding:10px 12px;border:1px solid #e6dfd0;border-radius:10px;background:#f7f4ed;color:#5f625a!important;font-size:11px!important;line-height:1.6!important;overflow-wrap:anywhere}
 #sellerGeminiMarketUnknowns{padding:9px 11px;border-radius:9px;background:#f7f4ed}
