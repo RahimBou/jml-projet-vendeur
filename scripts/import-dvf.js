@@ -208,13 +208,27 @@ async function main(){
       console.log("DVF migration: unicité désormais limitée à une même année source.");
     }
 
+    const failures=[];
+    let successfulYears=0;
     for(const year of YEARS){
-    try{ await importYear(client,year); }
-    catch(error){
-      try{ await client.query("ROLLBACK"); }catch(_){}
-      console.warn("DVF "+year+" ignorée:",String(error?.message||error));
+      try{
+        await importYear(client,year);
+        successfulYears++;
+      } catch(error){
+        try{ await client.query("ROLLBACK"); }catch(_){}
+        const message=String(error?.message||error);
+        failures.push({year,message});
+        console.error("DVF "+year+" ÉCHEC:",message);
+      }
     }
-  }
+    // Le workflow ne doit jamais afficher une réussite silencieuse si une
+    // année demandée n'a pas pu être actualisée. Les années suivantes sont
+    // tout de même tentées pour éviter de perdre une mise à jour partielle.
+    if(failures.length){
+      throw new Error("Import DVF incomplet. Années en échec: "+
+        failures.map(f=>f.year+" ("+f.message+")").join("; "));
+    }
+    if(!successfulYears) throw new Error("Aucune année DVF n'a été importée.");
     const count=await client.query("SELECT COUNT(*)::int AS count, MAX(imported_at) AS imported_at FROM jml_dvf_sales");
     console.log("DVF import terminé:",count.rows[0]);
   } finally {
