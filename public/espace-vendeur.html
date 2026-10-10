@@ -2828,5 +2828,78 @@ function updateSellerProjectSummary(d){
   if(source)source.textContent="Source officielle : jml-immobilier.fr";
  });
 })();
-</script></body>
+</script>
+<style id="jml-quick-cards-final-flow-fix">
+/* Correctif final placé après toutes les feuilles existantes : contenu et action en flux normal */
+.seller-quick-grid{align-items:stretch!important}
+.seller-quick-grid>.seller-quick-card{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  justify-content:flex-start!important;
+  height:auto!important;
+  min-height:255px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  box-sizing:border-box!important;
+}
+.seller-quick-grid>.seller-quick-card>.seller-quick-photo{
+  display:block!important;
+  width:100%!important;
+  height:118px!important;
+  min-height:118px!important;
+  flex:0 0 118px!important;
+  object-fit:cover!important;
+}
+.seller-quick-grid>.seller-quick-card>.seller-quick-icon{
+  flex:0 0 46px!important;
+  margin:0!important;
+}
+.seller-quick-grid>.seller-quick-card>span:not(.seller-quick-icon){
+  display:block!important;
+  flex:1 0 auto!important;
+  min-height:0!important;
+  height:auto!important;
+  padding:18px 14px 10px!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+.seller-quick-grid>.seller-quick-card>span:not(.seller-quick-icon)>strong{
+  display:block!important;
+  margin:0!important;
+  line-height:1.2!important;
+}
+.seller-quick-grid>.seller-quick-card>span:not(.seller-quick-icon)>small{
+  display:block!important;
+  max-height:none!important;
+  height:auto!important;
+  margin-top:6px!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  line-height:1.45!important;
+}
+.seller-quick-grid>.seller-quick-card>em{
+  position:relative!important;
+  inset:auto!important;
+  display:flex!important;
+  flex:0 0 40px!important;
+  align-items:center!important;
+  min-height:40px!important;
+  height:40px!important;
+  margin:8px 12px 12px!important;
+  padding:0 13px!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:760px){
+ .seller-quick-grid>.seller-quick-card{min-height:240px!important}
+ .seller-quick-grid>.seller-quick-card>.seller-quick-photo{height:105px!important;min-height:105px!important;flex-basis:105px!important}
+}
+@media(max-width:560px){
+ .seller-quick-grid>.seller-quick-card{min-height:0!important}
+ .seller-quick-grid>.seller-quick-card>span:not(.seller-quick-icon){flex:1 0 auto!important;padding:16px 13px 10px!important}
+ .seller-quick-grid>.seller-quick-card>em{margin-top:8px!important}
+}
+</style>
+
+</body>
 </html>
