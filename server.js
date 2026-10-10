@@ -44,8 +44,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.13.1";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-comparable-diagnostics-v1-jml-agency-listings-carousel-v2-image-price-fix";
+const VERSION = "3.14.0";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-comparable-diagnostics-v1-jml-agency-listings-stack-v1-lazy-three";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -2327,57 +2327,32 @@ async function fetchWebstatMarketClimate(){
 const jmlAgencyListingsCache={data:null,expiresAt:0};
 function jmlDecodeHtml(value){return String(value||"").replace(/&nbsp;|&#160;|&#8239;/gi," ").replace(/&amp;/gi,"&").replace(/&quot;/gi,'"').replace(/&#39;|&apos;/gi,"'").replace(/&lt;/gi,"<").replace(/&gt;/gi,">").replace(/&#(\d+);/g,(_,n)=>String.fromCharCode(Number(n))).replace(/&#x([\da-f]+);/gi,(_,n)=>String.fromCharCode(parseInt(n,16)));}
 function jmlPlainHtml(html){return jmlDecodeHtml(String(html||"").replace(/<script\b[\s\S]*?<\/script>/gi," ").replace(/<style\b[\s\S]*?<\/style>/gi," ").replace(/<[^>]+>/g," ").replace(/\s+/g," ")).trim();}
-function jmlAttr(tag,name){
- const re=new RegExp("(?:^|\\s)"+name+"\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))","i");
- const m=String(tag||"").match(re);
- return jmlDecodeHtml(m?.[1]??m?.[2]??m?.[3]??"");
-}
-function jmlMeta(html,name){
- const tags=[...String(html||"").matchAll(/<meta\\b[^>]*>/gi)].map(x=>x[0]);
- for(const tag of tags){
-  if(jmlAttr(tag,"property").toLowerCase()===name.toLowerCase()||jmlAttr(tag,"name").toLowerCase()===name.toLowerCase()){
-   const value=jmlAttr(tag,"content");if(value)return value;
-  }
- }
- return "";
-}
-function jmlListingImage(html,baseUrl){
- const candidates=[jmlMeta(html,"og:image"),jmlMeta(html,"twitter:image"),jmlMeta(html,"og:image:url")];
- const tags=[...String(html||"").matchAll(/<(?:img|source)\\b[^>]*>/gi)].map(m=>m[0]);
- for(const tag of tags){
-  const alt=(jmlAttr(tag,"alt")+" "+jmlAttr(tag,"class")+" "+jmlAttr(tag,"itemprop")).toLowerCase();
-  const raw=jmlAttr(tag,"src")||jmlAttr(tag,"data-src")||jmlAttr(tag,"data-original")||jmlAttr(tag,"data-lazy-src")||jmlAttr(tag,"srcset").split(",")[0].trim().split(/\\s+/)[0];
-  if(raw&&!/logo|icon|avatar|sprite|dpe|ges|placeholder|loading/i.test(alt))candidates.push(raw);
- }
- for(const candidate of candidates){
-  if(!candidate)continue;
-  try{const value=new URL(candidate.replace(/&amp;/g,"&"),baseUrl);if(value.protocol==="https:"||value.protocol==="http:")return value.href;}catch(_e){}
- }
- return "";
-}
+function jmlAttr(tag,name){const re=new RegExp("(?:^|\\s)"+name+"\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)'|([^\\s>]+))","i");const m=String(tag||"").match(re);return jmlDecodeHtml(m?.[1]??m?.[2]??m?.[3]??"");}
+function jmlMeta(html,name){const tags=[...String(html||"").matchAll(/<meta\b[^>]*>/gi)].map(x=>x[0]);for(const tag of tags){if(jmlAttr(tag,"property").toLowerCase()===name.toLowerCase()||jmlAttr(tag,"name").toLowerCase()===name.toLowerCase()){const value=jmlAttr(tag,"content");if(value)return value;}}return "";}
+function jmlListingImage(html,baseUrl){const candidates=[jmlMeta(html,"og:image"),jmlMeta(html,"twitter:image"),jmlMeta(html,"og:image:url")];const tags=[...String(html||"").matchAll(/<(?:img|source)\b[^>]*>/gi)].map(m=>m[0]);for(const tag of tags){const alt=(jmlAttr(tag,"alt")+" "+jmlAttr(tag,"class")+" "+jmlAttr(tag,"itemprop")).toLowerCase();const raw=jmlAttr(tag,"src")||jmlAttr(tag,"data-src")||jmlAttr(tag,"data-original")||jmlAttr(tag,"data-lazy-src")||jmlAttr(tag,"srcset").split(",")[0].trim().split(/\s+/)[0];if(raw&&!/logo|icon|avatar|sprite|dpe|ges|placeholder|loading/i.test(alt))candidates.push(raw);}for(const candidate of candidates){if(!candidate)continue;try{const value=new URL(candidate.replace(/&amp;/g,"&"),baseUrl);if(value.protocol==="https:"||value.protocol==="http:")return value.href;}catch(_e){}}return "";}
 async function jmlFetchText(url,timeoutMs=8500){const r=await fetch(url,{headers:{Accept:"text/html,application/xhtml+xml","User-Agent":"Mozilla/5.0 (compatible; JMLSellerSpace/1.0; +https://www.jml-immobilier.fr/)"},signal:AbortSignal.timeout(timeoutMs)});if(!r.ok)throw new Error("JML site HTTP "+r.status);return r.text();}
 async function fetchJmlAgencyListings(){
- const homepage="https://www.jml-immobilier.fr/",html=await jmlFetchText(homepage,10000);
- const hrefs=[...html.matchAll(/href=["']([^"'#]*\/vente\/[^"'#]+)["']/gi)].map(m=>{try{return new URL(jmlDecodeHtml(m[1]),homepage).href.split("#")[0]}catch(_e){return""}}).filter(Boolean);
- const urls=[...new Set(hrefs)].filter(u=>{try{return new URL(u).hostname==="www.jml-immobilier.fr"}catch(_e){return false}}).slice(0,24);
- const results=[];let cursor=0;
- async function worker(){while(cursor<urls.length&&results.length<12){const url=urls[cursor++];try{
-  const page=await jmlFetchText(url,7500),plain=jmlPlainHtml(page);
+ const homepage="https://www.jml-immobilier.fr/",html=await jmlFetchText(homepage,9000);
+ const hrefs=[...html.matchAll(/href=["']([^"'#]*\/vente\/[^"'#]+)["']/gi)].map(m=>{try{return new URL(jmlDecodeHtml(m[1]),homepage).href.split("#")[0]}catch(_e){return ""}}).filter(Boolean);
+ const urls=[...new Set(hrefs)].filter(u=>{try{const x=new URL(u);const parts=x.pathname.split("/").filter(Boolean);return x.hostname==="www.jml-immobilier.fr"&&parts[0]==="vente"&&parts.length>=4&&/^\d{1,5}[-_]/i.test(parts[parts.length-1]);}catch(_e){return false}}).slice(0,3);
+ const results=[];
+ for(const url of urls){try{
+  const page=await jmlFetchText(url,6500),plain=jmlPlainHtml(page);
   const h1s=[...page.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map(m=>jmlPlainHtml(m[1]));
   const title=h1s.find(x=>/(maison|appartement|immeuble|terrain|local|bâtiment|studio|parking|garage)/i.test(x)&&x.length<150)||jmlMeta(page,"og:title").split("|")[0].trim();
-  if(!title||(!/\b\d{1,4}\s*m²/i.test(title)&&!/maison|appartement|immeuble|terrain|local|bâtiment|studio/i.test(title)))continue;
-  const front=plain.slice(0,8500);if(/sous[- ]compromis|vendu|vendue|retiré de la vente|offre acceptée/i.test(front))continue;
+  if(!title)continue;
+  const front=plain.slice(0,8500);
+  const isCompromise=/sous[- ]compromis|offre acceptée/i.test(front),isSold=/\bvendu(?:e)?\b|retiré de la vente/i.test(front);
   const tags=[...front.matchAll(/nouveauté|exclusivité|prix en baisse|coup de cœur/gi)].map(x=>x[0]);
-  const status=[...new Set(tags.map(x=>x.charAt(0).toUpperCase()+x.slice(1).toLowerCase()))].slice(0,2);
-  const askingPrice=plain.match(/Prix de vente(?: honoraires TTC inclus)?\\s*[:：-]?\\s*((?:\\d[\\d\\s\\u00a0.,]*\\d)|\\d{4,7})\\s*€/i);
-  const prices=[...plain.matchAll(/(?:^|\\s)(\\d{1,3}(?:[ .\\u00a0]\\d{3})+|\\d{4,7})\\s*€/g)].map(m=>Number(m[1].replace(/[\\s\\u00a0.]/g,"").replace(",", "."))).filter(n=>Number.isFinite(n)&&n>=10000&&n<=10000000);
-  const price=askingPrice?Number(askingPrice[1].replace(/[\\s\\u00a0.]/g,"").replace(",", ".")):(prices[0]||null);
-  const sm=title.match(/(\d+(?:[,.]\d+)?)\s*m²/i)||plain.match(/Surface habitable\s*[: ]\s*(\d+(?:[,.]\d+)?)\s*m²/i);
+  const status=isSold?"Vendu":isCompromise?"Sous compromis":[...new Set(tags.map(x=>x.charAt(0).toUpperCase()+x.slice(1).toLowerCase()))].slice(0,2).join(" · ")||"À découvrir";
+  const priceMatch=plain.match(/(?:Prix de vente|Prix)\s*[:：-]?\s*((?:\d[\d\s\u00a0.,]*\d)|\d{4,7})\s*€/i);
+  const priceCandidates=[...plain.matchAll(/(\d[\d\s\u00a0.,]{2,})\s*€/g)].map(m=>Number(m[1].replace(/[\s\u00a0.]/g,"").replace(",", "."))).filter(n=>Number.isFinite(n)&&n>=10000&&n<=10000000);
+  const price=priceMatch?Number(priceMatch[1].replace(/[\s\u00a0.]/g,"").replace(",", ".")):(priceCandidates[0]||null);
+  const sm=title.match(/(\d+(?:[,.]\d+)?)\s*m²/i)||plain.match(/Surface habitable\s*[: ]\s*(\d+(?:[,.]\d+)?)\s*m²/i)||plain.match(/Surface\s*[: ]\s*(\d+(?:[,.]\d+)?)\s*m²/i);
   const cm=plain.match(/([A-ZÀ-Þ][A-Za-zÀ-ÿ'’ -]{1,50})\s*\((\d{5})\)/);
-  results.push({title,city:cm?cm[1].trim().replace(/\s+/g," "):"Ardennes",postalCode:cm?.[2]||null,price:Number.isFinite(price)&&price>=10000&&price<=10000000?price:null,surface:sm?Number(sm[1].replace(",",".")):null,image:jmlListingImage(page,url),url:(()=>{try{return new URL(jmlMeta(page,"og:url")||url,url).href}catch(_e){return url}})(),status:status.join(" · ")||"À découvrir"});
- }catch(e){console.warn("JML carousel listing skipped:",url,String(e?.message||e).slice(0,120));}}}
- await Promise.all(Array.from({length:4},()=>worker()));
- return {ok:true,source:"Site officiel JML Immobilier",sourceUrl:homepage,fetchedAt:new Date().toISOString(),items:results.slice(0,10)};
+  results.push({title,city:cm?cm[1].trim().replace(/\s+/g," "):"Ardennes",postalCode:cm?.[2]||null,price:Number.isFinite(price)&&price>=10000&&price<=10000000?price:null,surface:sm?Number(sm[1].replace(",",".")):null,image:jmlListingImage(page,url),url:(()=>{try{return new URL(jmlMeta(page,"og:url")||url,url).href}catch(_e){return url}})(),status});
+ }catch(e){console.warn("JML recent listing skipped:",url,String(e?.message||e).slice(0,100));}}
+ return {ok:true,source:"Site officiel JML Immobilier",sourceUrl:homepage,fetchedAt:new Date().toISOString(),items:results.slice(0,3)};
 }
 app.get("/api/jml-listings",async(req,res)=>{
  res.setHeader("Cache-Control","no-store, max-age=0");
@@ -2385,7 +2360,7 @@ app.get("/api/jml-listings",async(req,res)=>{
  try{const data=await fetchJmlAgencyListings();if(data.items.length){jmlAgencyListingsCache.data=data;jmlAgencyListingsCache.expiresAt=Date.now()+30*60*1000;return res.json({...data,cache:false});}
  if(jmlAgencyListingsCache.data)return res.json({...jmlAgencyListingsCache.data,stale:true,message:"Dernière liste disponible affichée."});
  return res.status(502).json({ok:false,error:"Les annonces JML sont temporairement indisponibles.",sourceUrl:"https://www.jml-immobilier.fr/"});}
- catch(e){console.warn("JML carousel feed unavailable:",String(e?.message||e));if(jmlAgencyListingsCache.data)return res.json({...jmlAgencyListingsCache.data,stale:true,message:"Le site officiel est momentanément inaccessible ; dernière liste affichée."});return res.status(502).json({ok:false,error:"Impossible de récupérer les annonces JML pour le moment.",sourceUrl:"https://www.jml-immobilier.fr/"});}
+ catch(e){console.warn("JML recent listing feed unavailable:",String(e?.message||e));if(jmlAgencyListingsCache.data)return res.json({...jmlAgencyListingsCache.data,stale:true,message:"Le site officiel est momentanément inaccessible ; dernière liste affichée."});return res.status(502).json({ok:false,error:"Impossible de récupérer les annonces JML pour le moment.",sourceUrl:"https://www.jml-immobilier.fr/"});}
 });
 
 app.get("/api/market-climate",async(req,res)=>{
