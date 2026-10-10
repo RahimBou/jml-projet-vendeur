@@ -2577,7 +2577,7 @@ app.post("/api/market-climate/analysis", async (req,res) => {
     "Les données externalContext.territory proviennent du référentiel communal public. La population est un indicateur de contexte, pas une mesure de demande immobilière ; ne l'interprète pas comme une tendance sans série datée.",
     "Les externalContext.sourceChecks vérifient au mieux l'accessibilité de pages. Une page accessible ne signifie pas que ses statistiques ont été extraites : numericDataRetrieved=false signifie qu'aucun chiffre de cette source ne peut être cité.",
     "marketBenchmarks contient éventuellement des repères publiés par des estimateurs ou portails. Ils ne sont PAS des prix de ventes signées ; présente-les séparément de DVF, avec leur source, et n'en fais pas une moyenne avec les ventes DVF. Si aucun repère n'a été récupéré, dis-le clairement.",
-    "Utilise la CCI Marne Ardennes et les Notaires comme pistes documentaires seulement si aucun chiffre vérifié n'est fourni. Ne prétends pas avoir consulté des exports ou statistiques privées.");
+    "Utilise la CCI Marne Ardennes et les Notaires comme pistes documentaires seulement si aucun chiffre vérifié n'est fourni. Ne prétends pas avoir consulté des exports ou statistiques privées.",
 
     "OBJECTIF : expliquer au vendeur comment le financement des acheteurs (taux et production de crédit) interagit avec les repères immobiliers locaux. Ne prédis jamais la vente d'un bien.",
     "RÈGLES ABSOLUES : n'invente aucun chiffre, date, source, tendance ou donnée absente.",
