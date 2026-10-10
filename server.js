@@ -2334,9 +2334,19 @@ async function jmlFetchText(url,timeoutMs=8500){const r=await fetch(url,{headers
 async function fetchJmlAgencyListings(){
  const homepage="https://www.jml-immobilier.fr/",html=await jmlFetchText(homepage,9000);
  const hrefs=[...html.matchAll(/href=["']([^"'#]*\/vente\/[^"'#]+)["']/gi)].map(m=>{try{return new URL(jmlDecodeHtml(m[1]),homepage).href.split("#")[0]}catch(_e){return ""}}).filter(Boolean);
- // The homepage can contain featured properties that are already under compromise.
- // Inspect a small candidate pool and keep only listings whose page does not signal a sale/compromise.
- const urls=[...new Set(hrefs)].filter(u=>{try{const x=new URL(u);const parts=x.pathname.split("/").filter(Boolean);return x.hostname==="www.jml-immobilier.fr"&&parts[0]==="vente"&&parts.length>=4&&/^\d{1,5}[-_]/i.test(parts[parts.length-1]);}catch(_e){return false}}) .slice(0,20);
+ // The homepage only features a handful of selected properties, some already under compromise.
+ // Expand discovery through the public sitemap so the seller dashboard can find five active listings.
+ const sitemapRoots=[homepage+"sitemap.xml",homepage+"sitemap_index.xml",homepage+"sitemap-index.xml"];
+ const sitemapTexts=(await Promise.allSettled(sitemapRoots.map(url=>jmlFetchText(url,4500))))
+   .filter(x=>x.status==="fulfilled").map(x=>x.value);
+ const sitemapLinks=sitemapTexts.flatMap(xml=>[...xml.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/gi)].map(m=>jmlDecodeHtml(m[1]).trim()));
+ const childSitemaps=sitemapLinks.filter(u=>/^https?:\/\//i.test(u)&&/sitemap/i.test(u)&&!/sitemap_index|sitemap-index/i.test(u)).slice(0,4);
+ if(childSitemaps.length){
+   const children=await Promise.allSettled(childSitemaps.map(url=>jmlFetchText(url,4500)));
+   for(const child of children)if(child.status==="fulfilled")sitemapLinks.push(...[...child.value.matchAll(/<loc>\s*([^<]+)\s*<\/loc>/gi)].map(m=>jmlDecodeHtml(m[1]).trim()));
+ }
+ const allLinks=[...hrefs,...sitemapLinks];
+ const urls=[...new Set(allLinks)].filter(u=>{try{const x=new URL(u);const parts=x.pathname.split("/").filter(Boolean);return x.hostname==="www.jml-immobilier.fr"&&parts[0]==="vente"&&parts.length>=4&&/^\d{1,5}[-_]/i.test(parts[parts.length-1]);}catch(_e){return false}}).slice(0,80);
  const results=[];let cursor=0;
  async function worker(){
   while(cursor<urls.length&&results.length<5){
