@@ -1153,11 +1153,10 @@ body.guide-modal-open{overflow:hidden}
           </ul>
           <a class="seller-watch-link" href="/vendeur-secteur.html" id="sellerWatchSectorLink">Approfondir les repères locaux →</a>
         </section>
-        <section class="seller-market-watch seller-agency-carousel" aria-labelledby="sellerAgencyCarouselTitle">
-          <div class="seller-watch-heading seller-agency-carousel-head"><div><span class="seller-panel-kicker">🏡 SÉLECTION DE L’AGENCE</span><h5 id="sellerAgencyCarouselTitle">Les biens JML à découvrir</h5><p>Les annonces publiées sur le site officiel de JML Immobilier.</p></div><a href="https://www.jml-immobilier.fr/" target="_blank" rel="noopener noreferrer" class="seller-agency-all">Tout voir ↗</a></div>
-          <div class="seller-agency-carousel-stage" id="sellerAgencyCarouselStage" aria-live="polite"><div class="seller-agency-loading"><span></span><strong>Chargement des annonces JML…</strong></div></div>
-          <div class="seller-agency-carousel-controls"><button type="button" id="sellerAgencyPrev" aria-label="Bien précédent" disabled>‹</button><div id="sellerAgencyDots" class="seller-agency-dots" aria-label="Choisir un bien"></div><button type="button" id="sellerAgencyNext" aria-label="Bien suivant" disabled>›</button></div>
-          <p class="seller-agency-source" id="sellerAgencySource">Données récupérées depuis le site officiel de JML Immobilier. Disponibilité à confirmer sur l’annonce.</p>
+        <section class="seller-market-watch seller-agency-carousel seller-agency-stack" aria-labelledby="sellerAgencyCarouselTitle">
+          <div class="seller-watch-heading seller-agency-carousel-head"><div><span class="seller-panel-kicker">🏡 SÉLECTION DE L’AGENCE</span><h5 id="sellerAgencyCarouselTitle">Les 3 dernières annonces JML</h5><p>Une sélection récente du catalogue officiel.</p></div><a href="https://www.jml-immobilier.fr/" target="_blank" rel="noopener noreferrer" class="seller-agency-all">Tout voir ↗</a></div>
+          <div class="seller-agency-carousel-stage seller-agency-list" id="sellerAgencyCarouselStage" aria-live="polite"><div class="seller-agency-loading"><span></span><strong>Chargement des annonces JML…</strong></div></div>
+          <p class="seller-agency-source" id="sellerAgencySource">Annonces récupérées depuis le site officiel de JML Immobilier. Prix et disponibilité à vérifier sur chaque fiche.</p>
         </section>
       </section>
     </div>
@@ -2030,6 +2029,22 @@ function updateSellerProjectSummary(d){
 .seller-watch-link{display:block;padding-top:10px;border-top:1px solid #e4d8bd;color:#765b27;font-size:10.5px;font-weight:900;text-decoration:none}
 .seller-watch-link:hover{text-decoration:underline}
 @media(max-width:760px){.seller-market-watch{padding:12px}.seller-watch-facts strong{max-width:60%}}
+
+.seller-agency-stack .seller-agency-carousel-stage{min-height:120px;display:grid;gap:9px;margin-top:12px}
+.seller-agency-stack .seller-agency-card{border:1px solid #e8e0d1;border-radius:11px;box-shadow:none}
+.seller-agency-stack .seller-agency-card-link{display:grid;grid-template-columns:92px minmax(0,1fr);min-height:104px}
+.seller-agency-stack .seller-agency-image-wrap{height:100%;min-height:104px;max-height:130px;border-radius:10px 0 0 10px}
+.seller-agency-stack .seller-agency-body{padding:9px 10px;min-width:0}
+.seller-agency-stack .seller-agency-price{font-size:16px;margin-bottom:3px}
+.seller-agency-stack .seller-agency-title{font-size:11px;line-height:1.35;margin-bottom:4px}
+.seller-agency-stack .seller-agency-location{font-size:9.5px;margin-bottom:5px}
+.seller-agency-stack .seller-agency-details{gap:4px}
+.seller-agency-stack .seller-agency-details span{font-size:8.5px;padding:4px 5px}
+.seller-agency-stack .seller-agency-cta{margin-top:6px;font-size:9px}
+.seller-agency-stack .seller-agency-status{font-size:8px;left:5px;top:5px;padding:4px 6px}
+.seller-agency-stack .seller-agency-source{font-size:9px}
+.seller-agency-stack .seller-agency-image-wrap.no-image:before{content:"Photo indisponible";font-size:9px;text-align:center;padding:5px;box-sizing:border-box}
+@media(max-width:760px){.seller-agency-stack .seller-agency-card-link{grid-template-columns:96px minmax(0,1fr)}.seller-agency-stack .seller-agency-image-wrap{min-height:108px}}
 </style>
 <style id="jml-credit-climate-style">
 .seller-credit-climate{margin-top:12px;padding:15px;border:1px solid #e4d8bd;border-radius:15px;background:linear-gradient(135deg,#fffdf8,#f7f1e4)}
@@ -2493,19 +2508,24 @@ function updateSellerProjectSummary(d){
 <script>
 (function(){
  const stage=document.getElementById("sellerAgencyCarouselStage");if(!stage)return;
- const prev=document.getElementById("sellerAgencyPrev"),next=document.getElementById("sellerAgencyNext"),dots=document.getElementById("sellerAgencyDots"),source=document.getElementById("sellerAgencySource");
- let items=[],index=0;
+ const source=document.getElementById("sellerAgencySource");
  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const money=v=>Number.isFinite(Number(v))&&Number(v)>0?Number(v).toLocaleString("fr-FR")+" €":"Prix à consulter";
- function draw(){if(!items.length)return;const x=items[index];const image=x.image?'<img class="seller-agency-image" src="'+esc(x.image)+'" alt="'+esc(x.title)+'" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.classList.add(\'no-image\')">':'';
- stage.innerHTML='<article class="seller-agency-card"><a class="seller-agency-card-link" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Consulter '+esc(x.title)+' sur le site JML Immobilier"><div class="seller-agency-image-wrap">'+image+'<span class="seller-agency-status">'+esc(x.status||"À découvrir")+'</span></div><div class="seller-agency-body"><p class="seller-agency-price">'+esc(money(x.price))+'</p><h6 class="seller-agency-title">'+esc(x.title)+'</h6><p class="seller-agency-location">'+esc(x.city||"Ardennes")+(x.postalCode?" ("+esc(x.postalCode)+")":"")+'</p><div class="seller-agency-details">'+(x.surface?'<span>⌂ '+esc(x.surface)+' m²</span>':'')+'<span>Annonce JML</span></div><div class="seller-agency-cta"><span>Voir le bien sur JML</span><span aria-hidden="true">↗</span></div></div></a></article>';
- dots.innerHTML=items.map((_,i)=>'<button type="button" class="seller-agency-dot'+(i===index?' active':'')+'" aria-label="Afficher le bien '+(i+1)+' sur '+items.length+'" aria-pressed="'+(i===index)+'" data-index="'+i+'"></button>').join("");
- prev.disabled=items.length<2;next.disabled=items.length<2;dots.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{index=Number(b.dataset.index);draw()}));
- if(source)source.textContent="Source : site officiel JML Immobilier · "+items.length+" annonce(s) récupérée(s). Disponibilité et prix à confirmer sur la fiche de l’agence.";
+ function render(items){
+  stage.innerHTML=items.map(x=>{
+   const image=x.image?'<img class="seller-agency-image" src="'+esc(x.image)+'" alt="'+esc(x.title)+'" loading="lazy" onerror="this.style.display=\\'none\\';this.parentElement.classList.add(\\'no-image\\')">':'';
+   return '<article class="seller-agency-card"><a class="seller-agency-card-link" href="'+esc(x.url)+'" target="_blank" rel="noopener noreferrer" aria-label="Consulter '+esc(x.title)+' sur le site JML Immobilier"><div class="seller-agency-image-wrap">'+image+'<span class="seller-agency-status">'+esc(x.status||"À découvrir")+'</span></div><div class="seller-agency-body"><p class="seller-agency-price">'+esc(money(x.price))+'</p><h6 class="seller-agency-title">'+esc(x.title)+'</h6><p class="seller-agency-location">'+esc(x.city||"Ardennes")+(x.postalCode?" ("+esc(x.postalCode)+")":"")+'</p><div class="seller-agency-details">'+(x.surface?'<span>⌂ '+esc(x.surface)+' m²</span>':'')+'<span>Annonce JML</span></div><div class="seller-agency-cta"><span>Voir le bien sur JML</span><span aria-hidden="true">↗</span></div></div></a></article>';
+  }).join("");
+  if(source)source.textContent="Source : site officiel JML Immobilier · "+items.length+" annonce(s) récente(s). Prix et disponibilité à confirmer sur la fiche de l’agence.";
  }
- prev.addEventListener("click",()=>{if(items.length){index=(index-1+items.length)%items.length;draw()}});
- next.addEventListener("click",()=>{if(items.length){index=(index+1)%items.length;draw()}});
- fetch("/api/jml-listings",{cache:"no-store"}).then(r=>r.json()).then(data=>{if(!data.ok||!Array.isArray(data.items)||!data.items.length)throw new Error(data.error||"Aucune annonce disponible");items=data.items;index=0;draw();if(data.stale&&source)source.textContent=(data.message||"Dernière liste disponible affichée.")+" Disponibilité à confirmer sur le site de l’agence.";}).catch(()=>{stage.innerHTML='<div class="seller-agency-empty"><strong>Les annonces ne sont pas disponibles pour le moment.</strong><br>Consultez directement le catalogue officiel de JML Immobilier.</div>';if(source)source.textContent="Source officielle : jml-immobilier.fr";});
+ fetch("/api/jml-listings",{cache:"no-store"}).then(r=>r.json()).then(data=>{
+  if(!data.ok||!Array.isArray(data.items)||!data.items.length)throw new Error(data.error||"Aucune annonce disponible");
+  render(data.items.slice(0,3));
+  if(data.stale&&source)source.textContent=(data.message||"Dernière liste disponible affichée.")+" Disponibilité à confirmer sur le site de l’agence.";
+ }).catch(()=>{
+  stage.innerHTML='<div class="seller-agency-empty"><strong>Les annonces ne sont pas disponibles pour le moment.</strong><br>Consultez le catalogue officiel de JML Immobilier.</div>';
+  if(source)source.textContent="Source officielle : jml-immobilier.fr";
+ });
 })();
 </script></body>
 </html>
