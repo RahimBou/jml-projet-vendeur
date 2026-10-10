@@ -1269,7 +1269,7 @@ function renderComps(c){
   const subjectSurface=Number((pageData.space||{}).surface);
   const rooms=Number(s.rooms);
   const subjectRooms=Number((pageData.space||{}).rooms);
-  const surfaceGap=Number.isFinite(surface)&&Number.isFinite(subjectSurface)&&subjectSurface>0?Math.abs(surface-subjectSurface)/subjectSurface:null;
+  const surfaceGap=s.surfaceBasis==="surface_habitable"&&Number.isFinite(surface)&&Number.isFinite(subjectSurface)&&subjectSurface>0?Math.abs(surface-subjectSurface)/subjectSurface:null;
   const roomsClose=Number.isFinite(rooms)&&Number.isFinite(subjectRooms)&&subjectRooms>0?Math.abs(rooms-subjectRooms)<=1:false;
   const sameStreet=!!s.sameStreet;
   const veryClose=Number.isFinite(distance)&&distance<=0.5;
