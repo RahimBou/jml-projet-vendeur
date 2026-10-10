@@ -979,6 +979,30 @@ body.guide-modal-open{overflow:hidden}
 .guide-modal-content{overflow:hidden}
 .guide-modal-frame{overflow:auto}
 </style>
+
+<style id="jml-safe-ux-refinements">
+/* Ajustements prudents : lisibilité et confort sans modifier les données métier ni le calcul DVF. */
+.fb-appointment-privacy{margin:12px 0 0;padding:10px 12px;border-left:3px solid #d8bb7a;background:#f7f1e4;color:#4d554f;font-size:11px;line-height:1.5}
+.fb-appointment-privacy a{color:#6f592b;font-weight:800;text-decoration:underline;text-underline-offset:2px}
+.fb-appointment-message[role="status"]{line-height:1.5}
+@media (min-width:761px) and (max-width:1100px){
+ .seller-dashboard-hero{min-height:340px!important}
+ .seller-dashboard-overlay{padding:24px!important}
+ .seller-dashboard-overlay h3{font-size:clamp(30px,4.2vw,42px)!important}
+ .seller-dashboard-grid{grid-template-columns:minmax(0,1.45fr) minmax(280px,.95fr);gap:10px}
+ .seller-panel{padding:14px}
+ .seller-panel-head p{font-size:12px;line-height:1.5}
+ .seller-quick-card small{font-size:11.5px;line-height:1.5}
+ .seller-metric small{font-size:10.5px;line-height:1.4}
+}
+@media (max-width:760px){
+ .seller-dashboard-hero{min-height:280px!important}
+ .seller-dashboard-overlay{padding:20px!important}
+ .seller-dashboard-overlay h3{font-size:clamp(27px,6vw,36px)!important}
+ .seller-panel-head p{font-size:12px;line-height:1.5}
+ .seller-metric small{font-size:10.5px;line-height:1.4}
+}
+</style>
 </head>
 <body>
 <div class="jml-welcome-modal" id="jmlWelcomeModal" role="presentation">
@@ -1029,7 +1053,7 @@ body.guide-modal-open{overflow:hidden}
 
     <div class="seller-status">
       <div class="seller-status-copy"><strong>Votre projet est enregistré</strong><span>Vous gardez la main sur la suite. JML vous accompagne à chaque étape.</span></div>
-      <div class="seller-status-steps"><div class="done"><b>1</b><span>Demande<br><small>Enregistrée</small></span></div><div><b>2</b><span>Confirmation<br><small>Par e-mail</small></span></div><div><b>3</b><span>Prochaine étape<br><small>Échange avec JML</small></span></div></div><div class="seller-access-actions"><a class="secondary" id="sellerOpenLink" href="#" target="_self">Enregistrer mon espace</a><button type="button" class="secondary" id="sellerCopyLink">Copier mon accès</button></div>
+      <div class="seller-status-steps"><div class="done"><b>1</b><span>Demande<br><small>Enregistrée</small></span></div><div><b>2</b><span>Suivi JML<br><small>Confirmation à venir</small></span></div><div><b>3</b><span>Prochaine étape<br><small>Échange avec JML</small></span></div></div><div class="seller-access-actions"><a class="secondary" id="sellerOpenLink" href="#" target="_self">Enregistrer mon espace</a><button type="button" class="secondary" id="sellerCopyLink">Copier mon accès</button></div>
     </div>
 
     <div class="seller-next-action" id="sellerNextAction">
@@ -1251,7 +1275,8 @@ body.guide-modal-open{overflow:hidden}
 <div class="full"><button class="primary" type="submit">Demander ce créneau</button></div>
 </div>
 </form>
-<div id="fbAppointmentMessage" class="fb-appointment-message"></div>
+<p class="fb-appointment-privacy">Vos coordonnées sont utilisées pour traiter votre demande et vous recontacter au sujet du rendez-vous. Évitez d’inscrire des données sensibles. <a href="https://www.jml-immobilier.fr/contact" target="_blank" rel="noopener noreferrer">Informations sur les données personnelles</a>.</p>
+<div id="fbAppointmentMessage" class="fb-appointment-message" role="status" aria-live="polite"></div>
 </div>
 </div><div class="fb-back"><button type="button" class="secondary" id="fbNewRequest">Faire une nouvelle demande</button></div>
 </div>
@@ -1658,7 +1683,7 @@ function updateSellerProjectSummary(d){
      ["🤝","Votre dossier est prêt pour le rendez-vous.","Vous pouvez maintenant préparer les questions et choisir un créneau.","#fbAppointmentForm"]
    ];
    if(n>=total){
-     icon.textContent="✓";title.textContent="Votre préparation est complète";copy.textContent="Votre espace est prêt pour la prochaine étape avec JML Immobilier.";progress.textContent="6 / 6 étapes";if(btn){btn.textContent="Demander un rendez-vous →";btn.href="#fbAppointmentForm";}
+     icon.textContent="✓";title.textContent="Vos 6 étapes sont cochées";copy.textContent="Vous pouvez préparer votre rendez-vous. Les informations et documents seront vérifiés avec JML.";progress.textContent="6 / 6 étapes";if(btn){btn.textContent="Demander un rendez-vous →";btn.href="#fbAppointmentForm";}
    }else{
      const s=steps[n]||steps[0];icon.textContent=s[0];title.textContent=s[1];copy.textContent=s[2];progress.textContent=n+" / "+total+" étapes";if(btn){btn.textContent="Continuer →";btn.href=s[3];}
    }
@@ -1907,7 +1932,7 @@ function updateSellerProjectSummary(d){
       document.querySelectorAll(".seller-check").forEach(function(btn){const on=list.includes(Number(btn.dataset.check));btn.classList.toggle("done",on);const mark=btn.querySelector(".seller-check-mark");if(mark)mark.textContent=on?"✓":"○"});
       const n=list.length,p=Math.round(n/6*100),bar=document.getElementById("sellerChecklistProgress"),count=document.getElementById("sellerChecklistCount"),pct=document.getElementById("sellerChecklistPercent");
       if(bar)bar.style.width=p+"%";if(count)count.textContent=n+" / 6";if(pct)pct.textContent=p+" %";
-      const next=document.getElementById("sellerNextProgress");if(next)next.textContent=n+" / 6 étapes"; const nextTitle=document.getElementById("sellerNextTitle"),nextText=document.getElementById("sellerNextText"),nextIcon=document.getElementById("sellerNextIcon"),nextBtn=document.getElementById("sellerNextBtn"); const labels=[["🏠","Commencez par préparer les informations sur votre bien.","Surface, pièces, équipements et éléments importants à connaître."],["📄","Préparez vos documents utiles.","Titre de propriété, diagnostics et documents disponibles."],["⚡","Vérifiez votre DPE.","Notez la classe énergétique et la date de validité du diagnostic."],["🛠️","Rassemblez les informations sur vos travaux.","Factures, améliorations et travaux récents peuvent être utiles."],["📸","Préparez la présentation de votre bien.","Extérieurs, rangement et éléments à mettre en valeur."],["🤝","Votre dossier est prêt pour le rendez-vous.","Préparez vos questions et choisissez un créneau."]]; if(nextTitle&&n<6){nextIcon.textContent=labels[n][0];nextTitle.textContent=labels[n][1];nextText.textContent=labels[n][2];nextBtn.textContent="Continuer →";nextBtn.href="#sellerChecklistGrid";} else if(nextTitle){nextIcon.textContent="✓";nextTitle.textContent="Votre préparation est complète";nextText.textContent="Votre espace est prêt pour la prochaine étape avec JML Immobilier.";nextBtn.textContent="Demander un rendez-vous →";nextBtn.href="#fbAppointmentForm";}
+      const next=document.getElementById("sellerNextProgress");if(next)next.textContent=n+" / 6 étapes"; const nextTitle=document.getElementById("sellerNextTitle"),nextText=document.getElementById("sellerNextText"),nextIcon=document.getElementById("sellerNextIcon"),nextBtn=document.getElementById("sellerNextBtn"); const labels=[["🏠","Commencez par préparer les informations sur votre bien.","Surface, pièces, équipements et éléments importants à connaître."],["📄","Préparez vos documents utiles.","Titre de propriété, diagnostics et documents disponibles."],["⚡","Vérifiez votre DPE.","Notez la classe énergétique et la date de validité du diagnostic."],["🛠️","Rassemblez les informations sur vos travaux.","Factures, améliorations et travaux récents peuvent être utiles."],["📸","Préparez la présentation de votre bien.","Extérieurs, rangement et éléments à mettre en valeur."],["🤝","Votre dossier est prêt pour le rendez-vous.","Préparez vos questions et choisissez un créneau."]]; if(nextTitle&&n<6){nextIcon.textContent=labels[n][0];nextTitle.textContent=labels[n][1];nextText.textContent=labels[n][2];nextBtn.textContent="Continuer →";nextBtn.href="#sellerChecklistGrid";} else if(nextTitle){nextIcon.textContent="✓";nextTitle.textContent="Vos 6 étapes sont cochées";nextText.textContent="Préparez vos questions ; les informations et documents seront vérifiés avec JML.";nextBtn.textContent="Demander un rendez-vous →";nextBtn.href="#fbAppointmentForm";}
       const token=current.token;
       if(token){try{await fetch("/api/seller-space/"+encodeURIComponent(token),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({city:current.city,address:current.address,propertyType:current.propertyType,horizon:current.horizon,surface:current.surface,rooms:current.rooms,dpe:current.dpe,terrain:current.terrain,checklist:list})})}catch(_e){}}
       close();
