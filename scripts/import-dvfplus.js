@@ -98,11 +98,15 @@ async function main() {
         longitude DOUBLE PRECISION NOT NULL,
         commune_code TEXT,
         parcel_ids TEXT,
+        comparable_eligible BOOLEAN NOT NULL DEFAULT TRUE,
+        exclusion_reason TEXT,
         source TEXT NOT NULL DEFAULT 'DVF+ Cerema',
         imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         UNIQUE (mutation_id, source_year)
       )
     `);
+    await client.query("ALTER TABLE jml_dvfplus_sales ADD COLUMN IF NOT EXISTS comparable_eligible BOOLEAN NOT NULL DEFAULT TRUE");
+    await client.query("ALTER TABLE jml_dvfplus_sales ADD COLUMN IF NOT EXISTS exclusion_reason TEXT");
     await client.query("CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_geo_date ON jml_dvfplus_sales(latitude, longitude, sale_date DESC)");
     await client.query("CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_type_surface ON jml_dvfplus_sales(property_type, surface)");
     await client.query("CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_commune_date ON jml_dvfplus_sales(commune_code, sale_date DESC)");
@@ -119,15 +123,16 @@ async function main() {
           await client.query(`
             INSERT INTO jml_dvfplus_sales
               (mutation_id, sale_date, source_year, property_type, price, surface,
-               price_per_m2, rooms, land_surface, latitude, longitude, commune_code, parcel_ids, source)
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'DVF+ Cerema')
+               price_per_m2, rooms, land_surface, latitude, longitude, commune_code, parcel_ids, comparable_eligible, exclusion_reason, source)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'DVF+ Cerema')
             ON CONFLICT (mutation_id, source_year) DO UPDATE SET
               sale_date=EXCLUDED.sale_date, property_type=EXCLUDED.property_type,
               price=EXCLUDED.price, surface=EXCLUDED.surface,
               price_per_m2=EXCLUDED.price_per_m2, rooms=EXCLUDED.rooms,
               land_surface=EXCLUDED.land_surface, latitude=EXCLUDED.latitude,
               longitude=EXCLUDED.longitude, commune_code=EXCLUDED.commune_code,
-              parcel_ids=EXCLUDED.parcel_ids, imported_at=NOW()
+              parcel_ids=EXCLUDED.parcel_ids, comparable_eligible=EXCLUDED.comparable_eligible,
+              exclusion_reason=EXCLUDED.exclusion_reason, imported_at=NOW()
           `, r);
           stats.imported++;
         }
@@ -164,11 +169,8 @@ async function main() {
         surface = num(get("sbatapt"));
       } else { stats.rejectedType++; continue; }
 
-      // Pour ne pas attribuer un prix global à plusieurs biens, on ne retient
-      // que les mutations portant sur une seule commune, une seule parcelle et un seul local.
-      if (num(get("nbcomm")) !== 1 || num(get("nbparmut")) !== 1 || num(get("nblocmut")) !== 1) {
-        stats.rejectedComplex++; continue;
-      }
+      // Les mutations complexes sont conservées, mais exclues des comparables :
+      // leur prix global ne doit pas être attribué à chaque appartement/local.
       const price = num(get("valeurfonc"));
       if (!(price > 0 && surface > 0)) { stats.rejectedPriceSurface++; continue; }
       const xy = lambert93ToWgs84(num(get("geompar_x")), num(get("geompar_y")));
@@ -180,10 +182,17 @@ async function main() {
         stats.rejectedPriceSurface++; continue;
       }
       const rawParcels = cleanText(get("l_idparmut"));
+      const complexity = [];
+      if (num(get("nbcomm")) !== 1) complexity.push("plusieurs_communes");
+      if (num(get("nbparmut")) !== 1) complexity.push("plusieurs_parcelles");
+      if (num(get("nblocmut")) !== 1) complexity.push("plusieurs_locaux");
+      const comparableEligible = complexity.length === 0;
+      if (!comparableEligible) stats.rejectedComplex++;
       batch.push([
         mutationId, saleDate, sourceYear, propertyType, price, surface,
         price / surface, null, num(get("sterr")), xy.latitude, xy.longitude,
-        cleanText(get("l_codinsee"))?.split(",")[0]?.trim() || null, rawParcels
+        cleanText(get("l_codinsee"))?.split(",")[0]?.trim() || null, rawParcels,
+        comparableEligible, complexity.join(",") || null
       ]);
       stats.residentialSales++;
       if (batch.length >= 250) await flush();
@@ -191,6 +200,8 @@ async function main() {
     await flush();
     const coverage = await client.query(`
       SELECT source_year, property_type, COUNT(*)::int AS sales,
+             COUNT(*) FILTER (WHERE comparable_eligible)::int AS eligible_comparables,
+             COUNT(*) FILTER (WHERE NOT comparable_eligible)::int AS retained_but_excluded_from_comparables,
              MIN(sale_date)::text AS first_sale, MAX(sale_date)::text AS last_sale,
              ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2)::numeric, 2) AS median_price_per_m2
       FROM jml_dvfplus_sales
