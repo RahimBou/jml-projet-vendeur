@@ -1894,6 +1894,8 @@ function updateSellerProjectSummary(d){
       const current=readSpace(), list=Array.isArray(current.checklist)?current.checklist.map(Number):[];
       if(!list.includes(index+1))list.push(index+1);
       current.checklist=list;current.submitted=true;writeSpace(current);
+      /* Synchroniser toutes les vues de progression, y compris la barre latérale et la prochaine action. */
+      if(typeof renderSellerChecklist==="function")renderSellerChecklist(list);
       document.querySelectorAll(".seller-check").forEach(function(btn){const on=list.includes(Number(btn.dataset.check));btn.classList.toggle("done",on);const mark=btn.querySelector(".seller-check-mark");if(mark)mark.textContent=on?"✓":"○"});
       const n=list.length,p=Math.round(n/6*100),bar=document.getElementById("sellerChecklistProgress"),count=document.getElementById("sellerChecklistCount"),pct=document.getElementById("sellerChecklistPercent");
       if(bar)bar.style.width=p+"%";if(count)count.textContent=n+" / 6";if(pct)pct.textContent=p+" %";
