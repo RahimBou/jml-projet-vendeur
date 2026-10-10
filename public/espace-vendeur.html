@@ -1571,7 +1571,7 @@ async function loadSellerCreditClimate(force){
     metrics.innerHTML=[
       ["Taux moyen du crédit",fmt(rate),"Nouveaux crédits à l’habitat · "+String(data.period||"dernière période")],
       ["Évolution mensuelle",Number.isFinite(previous)?fmt(previous)+" → "+fmt(rate):"Non disponible",Number.isFinite(delta)?(delta>0?"Hausse":delta<0?"Baisse":"Stable")+" par rapport au mois précédent":"Comparaison indisponible"],
-      ["Nouveaux crédits",Number.isFinite(Number(data.productionBillions))?Number(data.productionBillions).toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1})+" Md€":"Non disponible",data.productionPeriod||"Production mensuelle nationale"]
+      ["Nouveaux crédits",data.productionBillions!==null&&data.productionBillions!==undefined&&Number.isFinite(Number(data.productionBillions))?Number(data.productionBillions).toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1})+" Md€":"Non disponible",data.productionPeriod||"Production mensuelle nationale"]
     ].map(x=>'<div class="seller-credit-metric"><span>'+x[0]+'</span><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>').join("");
     if(explanation)explanation.textContent=detail+" "+String(data.interpretation||"")+" "+String(data.note||"")+visitChange;
     if(updated)updated.textContent="Publication : "+String(data.publishedAt||data.period||"date non précisée")+" · Vérifié le "+new Date().toLocaleDateString("fr-FR");
@@ -2386,7 +2386,7 @@ function updateSellerProjectSummary(d){
     const count=Number(comparables.matchCount||0);
     const rate=Number(credit?.averageNewMortgageRate);
     const rateDelta=Number(credit?.monthlyChangePoints);
-    const production=Number(credit?.productionBillions);
+    const production=credit?.productionBillions!==null&&credit?.productionBillions!==undefined?Number(credit.productionBillions):NaN;
     const productionDelta=Number(credit?.productionChangePercent);
     const hasRate=credit?.ok&&Number.isFinite(rate);
     const hasProduction=credit?.ok&&Number.isFinite(production);
