@@ -2366,11 +2366,11 @@ async function fetchJmlAgencyListings(){
 }
 app.get("/api/jml-listings",async(req,res)=>{
  res.setHeader("Cache-Control","no-store, max-age=0");
- if(!req.query.refresh&&jmlAgencyListingsCache.data&&jmlAgencyListingsCache.expiresAt>Date.now())return res.json({...jmlAgencyListingsCache.data,cache:true});
+ if(jmlAgencyListingsCache.data&&jmlAgencyListingsCache.expiresAt>Date.now())return res.json({...jmlAgencyListingsCache.data,cache:true});
  try{const data=await fetchJmlAgencyListings();if(data.items.length){jmlAgencyListingsCache.data=data;jmlAgencyListingsCache.expiresAt=Date.now()+30*60*1000;return res.json({...data,cache:false});}
  if(jmlAgencyListingsCache.data)return res.json({...jmlAgencyListingsCache.data,stale:true,message:"Dernière liste disponible affichée."});
  return res.status(502).json({ok:false,error:"Les annonces JML sont temporairement indisponibles.",sourceUrl:"https://www.jml-immobilier.fr/"});}
- catch(e){console.warn("JML recent listing feed unavailable:",String(e?.message||e));if(jmlAgencyListingsCache.data)return res.json({...jmlAgencyListingsCache.data,stale:true,message:"Le site officiel est momentanément inaccessible ; dernière liste affichée."});return res.status(502).json({ok:false,error:"Impossible de récupérer les annonces JML pour le moment.",sourceUrl:"https://www.jml-immobilier.fr/"});}
+ catch(e){console.warn("JML available listing feed unavailable:",String(e?.message||e));if(jmlAgencyListingsCache.data)return res.json({...jmlAgencyListingsCache.data,stale:true,message:"Le site officiel est momentanément inaccessible ; dernière liste affichée."});return res.status(502).json({ok:false,error:"Impossible de récupérer les annonces JML pour le moment.",sourceUrl:"https://www.jml-immobilier.fr/"});}
 });
 
 app.get("/api/market-climate",async(req,res)=>{
