@@ -19,3 +19,4 @@ jobs:
       - run: node --check external-estimators.js
       - run: node --check scripts/import-dvf.js
       - run: node --check scripts/import-dvfplus.js
+      - run: node -e "const fs=require('fs'); const html=fs.readFileSync('public/vendeur-secteur.html','utf8'); const scripts=[...html.matchAll(/<script\\b[^>]*>([\\s\\S]*?)<\\/script>/gi)].map(m=>m[1]).filter(x=>x.trim()); if(!scripts.length) throw new Error('No inline JavaScript found'); fs.writeFileSync('/tmp/jml-vendeur-inline.js',scripts.join('\\n;\\n'));" && node --check /tmp/jml-vendeur-inline.js
