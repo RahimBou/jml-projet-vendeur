@@ -1969,6 +1969,14 @@ function updateSellerProjectSummary(d){
       openStep(Number(btn.dataset.check)-1);
     },true);
   });
+  document.addEventListener("keydown",function(e){
+    const modal=getModal().box;
+    if(e.key==="Escape"&&modal?.classList.contains("open")){
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden","true");
+      document.body.style.overflow="";
+    }
+  });
 })();
 </script>
 <style>
