@@ -1115,6 +1115,50 @@ body.guide-modal-open{overflow:hidden}
 #sellerGeminiMarketAdvice li{margin:0 0 6px}
 </style>
 </style>
+<style id="jml-quick-card-alignment-fix">
+/* Cartes d'accès : le texte ne doit jamais être comprimé par le bouton */
+.seller-quick-grid{align-items:stretch!important}
+.seller-quick-card{
+  height:auto!important;
+  min-height:300px!important;
+  box-sizing:border-box!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+}
+.seller-quick-card>span:nth-child(2){
+  display:block!important;
+  flex:1 0 auto!important;
+  height:auto!important;
+  min-height:0!important;
+  overflow:visible!important;
+  padding:17px 15px 8px!important;
+  box-sizing:border-box!important;
+}
+.seller-quick-card>span small{
+  display:block!important;
+  height:auto!important;
+  max-height:none!important;
+  overflow:visible!important;
+  white-space:normal!important;
+  line-height:1.45!important;
+}
+.seller-quick-card em{
+  flex:0 0 42px!important;
+  min-height:42px!important;
+  height:42px!important;
+  margin-top:auto!important;
+  box-sizing:border-box!important;
+}
+@media(max-width:850px){
+  .seller-quick-card{min-height:280px!important}
+}
+@media(max-width:560px){
+  .seller-quick-card{min-height:0!important}
+  .seller-quick-card>span:nth-child(2){flex:1 0 auto!important;padding:16px 13px 10px!important}
+  .seller-quick-card em{margin-top:12px!important}
+}
+</style>
 </head>
 <body>
 <div class="jml-welcome-modal" id="jmlWelcomeModal" role="presentation">
