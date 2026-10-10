@@ -46,8 +46,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.14.2";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks";
+const VERSION = "3.14.3";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -1865,7 +1865,9 @@ async function buildComparableSales(market,property){
   // Géocoder l’adresse et résoudre la commune sont deux opérations indépendantes.
   // Les lancer en parallèle évite d’additionner leurs délais avant la recherche DVF.
   let origin=null, commune=null;
-  const [geocodedOrigin,resolvedCommune]=await Promise.all([
+  const rnbQueryAddress=[String(property?.address||"").trim(),city].filter(Boolean).join(", ");
+  // RNB est un enrichissement non bloquant : il ne doit jamais empêcher la recherche DVF.
+  const [geocodedOrigin,resolvedCommune,rnbLookup]=await Promise.all([
     geocodeAddress(property?.address,city).catch(error=>{
       console.warn("JML comparables géocodage:",String(error?.message||error));
       return null;
@@ -1873,13 +1875,56 @@ async function buildComparableSales(market,property){
     resolveTerritoryCommune(city,property?.address||"").catch(error=>{
       console.warn("JML comparables commune:",String(error?.message||error));
       return null;
-    })
+    }),
+    addressProvided?searchRnbBuildings({address:rnbQueryAddress}).catch(error=>{
+      console.warn("JML comparables RNB:",String(error?.message||error));
+      return null;
+    }):Promise.resolve(null)
   ]);
   origin=geocodedOrigin;
   commune=resolvedCommune;
+
+  // N'utiliser le point du bâtiment que si numéro + voie + commune concordent.
+  // Une simple correspondance de rue ou de code postal ne suffit jamais à déplacer l'origine.
+  const targetNumber=dpeNumber(property?.address||"");
+  const targetStreet=dpeStreetName(dpeNorm(String(property?.address||"")
+    .replace(/^\s*\d+[A-Za-z]?(?:\s*(?:bis|ter|quater))?\s*/i,"")
+    .replace(/\b\d{5}\b/g," ")
+    .replace(dpeNorm(city)," ")));
+  const targetCity=dpeNorm(city);
+  const targetPostal=String(property?.postalCode||property?.postal||"").match(/\b\d{5}\b/)?.[0]||"";
+  const rnbCandidates=(Array.isArray(rnbLookup?.results)?rnbLookup.results:[]).map(building=>{
+    const address=Array.isArray(building?.addresses)?building.addresses.find(a=>a&&(
+      dpeNorm(a.street)===targetStreet || (dpeNorm(a.street)&&targetStreet&&(dpeNorm(a.street).includes(targetStreet)||targetStreet.includes(dpeNorm(a.street))))
+    )):null;
+    if(!address)return null;
+    const numberMatch=Boolean(targetNumber)&&dpeNorm(address.number)===dpeNorm(targetNumber);
+    const cityMatch=Boolean(targetCity)&&dpeNorm(address.city)===targetCity;
+    const postalMatch=!targetPostal||String(address.postalCode||"").trim()===targetPostal;
+    const score=(numberMatch?60:0)+(cityMatch?30:0)+(postalMatch?10:0);
+    return {building,address,score};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score);
+  const rnbBest=rnbCandidates[0]||null;
+  const rnbExactMatch=Boolean(rnbBest&&rnbBest.score===100&&rnbBest.building?.active&&
+    Number.isFinite(Number(rnbBest.building?.point?.lat))&&Number.isFinite(Number(rnbBest.building?.point?.lon)));
+  if(rnbExactMatch){
+    origin={lat:Number(rnbBest.building.point.lat),lon:Number(rnbBest.building.point.lon),label:[
+      rnbBest.address.number,rnbBest.address.street,rnbBest.address.postalCode,rnbBest.address.city
+    ].filter(Boolean).join(" ")};
+  }
   const addressGeocoded=Boolean(origin);
   const addressGeocodeLabel=origin?.label||null;
-  let originSource=addressGeocoded?"Adresse":"Centre de la commune";
+  let originSource=rnbExactMatch?"RNB — bâtiment identifié par adresse exacte":addressGeocoded?"Adresse":"Centre de la commune";
+  const rnbDiagnostics={
+    available:Boolean(rnbLookup),
+    mode:rnbLookup?.mode||null,
+    status:rnbLookup?.status||null,
+    candidateCount:Number(rnbLookup?.count||0),
+    exactAddressMatch:rnbExactMatch,
+    rnbId:rnbExactMatch?rnbBest.building.rnbId:null,
+    matchLevel:rnbExactMatch?"Numéro + voie + commune + code postal":"Aucun rapprochement bâtiment suffisamment certain",
+    source:"Référentiel national des bâtiments (RNB)"
+  };
   if(!origin){
     try{
       const commune=await resolveTerritoryCommune(city,"");
@@ -2130,6 +2175,7 @@ async function buildComparableSales(market,property){
       capPct:15
     },
     temporalControl,
+    rnb:rnbDiagnostics,
     matchCount:top40.length,totalCandidates:candidates.length,radiusKm,closeCount,minPriceM2,maxPriceM2,
     q1:q1!=null?Math.round(q1):null,q3:q3!=null?Math.round(q3):null,spreadPct,strictCount,
     confidence,rangeLow:rangeLow!=null?Math.round(rangeLow):null,rangeHigh:rangeHigh!=null?Math.round(rangeHigh):null,
@@ -2150,6 +2196,7 @@ async function buildComparableSales(market,property){
       outlierCount,
       landComparison:!isLand&&landSurface!==null&&landSurface<100?"neutralise-sous-100m2":"actif",
       originSource,
+      rnb:rnbDiagnostics,
       addressProvided,
       addressGeocoded,
       addressGeocodeLabel,
