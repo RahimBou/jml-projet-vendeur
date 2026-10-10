@@ -44,8 +44,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.14.0";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-comparable-diagnostics-v1-jml-agency-listings-stack-v1-lazy-three";
+const VERSION = "3.14.1";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-comparable-diagnostics-v1-jml-agency-listings-stack-v2-available-only";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -2334,25 +2334,35 @@ async function jmlFetchText(url,timeoutMs=8500){const r=await fetch(url,{headers
 async function fetchJmlAgencyListings(){
  const homepage="https://www.jml-immobilier.fr/",html=await jmlFetchText(homepage,9000);
  const hrefs=[...html.matchAll(/href=["']([^"'#]*\/vente\/[^"'#]+)["']/gi)].map(m=>{try{return new URL(jmlDecodeHtml(m[1]),homepage).href.split("#")[0]}catch(_e){return ""}}).filter(Boolean);
- const urls=[...new Set(hrefs)].filter(u=>{try{const x=new URL(u);const parts=x.pathname.split("/").filter(Boolean);return x.hostname==="www.jml-immobilier.fr"&&parts[0]==="vente"&&parts.length>=4&&/^\d{1,5}[-_]/i.test(parts[parts.length-1]);}catch(_e){return false}}).slice(0,3);
- const results=[];
- for(const url of urls){try{
-  const page=await jmlFetchText(url,6500),plain=jmlPlainHtml(page);
-  const h1s=[...page.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map(m=>jmlPlainHtml(m[1]));
-  const title=h1s.find(x=>/(maison|appartement|immeuble|terrain|local|bâtiment|studio|parking|garage)/i.test(x)&&x.length<150)||jmlMeta(page,"og:title").split("|")[0].trim();
-  if(!title)continue;
-  const front=plain.slice(0,8500);
-  const isCompromise=/sous[- ]compromis|offre acceptée/i.test(front),isSold=/\bvendu(?:e)?\b|retiré de la vente/i.test(front);
-  const tags=[...front.matchAll(/nouveauté|exclusivité|prix en baisse|coup de cœur/gi)].map(x=>x[0]);
-  const status=isSold?"Vendu":isCompromise?"Sous compromis":[...new Set(tags.map(x=>x.charAt(0).toUpperCase()+x.slice(1).toLowerCase()))].slice(0,2).join(" · ")||"À découvrir";
-  const priceMatch=plain.match(/(?:Prix de vente|Prix)\s*[:：-]?\s*((?:\d[\d\s\u00a0.,]*\d)|\d{4,7})\s*€/i);
-  const priceCandidates=[...plain.matchAll(/(\d[\d\s\u00a0.,]{2,})\s*€/g)].map(m=>Number(m[1].replace(/[\s\u00a0.]/g,"").replace(",", "."))).filter(n=>Number.isFinite(n)&&n>=10000&&n<=10000000);
-  const price=priceMatch?Number(priceMatch[1].replace(/[\s\u00a0.]/g,"").replace(",", ".")):(priceCandidates[0]||null);
-  const sm=title.match(/(\d+(?:[,.]\d+)?)\s*m²/i)||plain.match(/Surface habitable\s*[: ]\s*(\d+(?:[,.]\d+)?)\s*m²/i)||plain.match(/Surface\s*[: ]\s*(\d+(?:[,.]\d+)?)\s*m²/i);
-  const cm=plain.match(/([A-ZÀ-Þ][A-Za-zÀ-ÿ'’ -]{1,50})\s*\((\d{5})\)/);
-  results.push({title,city:cm?cm[1].trim().replace(/\s+/g," "):"Ardennes",postalCode:cm?.[2]||null,price:Number.isFinite(price)&&price>=10000&&price<=10000000?price:null,surface:sm?Number(sm[1].replace(",",".")):null,image:jmlListingImage(page,url),url:(()=>{try{return new URL(jmlMeta(page,"og:url")||url,url).href}catch(_e){return url}})(),status});
- }catch(e){console.warn("JML recent listing skipped:",url,String(e?.message||e).slice(0,100));}}
- return {ok:true,source:"Site officiel JML Immobilier",sourceUrl:homepage,fetchedAt:new Date().toISOString(),items:results.slice(0,3)};
+ // The homepage can contain featured properties that are already under compromise.
+ // Inspect a small candidate pool and keep only listings whose page does not signal a sale/compromise.
+ const urls=[...new Set(hrefs)].filter(u=>{try{const x=new URL(u);const parts=x.pathname.split("/").filter(Boolean);return x.hostname==="www.jml-immobilier.fr"&&parts[0]==="vente"&&parts.length>=4&&/^\d{1,5}[-_]/i.test(parts[parts.length-1]);}catch(_e){return false}}).slice(0,12);
+ const results=[];let cursor=0;
+ async function worker(){
+  while(cursor<urls.length&&results.length<3){
+   const order=cursor++,url=urls[order];
+   try{
+    const page=await jmlFetchText(url,6500),plain=jmlPlainHtml(page),front=plain.slice(0,10000);
+    const h1s=[...page.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map(m=>jmlPlainHtml(m[1]));
+    const title=h1s.find(x=>/(maison|appartement|immeuble|terrain|local|bâtiment|studio|parking|garage)/i.test(x)&&x.length<150)||jmlMeta(page,"og:title").split("|")[0].trim();
+    if(!title)continue;
+    const isCompromise=/sous[\s-]*compromis|offre\s+acceptée|sous\s+offre|offre\s+en\s+cours/i.test(front);
+    const isUnavailable=/\bvendu(?:e|s|es)?\b|retir(?:é|ée|és|ées)\s+de\s+la\s+vente|bien\s+indisponible/i.test(front);
+    if(isCompromise||isUnavailable)continue;
+    const tags=[...front.matchAll(/nouveauté|exclusivité|prix en baisse|coup de cœur/gi)].map(x=>x[0]);
+    const status=[...new Set(tags.map(x=>x.charAt(0).toUpperCase()+x.slice(1).toLowerCase()))].slice(0,2).join(" · ")||"Disponible à consulter";
+    const priceMatch=plain.match(/(?:Prix de vente|Prix)\s*[:：-]?\s*((?:\d[\d\s\u00a0.,]*\d)|\d{4,7})\s*€/i);
+    const priceCandidates=[...plain.matchAll(/(\d[\d\s\u00a0.,]{2,})\s*€/g)].map(m=>Number(m[1].replace(/[\s\u00a0.]/g,"").replace(",", "."))).filter(n=>Number.isFinite(n)&&n>=10000&&n<=10000000);
+    const price=priceMatch?Number(priceMatch[1].replace(/[\s\u00a0.]/g,"").replace(",", ".")):(priceCandidates[0]||null);
+    const sm=title.match(/(\d+(?:[,.]\d+)?)\s*m²/i)||plain.match(/Surface habitable\s*[: ]\s*(\d+(?:[,.]\d+)?)\s*m²/i)||plain.match(/Surface\s*[: ]\s*(\d+(?:[,.]\d+)?)\s*m²/i);
+    const cm=plain.match(/([A-ZÀ-Þ][A-Za-zÀ-ÿ'’ -]{1,50})\s*\((\d{5})\)/);
+    results.push({order,title,city:cm?cm[1].trim().replace(/\s+/g," "):"Ardennes",postalCode:cm?.[2]||null,price:Number.isFinite(price)&&price>=10000&&price<=10000000?price:null,surface:sm?Number(sm[1].replace(",",".")):null,image:jmlListingImage(page,url),url:(()=>{try{return new URL(jmlMeta(page,"og:url")||url,url).href}catch(_e){return url}})(),status});
+   }catch(e){console.warn("JML available listing skipped:",url,String(e?.message||e).slice(0,100));}
+  }
+ }
+ await Promise.all([worker(),worker(),worker()]);
+ const items=results.sort((a,b)=>a.order-b.order).slice(0,3).map(({order,...item})=>item);
+ return {ok:true,source:"Site officiel JML Immobilier",sourceUrl:homepage,fetchedAt:new Date().toISOString(),items};
 }
 app.get("/api/jml-listings",async(req,res)=>{
  res.setHeader("Cache-Control","no-store, max-age=0");
