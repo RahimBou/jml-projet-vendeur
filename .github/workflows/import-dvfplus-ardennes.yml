@@ -1,0 +1,34 @@
+name: DVF+ Ardennes - import maisons et appartements
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import-dvfplus-ardennes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Vérifier et décompresser le fichier DVF+
+        run: |
+          set -euo pipefail
+          test -s data/dvfplus_ardennes_residential.csv.gz
+          gzip -t data/dvfplus_ardennes_residential.csv.gz
+          mkdir -p /tmp/jml-dvfplus
+          gzip -dc data/dvfplus_ardennes_residential.csv.gz > /tmp/jml-dvfplus/dvf_plus.csv
+          test -s /tmp/jml-dvfplus/dvf_plus.csv
+          echo "CSV décompressé : $(wc -l < /tmp/jml-dvfplus/dvf_plus.csv) lignes"
+      - name: Installer les dépendances
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Importer DVF+ Ardennes dans PostgreSQL
+        run: node scripts/import-dvfplus.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL: "true"
+          DVF_PLUS_CSV_PATH: /tmp/jml-dvfplus/dvf_plus.csv
