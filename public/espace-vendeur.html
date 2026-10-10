@@ -2652,7 +2652,12 @@ function updateSellerProjectSummary(d){
       const dvfCount=Number.isFinite(Number(evidence.dvfSalesUsed))?Number(evidence.dvfSalesUsed):0;
       const trendLabel=evidence.trendAvailable?"tendance calculée sur deux périodes DVF":"tendance DVF non concluante (échantillon insuffisant)";
       const dvfSource=evidence.source?(" · Source : "+evidence.source):"";
-      aiMeta.textContent="Période : "+(a.asOf||"non précisée")+" · Confiance : "+(a.confidence||"faible")+" · "+dvfCount+" ventes DVF examinées · "+trendLabel+dvfSource+" · Gemini. Interprétation indicative, pas une prédiction de vente.";
+      const externalCount=Number.isFinite(Number(evidence.externalBenchmarksRetrieved))?Number(evidence.externalBenchmarksRetrieved):0;
+      const populationLabel=evidence.territoryPopulationRetrieved?"population communale récupérée":"population communale indisponible";
+      const externalSourceLabel=externalCount+" repère(s) de prix externe(s) récupéré(s)";
+      const sourceChecks=Array.isArray(evidence.externalSourceChecks)?evidence.externalSourceChecks:[];
+      const sourceNotes=sourceChecks.filter(x=>/CCI|Notaires/i.test(String(x.name||""))).map(x=>String(x.name)+" : "+(x.status==="accessible"?"page accessible, sans chiffre extrait":"donnée non récupérée"));
+      aiMeta.textContent="Période : "+(a.asOf||"non précisée")+" · Confiance : "+(a.confidence||"faible")+" · "+dvfCount+" ventes DVF examinées · "+trendLabel+dvfSource+" · "+populationLabel+" · "+externalSourceLabel+(sourceNotes.length?" · "+sourceNotes.join(" ; "):"")+" · Gemini. Les repères externes ne remplacent pas les ventes DVF.";
     }catch(error){aiLoading.classList.remove("is-visible");aiTitle.textContent="Analyse non disponible";aiBadge.textContent="Données brutes conservées";aiSummary.textContent=String(error?.message||"Gemini n’a pas pu interpréter les données. Les indicateurs chiffrés restent affichés ci-dessus.");aiMeta.textContent="Aucun chiffre de remplacement n’a été inventé.";}
     finally{aiLoading.classList.remove("is-visible");aiButton.disabled=false;aiButton.textContent="Réinterpréter avec Gemini";}
   }
