@@ -914,6 +914,7 @@ section:has(.method-card){
  <div class="seller-next-step" id="sellerNextStep" style="display:none"></div>
  <div class="seller-reading" id="sellerReading">
   <div class="seller-reading-head"><span>LECTURE VENDEUR</span><b>Ce que cela signifie pour votre vente</b></div>
+  <div id="characteristicAgent" aria-live="polite"></div>
   <div class="seller-reading-grid">
    <div>
     <p class="reading-title">En clair</p>
@@ -1803,9 +1804,9 @@ function renderListingResearch(research){
    (cards||'<div style="margin-top:8px">Aucune annonce assez proche pour l’instant.</div>');
 }
 function renderCharacteristicAnalysis(analysis){
- const el=$("#sellerReading"); if(!el)return;
+ const el=$("#characteristicAgent"); if(!el)return;
  const a=analysis||null;
- if(!a){el.insertAdjacentHTML("afterbegin",'<div class="agent-adjustment"><div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Analyse des ajustements en cours…</b></div><p>Le moteur termine l’analyse locale du DPE, du garage et des autres caractéristiques documentées.</p></div>');return;}
+ if(!a){el.innerHTML='<div class="agent-adjustment"><div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Le DVF reste la base</b></div><p>L’analyse des caractéristiques se charge séparément. Le repère DVF et la lecture vendeur restent affichés pendant cette étape.</p></div>';return;}
  const p=a.positioning||{},base=a.baseline||{},rows=Array.isArray(a.adjustments)?a.adjustments:[];
  const rowHtml=rows.map(x=>{
    const pct=Number(x.effectPct||0), eurv=Number(x.effectEur||0);
