@@ -1919,22 +1919,33 @@ function updateSellerProjectSummary(d){
       body+='<div class="seller-step-tips"><h4>À préparer</h4><ul>'+s.checklist.map(x=>'<li>'+esc2(x)+'</li>').join("")+'</ul></div>';
     }
     body+='<div class="seller-step-note">'+esc2(s.note)+'</div>';
-    body+='<div class="seller-step-actions"><button type="button" class="primary" id="sellerStepDone">'+(done?"Étape validée ✓":"Marquer cette étape comme faite")+' </button><button type="button" class="secondary" id="sellerStepClose">Fermer</button></div></div>';
+    body+='<div class="seller-step-actions"><button type="button" class="primary" id="sellerStepDone">'+(done?"Annuler la validation ↶":"Marquer cette étape comme faite")+'</button><button type="button" class="secondary" id="sellerStepClose">Fermer</button></div></div>';
     m.title.textContent=s.title;m.body.innerHTML=body;m.box.classList.add("open");m.box.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";
     const close=()=>{m.box.classList.remove("open");m.box.setAttribute("aria-hidden","true");document.body.style.overflow=""};
     document.getElementById("sellerStepClose")?.addEventListener("click",close);
     document.getElementById("sellerStepDone")?.addEventListener("click",async function(){
       const current=readSpace(), list=Array.isArray(current.checklist)?current.checklist.map(Number):[];
-      if(!list.includes(index+1))list.push(index+1);
-      current.checklist=list;current.submitted=true;writeSpace(current);
-      /* Synchroniser toutes les vues de progression, y compris la barre latérale et la prochaine action. */
-      if(typeof renderSellerChecklist==="function")renderSellerChecklist(list);
-      document.querySelectorAll(".seller-check").forEach(function(btn){const on=list.includes(Number(btn.dataset.check));btn.classList.toggle("done",on);const mark=btn.querySelector(".seller-check-mark");if(mark)mark.textContent=on?"✓":"○"});
-      const n=list.length,p=Math.round(n/6*100),bar=document.getElementById("sellerChecklistProgress"),count=document.getElementById("sellerChecklistCount"),pct=document.getElementById("sellerChecklistPercent");
-      if(bar)bar.style.width=p+"%";if(count)count.textContent=n+" / 6";if(pct)pct.textContent=p+" %";
-      const next=document.getElementById("sellerNextProgress");if(next)next.textContent=n+" / 6 étapes"; const nextTitle=document.getElementById("sellerNextTitle"),nextText=document.getElementById("sellerNextText"),nextIcon=document.getElementById("sellerNextIcon"),nextBtn=document.getElementById("sellerNextBtn"); const labels=[["🏠","Commencez par préparer les informations sur votre bien.","Surface, pièces, équipements et éléments importants à connaître."],["📄","Préparez vos documents utiles.","Titre de propriété, diagnostics et documents disponibles."],["⚡","Vérifiez votre DPE.","Notez la classe énergétique et la date de validité du diagnostic."],["🛠️","Rassemblez les informations sur vos travaux.","Factures, améliorations et travaux récents peuvent être utiles."],["📸","Préparez la présentation de votre bien.","Extérieurs, rangement et éléments à mettre en valeur."],["🤝","Votre dossier est prêt pour le rendez-vous.","Préparez vos questions et choisissez un créneau."]]; if(nextTitle&&n<6){nextIcon.textContent=labels[n][0];nextTitle.textContent=labels[n][1];nextText.textContent=labels[n][2];nextBtn.textContent="Continuer →";nextBtn.href="#sellerChecklistGrid";} else if(nextTitle){nextIcon.textContent="✓";nextTitle.textContent="Vos 6 étapes sont cochées";nextText.textContent="Préparez vos questions ; les informations et documents seront vérifiés avec JML.";nextBtn.textContent="Demander un rendez-vous →";nextBtn.href="#fbAppointmentForm";}
+      const stepNumber=index+1, wasDone=list.includes(stepNumber);
+      current.checklist=wasDone?list.filter(n=>n!==stepNumber):[...list,stepNumber];
+      current.submitted=true;
+      writeSpace(current);
+      // Une validation peut être annulée depuis la même fenêtre.
+      if(typeof renderSellerChecklist==="function")renderSellerChecklist(current.checklist);
+      document.querySelectorAll(".seller-check").forEach(function(btn){
+        const on=current.checklist.includes(Number(btn.dataset.check));
+        btn.classList.toggle("done",on);
+        const mark=btn.querySelector(".seller-check-mark");
+        if(mark)mark.textContent=on?"✓":"○";
+      });
       const token=current.token;
-      if(token){try{await fetch("/api/seller-space/"+encodeURIComponent(token),{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({city:current.city,address:current.address,propertyType:current.propertyType,horizon:current.horizon,surface:current.surface,rooms:current.rooms,dpe:current.dpe,terrain:current.terrain,checklist:list})})}catch(_e){}}
+      if(token){
+        try{
+          await fetch("/api/seller-space/"+encodeURIComponent(token),{
+            method:"PATCH",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({city:current.city,address:current.address,propertyType:current.propertyType,horizon:current.horizon,surface:current.surface,rooms:current.rooms,dpe:current.dpe,terrain:current.terrain,checklist:current.checklist})
+          });
+        }catch(error){console.warn("JML checklist sync:",String(error?.message||error));}
+      }
       close();
     });
   }
