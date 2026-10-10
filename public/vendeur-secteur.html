@@ -1209,14 +1209,6 @@ function renderSellerReading(r){
  const evolution=Number.isFinite(communalM2)&&communalM2>0&&Number.isFinite(base)&&base>0
    ?"Le repère communal des "+communalTypeLabel+" est de "+Math.round(communalM2).toLocaleString("fr-FR")+" €/m². Le repère des comparables est de "+baseText+" : cet écart est un indicateur de marché, pas une correction automatique du prix."
    :"Le repère communal sert de contexte général et ne remplace pas les ventes comparables.";
- const comparableSales=Array.isArray(pageData.comparables?.sales)?pageData.comparables.sales:[];
- const comparableRows=comparableSales.slice(0,3).map(s=>{
-   const p=n(s.price), sm=n(s.surface), pm=n(s.pricePerM2);
-   return '<div class="mini-comparable"><div><b>'+esc(s.type||"Bien")+'</b><small>'+esc(s.address||"Secteur proche")+'</small></div><strong>'+esc(p!=null?eur(p):"—")+'</strong><span>'+esc(sm!=null?Math.round(sm)+" m²":"—")+(pm!=null?" · "+Math.round(pm).toLocaleString("fr-FR")+" €/m²":"")+'</span></div>';
- }).join("");
- const comparableBlock=comparableRows
-   ? '<div class="comparable-proof"><div class="comparable-proof-head"><div><span>VENTES COMPARABLES RETENUES</span><b>Des ventes réelles proches de votre bien</b></div><small>'+(pageData.comparables.matchCount||comparableSales.length)+" ventes analysées</small></div>"+comparableRows+'<p>Les ventes les plus proches et les plus similaires pèsent davantage dans le calcul du repère.</p></div>'
-   : '<div class="comparable-proof"><div class="comparable-proof-head"><div><span>VENTES COMPARABLES</span><b>Les ventes utilisées pour le repère</b></div></div><p>Les données comparables apparaîtront ici dès qu’elles sont disponibles.</p></div>';
  const factorsUp='<div class="factor-card up"><b>Ce qui peut faire augmenter la valeur</b><ul><li>Très bon état ou rénovation récente</li><li>DPE performant et équipements récents</li><li>Emplacement, environnement et accessibilité recherchés</li><li>Luminosité, exposition et vue dégagée</li><li>Terrain, jardin, terrasse, garage ou dépendances</li><li>Qualité des prestations et absence de travaux importants</li></ul></div>';
  const factorsDown='<div class="factor-card down"><b>Ce qui peut faire baisser la valeur</b><ul><li>Travaux importants ou rénovation à prévoir</li><li>DPE faible, isolation ou chauffage à revoir</li><li>Nuisances, vis-à-vis ou mauvaise exposition</li><li>Manque de stationnement</li><li>Contraintes du terrain ou du bâtiment</li><li>Emplacement moins recherché</li></ul></div>';
  readingGrid.innerHTML=
@@ -1226,7 +1218,7 @@ function renderSellerReading(r){
  '<div class="reading-step"><b>3</b><span><strong>Pondération des ventes</strong><small>Les ventes les plus proches et les plus similaires pèsent davantage.</small></span></div>'+
  (temporal?.available?'<div class="reading-step"><b>4</b><span><strong>Actualisation dans le temps</strong><small>Les ventes anciennes sont revalorisées selon le marché local de référence.</small></span></div>':'')+
  '<div class="reading-step"><b>'+(temporal?.available?"5":"4")+'</b><span><strong>Repère au m²</strong><small>Le moteur obtient <b>'+esc(baseText)+'</b> à partir des ventes retenues.</small></span></div>'+
- '<div class="reading-result"><span>Application à la surface</span><strong>'+esc(calcText)+'</strong><em>Prix repère médian : '+esc(eur(r.referenceValue))+'</em></div>'+comparableBlock+'</div></div>'+
+ '<div class="reading-result"><span>Application à la surface</span><strong>'+esc(calcText)+'</strong><em>Prix repère médian : '+esc(eur(r.referenceValue))+'</em></div><a class="reading-comps-link" href="#comps">Consulter les ventes comparables détaillées ↓</a></div></div>'+
  '<div class="reading-panel reading-panel-why"><div class="reading-number gold">2</div><p class="reading-title">POURQUOI LE PRIX PEUT VARIER</p><h3>Le marché + les caractéristiques de votre bien</h3><p>Deux biens proches peuvent avoir des valeurs différentes. L’état, les prestations, l’emplacement et les contraintes doivent être analysés avant de fixer le prix de commercialisation.</p>'+
  '<div class="reading-range"><strong>🔴 Repère DVF central : '+esc(floor!=null?eur(floor):"En cours")+'</strong><span>Ce montant provient des transactions DVF comparables. Il sert de repère d’analyse et ne constitue ni une garantie de vente ni un prix définitif.</span></div>'+
  '<div class="reading-range"><strong>🟡 Prix au m² retenu : '+esc(Number.isFinite(base)&&base>0?Math.round(base).toLocaleString("fr-FR")+" €/m²":"En cours")+'</strong><span>Ce niveau est calculé à partir des ventes DVF retenues par l’Agent DVF et sert de base au positionnement du bien.</span></div>'+
@@ -2213,5 +2205,11 @@ run();
 .agent-adjustment-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #e2ebe5}.agent-adjustment-row small{display:block;color:#68756f;font-size:11px;margin-top:2px}.agent-adjustment-row strong{white-space:nowrap}.agent-adjustment-row strong.up{color:#167447}.agent-adjustment-row strong.down{color:#a94b35}.agent-adjustment-row strong.neutral{color:#5f6b66}.agent-adjustment-row em{font-style:normal;font-size:10px;color:#69756f}.agent-adjustment-note{font-size:12px;color:#56645e;margin:10px 0}.agent-adjustment-meta{font-size:11px;color:#66736d}
 @media(max-width:650px){.agent-adjustment-head{display:block}.agent-adjustment-grid{grid-template-columns:1fr}.agent-adjustment-row{grid-template-columns:1fr auto}.agent-adjustment-row em{grid-column:2}.agent-adjustment-grid strong{font-size:22px}}
 </style>
+
+<style id="jml-single-comparable-list">
+.reading-comps-link{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:9px 12px;border:1px solid #d9c7a5;border-radius:999px;color:#17463b;background:#fbf6eb;font-size:12px;font-weight:750;text-decoration:none}
+.reading-comps-link:hover{background:#f2e6d0}
+</style>
+
 </body>
 </html>
