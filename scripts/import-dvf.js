@@ -181,6 +181,33 @@ async function main(){
     await client.query("CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_date ON jml_dvf_sales(commune_code,sale_date DESC)");
     await client.query("CREATE INDEX IF NOT EXISTS idx_jml_dvf_geo_date ON jml_dvf_sales(latitude,longitude,sale_date DESC)");
     await client.query("CREATE INDEX IF NOT EXISTS idx_jml_dvf_type_surface ON jml_dvf_sales(property_type,surface)");
+
+    // Inclure l'année source dans l'unicité évite qu'une ligne importée une
+    // année soit confondue avec une ligne identique d'une autre année.
+    const oldUnique = await client.query(`
+      SELECT conname FROM pg_constraint
+      WHERE conrelid='jml_dvf_sales'::regclass AND contype='u'
+        AND pg_get_constraintdef(oid) =
+          'UNIQUE (mutation_id, property_type, price, surface, address, parcel_id)'
+    `);
+    for (const row of oldUnique.rows) {
+      await client.query(`ALTER TABLE jml_dvf_sales DROP CONSTRAINT "${row.conname}"`);
+      console.log("DVF migration: ancienne contrainte unique retirée:", row.conname);
+    }
+    const newUnique = await client.query(`
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid='jml_dvf_sales'::regclass
+        AND conname='jml_dvf_sales_source_year_unique'
+    `);
+    if (!newUnique.rowCount) {
+      await client.query(`
+        ALTER TABLE jml_dvf_sales
+        ADD CONSTRAINT jml_dvf_sales_source_year_unique
+        UNIQUE (source_year, mutation_id, property_type, price, surface, address, parcel_id)
+      `);
+      console.log("DVF migration: unicité désormais limitée à une même année source.");
+    }
+
     for(const year of YEARS){
     try{ await importYear(client,year); }
     catch(error){
