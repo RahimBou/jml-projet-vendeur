@@ -1270,6 +1270,8 @@ function renderComps(c){
   const rooms=Number(s.rooms);
   const subjectRooms=Number((pageData.space||{}).rooms);
   const surfaceGap=s.surfaceBasis==="surface_habitable"&&Number.isFinite(surface)&&Number.isFinite(subjectSurface)&&subjectSurface>0?Math.abs(surface-subjectSurface)/subjectSurface:null;
+  const surfaceSignalGap=s.surfaceSignalGap!=null&&Number.isFinite(Number(s.surfaceSignalGap))?Number(s.surfaceSignalGap):null;
+  const surfaceBasisComparable=s.surfaceBasisComparable===true;
   const roomsClose=Number.isFinite(rooms)&&Number.isFinite(subjectRooms)&&subjectRooms>0?Math.abs(rooms-subjectRooms)<=1:false;
   const sameStreet=!!s.sameStreet;
   const veryClose=Number.isFinite(distance)&&distance<=0.5;
@@ -1301,7 +1303,10 @@ function renderComps(c){
     reasonText="Surface et nombre de pièces proches ; la distance permet de compléter le marché local.";
   }else{
     reasonTitle="Repère de secteur";
-    reasonText="Vente plus éloignée, conservée pour compléter la lecture du marché local.";
+    reasonText="Vente conservée pour compléter la lecture du marché local.";
+  }
+  if(!surfaceBasisComparable&&surfaceSignalGap!==null&&surfaceSignalGap>0.30){
+    reasonText+=" Écart de gabarit important ("+Math.round(surfaceSignalGap*100)+" %). Son influence sur la valeur est réduite, car la surface bâtie DVF n'est pas strictement équivalente à la surface habitable déclarée.";
   }
   return '<article class="'+articleClass+'">'+
     '<div class="comp-top"><div><b>'+esc(s.type||"Bien")+'</b><span class="comp-source">VENTE RÉELLE</span></div><span class="pill '+proximityClass+'">'+esc(proximity)+'</span></div>'+
@@ -1318,7 +1323,7 @@ function renderComps(c){
  const moreBlock=extraRows.length
   ? '<details class="comps-more"><summary>Voir les '+extraRows.length+' autres ventes analysées</summary><div class="comps-grid">'+renderCompRows(extraRows)+'</div></details>'
   : "";
- compsNode.innerHTML='<div class="comps-note"><b>Comment lire :</b> ces ventes réelles servent de repères de marché. La surface DVF correspond à la surface réelle bâtie et n’est pas forcément équivalente à la surface habitable renseignée pour votre bien ; elle n’est donc pas utilisée pour favoriser ou écarter une vente tant que les mesures ne sont pas comparables.'+
+ compsNode.innerHTML='<div class="comps-note"><b>Comment lire :</b> ces ventes sont des repères, pas des copies exactes de votre bien. La surface bâtie DVF peut différer de la surface habitable déclarée : dans ce cas, le moteur conserve la vente si elle reste utile, mais réduit son poids lorsque l’écart de gabarit est important. Les ventes proches en type, surface, pièces et date pèsent davantage.'+
  '</div><div class="comps-grid">'+renderCompRows(visibleRows)+'</div>'+moreBlock;
 }
 function renderNearby(rows){
