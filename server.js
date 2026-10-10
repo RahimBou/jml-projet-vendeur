@@ -2252,7 +2252,7 @@ app.get("/api/territory-nearby", async (req,res) => {
 const jmlCreditClimateCache={expiresAt:0,data:null};
 const WEBSTAT_BASE="https://webstat.banque-france.fr/api/explore/v2.1/catalog/datasets/observations/records";
 const WEBSTAT_RATE_SERIES="MIR1.M.FR.B.A22HR.A.R.A.2254U6.EUR.N";
-const WEBSTAT_PRODUCTION_SERIES="MIR1.M.FR.B.A22.A.5.A.2254U6.EUR.N";
+const WEBSTAT_PRODUCTION_SERIES="MIR1.M.FR.B.A22HR.A.5.A.2254U6.EUR.N";
 function webstatNumber(value){
   if(value===null||value===undefined||value==="")return null;
   const normalized=typeof value==="string"?value.replace(/\s/g,"").replace(",","."):value;
