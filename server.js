@@ -2132,7 +2132,10 @@ async function buildComparableSales(market,property){
   // On limite donc la vérification aux 4 meilleurs comparables et on la lance en une seule vague.
   // Le prix, le minimum DVF et la valeur centrale sont déjà calculés à partir des données DVF.
   const dpeRows=top40.slice(0,4);
-  const enriched=await Promise.all(dpeRows.map(async sale=>{
+  // L'ADEME est secondaire : son API peut enchaîner plusieurs recherches textuelles.
+  // On plafonne l'attente totale à 2,5 s pour que le calcul DVF ne dépasse pas le délai
+  // du client. Les ventes restent valides sans DPE ; les échecs sont simplement ignorés.
+  const dpeEnrichment=Promise.all(dpeRows.map(async sale=>{
     try{
       const dpeAddress=[sale.address,sale.postal].filter(Boolean).join(" ").trim();
       const found=await getAdemeDpeByAddress(dpeAddress||sale.address,sale.city||city,sale.postal||"");
@@ -2143,6 +2146,10 @@ async function buildComparableSales(market,property){
       return {sale,found:null};
     }
   }));
+  const enriched=await Promise.race([
+    dpeEnrichment,
+    new Promise(resolve=>setTimeout(()=>resolve([]),2500))
+  ]);
   for(const item of enriched){
     if(item.found?.dpe){
       item.sale.dpe=item.found.dpe;
