@@ -1081,14 +1081,22 @@ body.guide-modal-open{overflow:hidden}
 
     <div class="seller-dashboard-grid">
       <section class="seller-panel seller-market-panel">
-        <div class="seller-panel-head"><div><span class="seller-panel-kicker">📊 Marché local</span><h4>Quelques repères de marché</h4><p>Des repères pour nourrir notre échange, pas pour remplacer une estimation.</p></div><span class="seller-source-badge">Sources datées</span></div>
-        <div class="seller-market-tabs" id="sellerMarketTabs" role="group" aria-label="Choisir les repères de prix"><button type="button" id="marketTabCommunal" class="active" aria-pressed="true">Communal</button><button type="button" id="marketTabHouse" aria-pressed="false">Maison</button><button type="button" id="marketTabApartment" aria-pressed="false">Appartement</button></div>
-        <div class="seller-market-big" id="sellerMarketMetrics">
+        <div class="seller-market-intro">
+          <div class="seller-market-heading">
+            <span class="seller-market-icon" aria-hidden="true">⌂</span>
+            <div><span class="seller-panel-kicker">MARCHÉ LOCAL · DONNÉES DVF</span><h4>Le marché autour de votre bien</h4><p>Des ventes réelles pour mieux comprendre les prix dans votre commune.</p></div>
+            <span class="seller-source-badge"><i aria-hidden="true"></i> Sources vérifiables</span>
+          </div>
+          <div class="seller-market-context"><span aria-hidden="true">⌖</span><div><strong id="sellerMarketLocation">Votre commune</strong><small>Repères indicatifs · période affichée selon les données disponibles</small></div></div>
+        </div>
+        <div class="seller-market-tabs" id="sellerMarketTabs" role="group" aria-label="Choisir le type de bien pour les repères de prix"><button type="button" id="marketTabCommunal" class="active" aria-pressed="true"><span aria-hidden="true">▦</span> Tous les biens</button><button type="button" id="marketTabHouse" aria-pressed="false"><span aria-hidden="true">⌂</span> Maison</button><button type="button" id="marketTabApartment" aria-pressed="false"><span aria-hidden="true">▤</span> Appartement</button></div>
+        <div class="seller-market-selection-note"><span aria-hidden="true">↳</span> Sélectionnez une catégorie pour comparer les biens du même type.</div>
+        <div class="seller-market-big" id="sellerMarketMetrics" aria-live="polite">
           <div class="seller-metric"><span>Repère local</span><strong>Chargement…</strong><small>Recherche d’une source datée</small></div>
           <div class="seller-metric"><span>Ventes récentes</span><strong>À vérifier</strong><small>Selon le secteur</small></div>
           <div class="seller-metric"><span>Comparables</span><strong>À préparer</strong><small>Type + surface</small></div>
         </div>
-        <div class="seller-chart"><div class="seller-chart-title"><span>Comment lire ces repères</span><span>Uniquement si les données sont disponibles</span></div><div class="seller-market-reading"><p><strong>Un chiffre seul ne suffit pas.</strong> Le repère communal donne un contexte général. Pour votre bien, les ventes comparables sont plus utiles lorsqu’elles concernent le même type de bien, une surface proche et un secteur proche.</p><p>Lorsqu’il n’y a pas assez de ventes comparables fiables, nous préférons afficher <strong>« données insuffisantes »</strong> plutôt que de fabriquer une valeur ou une comparaison.</p></div></div>
+        <div class="seller-chart seller-market-explainer"><div class="seller-chart-title"><span>Comment interpréter ces chiffres</span><span>À lire avant de comparer</span></div><div class="seller-market-reading"><p><strong>Le bon prix dépend du bien, pas seulement de la commune.</strong> Une moyenne donne une première tendance. Les ventes les plus utiles concernent un bien de même nature, une surface proche et un secteur comparable.</p><p>Si les données disponibles ne permettent pas une comparaison fiable, nous affichons <strong>« données insuffisantes »</strong> plutôt qu’une valeur inventée. Ces repères ne constituent pas une estimation immobilière.</p></div></div>
         <div class="seller-source" id="sellerMarketSource" aria-live="polite">Recherche d’un repère local uniquement lorsqu’une source exploitable et datée est disponible.</div>
         <section class="seller-credit-climate" aria-labelledby="sellerCreditTitle">
           <div class="seller-credit-head">
@@ -2243,5 +2251,66 @@ function updateSellerProjectSummary(d){
  });
 })();
 </script>
+<style id="jml-market-local-redesign">
+/* Refonte ciblée du seul bloc Marché local de l’espace vendeur */
+.seller-market-panel{border:1px solid #e8ddca!important;border-radius:22px!important;background:linear-gradient(160deg,#fffefa 0%,#fff 62%,#faf6ed 100%)!important;box-shadow:0 12px 34px rgba(35,48,39,.055)!important;overflow:hidden}
+.seller-market-panel>.seller-market-intro{padding:4px 2px 0}
+.seller-market-panel .seller-market-heading{display:flex;align-items:center;gap:13px}
+.seller-market-panel .seller-market-icon{flex:0 0 46px;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:#173b31;color:#fff;font-size:27px;box-shadow:0 5px 13px rgba(23,59,49,.16)}
+.seller-market-panel .seller-market-heading>div{min-width:0;flex:1}
+.seller-market-panel .seller-market-heading .seller-panel-kicker{color:#a8752c;letter-spacing:.13em;font-size:10px;font-weight:850}
+.seller-market-panel .seller-market-heading h4{font-size:clamp(19px,2vw,25px)!important;line-height:1.2;margin:5px 0!important;color:#182a24}
+.seller-market-panel .seller-market-heading p{font-size:12px!important;line-height:1.5;margin:0!important;color:#73776f}
+.seller-market-panel .seller-market-heading .seller-source-badge{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border:1px solid #e9dec8;background:#fffaf0;color:#7a612f;border-radius:999px;font-size:10px;white-space:nowrap}
+.seller-market-panel .seller-source-badge i{width:6px;height:6px;border-radius:50%;background:#43845a;display:inline-block}
+.seller-market-panel .seller-market-context{display:flex;align-items:center;gap:10px;margin-top:18px;padding:11px 13px;border:1px solid #e9e2d5;border-radius:13px;background:rgba(248,245,237,.75)}
+.seller-market-panel .seller-market-context>span{font-size:21px;color:#a8752c}
+.seller-market-panel .seller-market-context strong,.seller-market-panel .seller-market-context small{display:block}
+.seller-market-panel .seller-market-context strong{font-size:12px;color:#263b32}
+.seller-market-panel .seller-market-context small{font-size:10px;color:#81837b;margin-top:3px;line-height:1.4}
+.seller-market-panel .seller-market-tabs{display:flex;gap:7px;margin-top:15px;padding:5px;border:1px solid #ece5d8;border-radius:15px;background:#f7f4ed}
+.seller-market-panel .seller-market-tabs button{display:flex;align-items:center;justify-content:center;gap:7px;min-height:43px;padding:9px 10px;border:1px solid transparent;border-radius:11px;background:transparent;color:#626b63;font-size:12px;font-weight:750;transition:background .18s ease,box-shadow .18s ease,color .18s ease;cursor:pointer}
+.seller-market-panel .seller-market-tabs button span{font-size:17px;line-height:1;color:#a8752c}
+.seller-market-panel .seller-market-tabs button:hover{background:#fff;color:#173b31}
+.seller-market-panel .seller-market-tabs button:focus-visible{outline:3px solid #c5a15d;outline-offset:2px}
+.seller-market-panel .seller-market-tabs button.active{background:#173b31;color:#fff;border-color:#173b31;box-shadow:0 4px 11px rgba(23,59,49,.16)}
+.seller-market-panel .seller-market-tabs button.active span{color:#e2bd77}
+.seller-market-panel .seller-market-selection-note{display:flex;gap:7px;align-items:center;margin:9px 2px 0;color:#77796f;font-size:10px;line-height:1.4}
+.seller-market-panel .seller-market-selection-note span{color:#b18543;font-size:15px}
+.seller-market-panel .seller-market-big{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:13px}
+.seller-market-panel .seller-market-big .seller-metric{position:relative;min-width:0;min-height:112px;padding:15px 14px!important;border:1px solid #eae4d9!important;border-radius:15px!important;background:#fff!important;overflow:hidden}
+.seller-market-panel .seller-market-big .seller-metric:first-child{background:linear-gradient(145deg,#173b31,#214c3d)!important;border-color:#173b31!important}
+.seller-market-panel .seller-market-big .seller-metric:first-child span,.seller-market-panel .seller-market-big .seller-metric:first-child small{color:rgba(255,255,255,.78)!important}
+.seller-market-panel .seller-market-big .seller-metric:first-child strong{color:#fff!important}
+.seller-market-panel .seller-market-big .seller-metric span{font-size:10px!important;font-weight:750;line-height:1.35;color:#7d7c70!important}
+.seller-market-panel .seller-market-big .seller-metric strong{font-size:clamp(18px,2vw,25px)!important;line-height:1.18;overflow-wrap:anywhere;color:#1b3028!important;margin-top:9px!important}
+.seller-market-panel .seller-market-big .seller-metric small{font-size:10px!important;line-height:1.4;margin-top:7px!important;color:#85857d!important;min-height:0!important}
+.seller-market-panel .seller-market-explainer{margin-top:13px!important;padding:16px!important;border:1px solid #eadfc9!important;border-radius:16px!important;background:linear-gradient(135deg,#fffdf8,#f8f1e4)!important}
+.seller-market-panel .seller-market-explainer .seller-chart-title{align-items:center;gap:8px;font-size:12px;color:#8b6127}
+.seller-market-panel .seller-market-explainer .seller-chart-title span{font-size:9px;text-align:right}
+.seller-market-panel .seller-market-reading{margin-top:8px}
+.seller-market-panel .seller-market-reading p{font-size:12px!important;line-height:1.65!important;color:#50564f;margin:8px 0!important}
+.seller-market-panel .seller-market-reading p strong{color:#203a2f}
+.seller-market-panel #sellerMarketSource{margin:10px 2px 14px!important;padding:9px 11px;border-left:3px solid #b8944e;border-radius:0 9px 9px 0;background:#f7f4ed;font-size:10px!important;line-height:1.5!important;color:#77776e}
+@media(max-width:760px){
+ .seller-market-panel .seller-market-heading{align-items:flex-start;flex-wrap:wrap}
+ .seller-market-panel .seller-market-heading .seller-source-badge{margin-left:59px;margin-top:-5px}
+ .seller-market-panel .seller-market-context{margin-top:13px}
+ .seller-market-panel .seller-market-tabs{gap:4px}
+ .seller-market-panel .seller-market-tabs button{gap:4px;padding:8px 4px;font-size:11px;min-height:42px}
+ .seller-market-panel .seller-market-tabs button span{font-size:15px}
+ .seller-market-panel .seller-market-big{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .seller-market-panel .seller-market-big .seller-metric{padding:12px 10px!important;min-height:108px}
+ .seller-market-panel .seller-market-big .seller-metric strong{font-size:19px!important}
+ .seller-market-panel .seller-market-explainer{padding:13px!important}
+}
+@media(max-width:390px){
+ .seller-market-panel .seller-market-heading .seller-source-badge{margin-left:0}
+ .seller-market-panel .seller-market-tabs button{font-size:10px}
+ .seller-market-panel .seller-market-big .seller-metric{min-height:105px}
+ .seller-market-panel .seller-market-big .seller-metric strong{font-size:17px!important}
+}
+@media(prefers-reduced-motion:reduce){.seller-market-panel .seller-market-tabs button{transition:none}}
+</style>
 </body>
 </html>
