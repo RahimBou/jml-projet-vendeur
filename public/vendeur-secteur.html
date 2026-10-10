@@ -1166,7 +1166,10 @@ function renderReference(ref){
    '<h3>Valeur calculée à partir des ventes réelles</h3>'+
    '<div class="ref-value">'+esc(eur(value))+'</div>'+
    '<div class="reference-formula">'+esc(formula)+'</div>'+
-   '<p class="reference-sub"><b>'+esc(statusText)+'</b><br>Les ventes les plus proches et les plus similaires sont pondérées pour construire ce repère.</p>'+
+   (Number.isFinite(Number(r.rangeLowValue))&&Number(r.rangeLowValue)>0&&Number.isFinite(Number(r.rangeHighValue))&&Number(r.rangeHighValue)>=Number(r.rangeLowValue)
+     ?'<div class="reference-formula" style="margin-top:3px;background:rgba(255,255,255,.12)">Fourchette indicative des comparables : '+esc(eur(r.rangeLowValue))+' → '+esc(eur(r.rangeHighValue))+'</div>'
+     :'')+
+   '<p class="reference-sub"><b>'+esc(statusText)+'</b><br>Les ventes les plus proches et les plus similaires sont pondérées pour construire ce repère. La fourchette décrit la dispersion observée des comparables ; elle ne garantit pas le prix de vente final.</p>'+
    '<p class="reference-sub" style="margin-top:8px!important">'+esc(methodText)+'</p>'+
  '</div>'+
  '<div class="ref-list seller-reference-details">'+
@@ -2053,9 +2056,16 @@ async function run(){
   const referenceValue=referenceM2!=null&&Number.isFinite(surf)&&surf>0
     ?Math.round(referenceM2*surf)
     :null;
+  // La confiance vient du moteur serveur : elle tient compte du nombre de ventes
+  // réellement retenues, des comparables stricts et de la dispersion, pas du seul
+  // nombre de candidats analysés.
   const confidence=compM2!=null&&compM2>0
-    ?(comps.matchCount>=10?"Bonne":comps.matchCount>=5?"Intermédiaire":"Faible")
+    ?(["Bonne","Intermédiaire","Faible"].includes(comps.confidence)?comps.confidence:"Faible")
     :"Faible";
+  const rangeLowValue=compM2!=null&&Number.isFinite(Number(comps.rangeLow))&&Number(comps.rangeLow)>0&&Number.isFinite(surf)&&surf>0
+    ?Math.round(Number(comps.rangeLow)*surf):null;
+  const rangeHighValue=compM2!=null&&Number.isFinite(Number(comps.rangeHigh))&&Number(comps.rangeHigh)>0&&Number.isFinite(surf)&&surf>0
+    ?Math.round(Number(comps.rangeHigh)*surf):null;
   const referenceSource=compM2!=null&&compM2>0
     ?"Ventes DVF comparables"
     :"Référence communale de secours";
@@ -2063,6 +2073,8 @@ async function run(){
     basePriceM2:referenceM2,
     surface:surf,
     referenceValue:referenceValue,
+    rangeLowValue,
+    rangeHighValue,
     confidence,
     transactions:comps.matchCount||0,
     type:d.propertyType||"Bien",
