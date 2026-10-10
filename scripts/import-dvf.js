@@ -44,6 +44,7 @@ async function importYear(client, year){
   const url="https://files.data.gouv.fr/geo-dvf/latest/csv/"+year+"/departements/08.csv.gz";
   console.log("DVF: téléchargement",year,url);
   const response=await fetch(url,{headers:{"Accept":"application/gzip","User-Agent":"JML-Projet-Vendeur-DVF-Importer/1.0"},signal:AbortSignal.timeout(120000)});
+  if(response.status===404){ console.log("DVF "+year+" indisponible (HTTP 404) : fichier départemental pas encore publié, année ignorée."); return null; }
   if(!response.ok) throw new Error("DVF "+year+" HTTP "+response.status);
   const raw=zlib.gunzipSync(Buffer.from(await response.arrayBuffer())).toString("utf8");
   const lines=raw.split(/\r?\n/).filter(Boolean);
@@ -212,8 +213,8 @@ async function main(){
     let successfulYears=0;
     for(const year of YEARS){
       try{
-        await importYear(client,year);
-        successfulYears++;
+        const imported = await importYear(client,year);
+        if(imported !== null) successfulYears++;
       } catch(error){
         try{ await client.query("ROLLBACK"); }catch(_){}
         const message=String(error?.message||error);
