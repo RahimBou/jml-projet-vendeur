@@ -2524,6 +2524,19 @@ function updateSellerProjectSummary(d){
 @media(min-width:761px) and (max-width:1100px){.seller-barometer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.seller-barometer-row{padding:12px}}
 @media(max-width:760px){.seller-barometer-grid{grid-template-columns:1fr}.seller-barometer-row{padding:14px}.seller-barometer-row strong{font-size:13px}.seller-barometer-row small{font-size:12px;line-height:1.6}.seller-barometer-row b{font-size:11px}}
 @media(max-width:540px){.seller-market-barometer{padding:13px}.seller-barometer-head{display:block}.seller-barometer-verdict{display:inline-block;margin-top:9px}}
+
+/* Indicateur de chargement de l'analyse Gemini : progression indéterminée */
+.jml-gemini-loading{display:none;margin:0 0 16px;padding:17px;border:1px solid #e5dcc9;border-radius:14px;background:#fff; color:#173b31}
+.jml-gemini-loading.is-visible{display:block}
+.jml-gemini-loading-head{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800}
+.jml-gemini-spinner{width:19px;height:19px;flex:0 0 19px;border:2px solid #e6dfd1;border-top-color:#b8944e;border-radius:50%;animation:jmlGeminiSpin .8s linear infinite}
+.jml-gemini-progress{height:7px;margin-top:13px;border-radius:99px;overflow:hidden;background:#eee9df}
+.jml-gemini-progress span{display:block;width:38%;height:100%;border-radius:99px;background:linear-gradient(90deg,#173f34,#b8944e);animation:jmlGeminiProgress 1.35s ease-in-out infinite}
+.jml-gemini-loading p{margin:9px 0 0;color:#696d65;font-size:11px;line-height:1.5}
+@keyframes jmlGeminiSpin{to{transform:rotate(360deg)}}
+@keyframes jmlGeminiProgress{0%{transform:translateX(-110%)}100%{transform:translateX(290%)}}
+@media(prefers-reduced-motion:reduce){.jml-gemini-spinner,.jml-gemini-progress span{animation:none}.jml-gemini-progress span{width:100%;opacity:.7}}
+
 </style>
 <script id="jml-market-barometer-script">
 (function(){
@@ -2596,6 +2609,15 @@ function updateSellerProjectSummary(d){
   aiModal.innerHTML='<div class="jml-gemini-backdrop" data-gemini-close></div><section class="jml-gemini-dialog" role="dialog" aria-modal="true" aria-labelledby="sellerGeminiModalHeading"><header class="jml-gemini-header"><div><div class="jml-gemini-kicker">JML Immobilier · Aide à la décision</div><h2 class="jml-gemini-heading" id="sellerGeminiModalHeading">Interprétation du marché avec Gemini</h2></div><button type="button" class="jml-gemini-close" aria-label="Fermer l’interprétation" data-gemini-close>×</button></header><div class="jml-gemini-content" id="sellerGeminiModalContent"></div></section>';
   document.body.appendChild(aiModal);
   const aiModalContent=aiModal.querySelector("#sellerGeminiModalContent");
+  const aiLoading=document.createElement("div");
+  aiLoading.className="jml-gemini-loading";
+  aiLoading.id="sellerGeminiLoading";
+  aiLoading.setAttribute("role","status");
+  aiLoading.setAttribute("aria-live","polite");
+  aiLoading.innerHTML='<div class="jml-gemini-loading-head"><span class="jml-gemini-spinner" aria-hidden="true"></span><span id="sellerGeminiLoadingTitle">Gemini examine les données du marché…</span></div><div class="jml-gemini-progress" aria-hidden="true"><span></span></div><p id="sellerGeminiLoadingText">Vérification des indicateurs et recherche de signaux cohérents. Cette opération peut prendre quelques secondes.</p>';
+  aiModalContent.appendChild(aiLoading);
+  const aiLoadingTitle=aiLoading.querySelector("#sellerGeminiLoadingTitle");
+  const aiLoadingText=aiLoading.querySelector("#sellerGeminiLoadingText");
   if(aiPanel)aiModalContent.appendChild(aiPanel);
   function openAiModal(){aiModal.classList.add("is-open");document.body.style.overflow="hidden";aiModal.querySelector(".jml-gemini-close")?.focus();}
   function closeAiModal(){aiModal.classList.remove("is-open");document.body.style.overflow="";}
@@ -2604,7 +2626,7 @@ function updateSellerProjectSummary(d){
   function appendAiText(parent,tag,value,style){const el=document.createElement(tag);el.textContent=String(value||"");if(style)el.style.cssText=style;parent.appendChild(el);return el;}
   async function runGeminiMarketAnalysis(){
     if(!aiButton||!aiPanel)return;
-    openAiModal();aiButton.disabled=true;aiButton.textContent="Analyse en cours…";aiPanel.hidden=false;
+    openAiModal();aiButton.disabled=true;aiButton.textContent="Analyse en cours…";aiPanel.hidden=false;aiLoading.classList.add("is-visible");aiLoadingTitle.textContent="Gemini examine les données du marché…";aiLoadingText.textContent="Vérification des indicateurs et recherche de signaux cohérents. Cette opération peut prendre quelques secondes.";
     aiTitle.textContent="Analyse du marché";aiBadge.textContent="Vérification des données";aiSummary.textContent="Gemini interprète uniquement les chiffres récupérés par JML. Les données manquantes ne seront pas estimées.";aiSignals.replaceChildren();aiAdvice.replaceChildren();aiUnknowns.textContent="";aiMeta.textContent="";
     try{
       const d=territory||{}, market=d.market||{}, comps=d.comparables||{};
@@ -2613,6 +2635,7 @@ function updateSellerProjectSummary(d){
         comparables:{matchCount:comps.matchCount,median:comps.median,source:comps.source},credit:credit||{}};
       const response=await fetch("/api/market-climate/analysis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),cache:"no-store"});
       const result=await response.json();if(!response.ok||!result.ok||!result.analysis)throw new Error(result.error||"Analyse indisponible");
+      aiLoading.classList.remove("is-visible");
       const a=result.analysis, labels={plutot_favorable:"Signaux plutôt favorables",signaux_contrastes:"Signaux contrastés",plus_difficile:"Conditions potentiellement plus difficiles",diagnostic_partiel:"Diagnostic partiel"};
       const colors={plutot_favorable:"#e5f2e8",signaux_contrastes:"#f6edda",plus_difficile:"#f8e7e2",diagnostic_partiel:"#eee8da"};
       aiTitle.textContent=a.title||"Lecture du marché";aiBadge.textContent=labels[a.verdict]||labels.diagnostic_partiel;aiBadge.style.background=colors[a.verdict]||colors.diagnostic_partiel;aiSummary.textContent=a.summary;
@@ -2624,8 +2647,8 @@ function updateSellerProjectSummary(d){
         const list=document.createElement("ul");list.style.cssText="padding-left:18px;font-size:12px;line-height:1.6";a.sellerAdvice.forEach(x=>appendAiText(list,"li",x));aiAdvice.appendChild(list);}
       if((a.unknowns||[]).length)aiUnknowns.textContent="À confirmer : "+a.unknowns.join(" · ");
       aiMeta.textContent="Période : "+(a.asOf||"non précisée")+" · Confiance : "+(a.confidence||"faible")+" · Source IA : Gemini. Interprétation indicative, pas une prédiction de vente.";
-    }catch(error){aiTitle.textContent="Analyse non disponible";aiBadge.textContent="Données brutes conservées";aiSummary.textContent=String(error?.message||"Gemini n’a pas pu interpréter les données. Les indicateurs chiffrés restent affichés ci-dessus.");aiMeta.textContent="Aucun chiffre de remplacement n’a été inventé.";}
-    finally{aiButton.disabled=false;aiButton.textContent="Réinterpréter avec Gemini";}
+    }catch(error){aiLoading.classList.remove("is-visible");aiTitle.textContent="Analyse non disponible";aiBadge.textContent="Données brutes conservées";aiSummary.textContent=String(error?.message||"Gemini n’a pas pu interpréter les données. Les indicateurs chiffrés restent affichés ci-dessus.");aiMeta.textContent="Aucun chiffre de remplacement n’a été inventé.";}
+    finally{aiLoading.classList.remove("is-visible");aiButton.disabled=false;aiButton.textContent="Réinterpréter avec Gemini";}
   }
   if(aiButton)aiButton.addEventListener("click",runGeminiMarketAnalysis);
   window.addEventListener("jml:territory-updated",event=>{territory=event.detail||territory;render()});
