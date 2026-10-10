@@ -2167,7 +2167,7 @@ async function buildComparableSales(market,property){
     const exactBonus=sameAddress&&fresh12m&&surfaceRatio!==null&&surfaceRatio<=0.15?12:0;
     const raw=20+24*distanceSim+20*surfaceSim+12*roomsSim+10*landSim+9*recencySim+freshBonus+exactBonus+(sameStreet?5:0);
     const score=Math.round(Math.min(100,raw));
-    return {...sale,pricePerM2:effectivePriceM2,score,sameStreet,sameAddress,fresh12m,surfaceGap:surfaceRatio,surfaceSignalGap:surfaceSignalRatio,surfaceBasisComparable,landGap:landRatio,roomDiff,ageMonths:Number(age.toFixed(1)),tierId:dist<=0.5?"A":dist<=1?"B":dist<=2?"C":"D",tier:dist<=0.5?"0–500 m":dist<=1?"500 m–1 km":dist<=2?"1–2 km":"2–3 km"};
+    return {...sale,rawPricePerM2:effectivePriceM2,pricePerM2:effectivePriceM2,score,scoreComponents:{base:20,distance:24*distanceSim,surface:20*surfaceSim,rooms:12*roomsSim,land:10*landSim,recency:9*recencySim,freshBonus,exactBonus,streetBonus:sameStreet?5:0,rawScore:raw,finalScore:score},sameStreet,sameAddress,fresh12m,surfaceGap:surfaceRatio,surfaceSignalGap:surfaceSignalRatio,surfaceBasisComparable,landGap:landRatio,roomDiff,ageMonths:Number(age.toFixed(1)),tierId:dist<=0.5?"A":dist<=1?"B":dist<=2?"C":"D",tier:dist<=0.5?"0–500 m":dist<=1?"500 m–1 km":dist<=2?"1–2 km":"2–3 km"};
   };
 
   const sourceRows=[...(Array.isArray(freshDvfPlus)?freshDvfPlus:[]),...(Array.isArray(market?.recentSales)?market.recentSales:[]),...(Array.isArray(local)?local:[])];
@@ -2198,6 +2198,9 @@ async function buildComparableSales(market,property){
   // Revalorisation temporelle : chaque vente est ramenée au niveau de la
   // dernière année locale suffisamment documentée. Le facteur est plafonné à
   // +/-15 % pour éviter qu'une petite série locale déforme brutalement la valeur.
+  // Audit-only snapshot: preserve the comparable's effective raw €/m² before temporal adjustment.
+  // This field is diagnostic only and does not participate in scoring or weighting.
+  for(const sale of candidates) sale.rawPricePerM2=Number(sale.pricePerM2);
   const temporal=applyTemporalRevaluation(candidates);
   const temporalIndex=temporal.index;
   const temporalControl={
@@ -2269,6 +2272,7 @@ async function buildComparableSales(market,property){
   // Part relative du poids total effectivement utilisé pour calculer la médiane pondérée.
   for(const sale of top40){
     sale.inValuation=valuationIds.has(String(sale.id));
+    sale.weightedMedianWinner=String(sale.id)===weightedMedianSaleId;
     sale.influencePct=sale.inValuation&&totalWeight>0?Math.round(sale.weight/totalWeight*1000)/10:0;
     sale.influenceReason=sale.statisticalOutlier
       ?"Prix atypique : influence réduite par le contrôle statistique"
@@ -2276,9 +2280,9 @@ async function buildComparableSales(market,property){
         ?"Poids calculé selon la similarité, la proximité et la cohérence du prix"
         :"Écart statistique : vente affichée comme repère, non retenue dans la valeur centrale";
   }
-  let weightedMedianPriceM2=null,acc=0;
-  for(const x of weightedRows){acc+=x.weight;if(acc>=totalWeight/2){weightedMedianPriceM2=x.pricePerM2;break;}}
-  if(weightedMedianPriceM2===null&&weightedRows.length)weightedMedianPriceM2=weightedRows.at(-1).pricePerM2;
+  let weightedMedianPriceM2=null,weightedMedianSaleId=null,acc=0;
+  for(const x of weightedRows){acc+=x.weight;if(acc>=totalWeight/2){weightedMedianPriceM2=x.pricePerM2;weightedMedianSaleId=String(x.id);break;}}
+  if(weightedMedianPriceM2===null&&weightedRows.length){weightedMedianPriceM2=weightedRows.at(-1).pricePerM2;weightedMedianSaleId=String(weightedRows.at(-1).id);}
 
   const values=valuationSales.map(x=>Number(x.pricePerM2)).sort((a,b)=>a-b);
   const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
@@ -2314,6 +2318,23 @@ async function buildComparableSales(market,property){
   const sameStreetSales=top40.filter(s=>s.sameStreet);
   return {
     sales:top40,valuationSales,sameStreet:sameStreetSales,
+    calculationTrace:{
+      version:"dvf-calculation-trace-v1",
+      centralMethod:weightedMedianPriceM2!==null?"médiane pondérée":"médiane simple de secours",
+      weightedMedianFormula:"prix €/m² classés par ordre croissant ; cumul des poids jusqu'à 50 % du poids total",
+      weightFormula:"(score / 100)^2 * (0.35 + 0.65 * priceCoherence)",
+      rawPricePerM2CapturedBeforeTemporalRevaluation:true,
+      temporalRevaluationApplied:Boolean(temporalIndex?.available),
+      candidateCount:candidates.length,
+      outlierCount,
+      valuationCount:weightedRows.length,
+      totalWeight:Number(totalWeight.toFixed(8)),
+      weightedMedianSaleId,
+      weightedMedianPriceM2:weightedMedianPriceM2!=null?Number(weightedMedianPriceM2.toFixed(2)):null,
+      unweightedMedianPriceM2:median!=null?Number(median.toFixed(2)):null,
+      rangeMethod:values.length>=5&&q1!==null&&q3!==null?"quartiles Q1-Q3":"marge autour du prix central selon la fiabilité",
+      temporalReferenceYear:temporalIndex?.referenceYear||null
+    },
     recentSales12m,exactRecentSale,
     median:median!=null?Math.round(median):null,
     weightedPriceM2:centralPriceM2!=null?Math.round(centralPriceM2):null,
