@@ -1,0 +1,21 @@
+name: DVF - import historique 2014-2021
+
+on:
+  workflow_dispatch:
+
+jobs:
+  import-dvf-historique:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Importer les ventes historiques des Ardennes
+        run: node scripts/import-dvf.js
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL: "true"
+          DVF_IMPORT_YEARS: "2021,2020,2019,2018,2017,2016,2015,2014"
