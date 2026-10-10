@@ -45,6 +45,19 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
 <div class="pro-stat"><span>RDV</span><strong id="nRdv">—</strong></div>
 <div class="pro-stat"><span>MANDATS</span><strong id="nMandats">—</strong></div>
 </section>
+<section class="pro-card" id="dvfMarketCard" style="margin-top:14px">
+<h2>📊 Marché vendeur · DVF+ Ardennes</h2>
+<p>Transactions enregistrées, médianes des comparables fiables et tendance annuelle. Ce signal est indicatif, pas une estimation de prix.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;align-items:end">
+<label style="font-size:11px;font-weight:800">Type de bien<br><select id="dvfMarketType" style="margin-top:5px;padding:9px;border:1px solid #d9cfbd;border-radius:9px;background:#fffdf8;color:#173b31"><option value="all">Maisons et appartements</option><option value="Maison">Maisons</option><option value="Appartement">Appartements</option></select></label>
+<label style="font-size:11px;font-weight:800">Code INSEE commune (facultatif)<br><input id="dvfMarketCommune" inputmode="numeric" maxlength="5" placeholder="Ex. 08105" style="margin-top:5px;padding:9px;border:1px solid #d9cfbd;border-radius:9px;background:#fffdf8;color:#173b31;width:180px;max-width:100%"></label>
+<button id="dvfMarketRefresh" type="button" class="prospect-btn primary">↻ Actualiser</button>
+</div>
+<div id="dvfMarketStatus" role="status" style="font-size:11px;color:#69716b;margin:8px 0">Chargement des indicateurs DVF+…</div>
+<div id="dvfMarketResults" class="pro-list"><div class="pro-item">Chargement…</div></div>
+<div id="dvfMarketHistory" style="overflow-x:auto;margin-top:12px"></div>
+<div class="pro-note">Méthode : médiane au m² des mutations marquées éligibles comme comparables ; le signal croise évolution de cette médiane et évolution du volume de ventes. Fiabilité fondée sur le nombre de comparables éligibles. Les résultats départementaux ne remplacent pas une analyse locale du bien.</div>
+</section>
 <section class="pro-card" style="margin-top:14px"><h2>📌 Suivi à faire</h2><p>Les prochaines actions commerciales à ne pas laisser passer.</p><div id="followupsBox" class="pro-list"><div class="pro-item">Chargement…</div></div></section>
 <div class="pro-grid">
 <section class="pro-card"><h2>🧠 Priorités commerciales</h2><p>Les opportunités que le moteur JML signale pour les prochaines actions.</p><div id="priority" class="pro-list"><div class="pro-item">Chargement…</div></div></section>
@@ -211,6 +224,34 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
  $("prospectsBox")?.addEventListener("change",async e=>{const s=e.target.closest("[data-action='status']");if(!s)return;try{await api("/api/prospects/"+enc(s.dataset.id)+"/status",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:s.value})});await loadProspects()}catch(err){alert(err.message);await loadProspects()}});
  $("modalBody")?.addEventListener("click",e=>{const b=e.target.closest("[data-modal-action]");if(!b)return;const id=b.dataset.id;const a=b.dataset.modalAction;if(a==="activity")activityForm(id);if(a==="followup")followupForm(id);if(a==="edit")editProspect(id);if(a==="qualify")qualify(id)});
 
+ async function loadDvfMarket(){
+  const status=$("dvfMarketStatus"),results=$("dvfMarketResults"),historyBox=$("dvfMarketHistory");
+  if(!status||!results)return;
+  status.textContent="Lecture des ventes DVF+ dans PostgreSQL…";
+  results.innerHTML='<div class="pro-item">Chargement…</div>';historyBox.innerHTML="";
+  const type=$("dvfMarketType")?.value||"all",commune=String($("dvfMarketCommune")?.value||"").trim();
+  if(commune&&!/^\d{5}$/.test(commune)){status.textContent="Saisis un code INSEE à 5 chiffres, ou laisse le champ vide pour les Ardennes.";results.innerHTML="";return;}
+  try{
+   const params=new URLSearchParams();if(type!=="all")params.set("type",type);if(commune)params.set("commune",commune);
+   const data=await api("/api/dvfplus-market-summary?"+params.toString());
+   if(!data.ok){status.textContent=data.error||"Les indicateurs DVF+ sont indisponibles.";results.innerHTML="";return;}
+   const colors={green:"#e2f2e8",orange:"#f7edcf",red:"#f8e3df"};
+   const textColors={green:"#17663d",orange:"#7a5a12",red:"#963b31"};
+   const items=type==="all"?["Maison","Appartement"]:[type];
+   results.innerHTML=items.map(t=>{
+    const x=data.byType?.[t];if(!x)return "";
+    const latest=x.latest;
+    const fmt=n=>n===null||n===undefined?"—":Number(n).toLocaleString("fr-FR",{maximumFractionDigits:2});
+    const trend=x.priceChangePct===null?"Tendance indisponible":(x.priceChangePct>0?"+":"")+fmt(x.priceChangePct)+" % sur la médiane";
+    return '<div class="pro-item" style="align-items:flex-start"><div style="flex:1;min-width:0"><strong>'+esc(t==='Maison'?'Maisons':'Appartements')+'</strong><small>'+esc(x.reason)+'</small><small>Dernière année : '+esc(latest?.year||"—")+' · Comparables fiables : '+fmt(latest?.eligible_comparables||0)+' · Volume : '+fmt(latest?.sales||0)+' ventes</small><small>Médiane éligible : '+(latest?.median_price_per_m2===null||!latest?'—':fmt(latest.median_price_per_m2)+' €/m²')+' · '+esc(trend)+'</small><small>Fiabilité statistique : '+esc(x.confidence)+' · variation du volume : '+(x.volumeChangePct===null?'—':(x.volumeChangePct>0?'+':'')+fmt(x.volumeChangePct)+' %')+'</small></div><span style="padding:7px 9px;border-radius:999px;background:'+colors[x.signal]+';color:'+textColors[x.signal]+';font-size:10px;font-weight:900;white-space:nowrap">'+esc(x.signalLabel)+'</span></div>';
+   }).join("")||'<div class="pro-item">Aucun résultat pour ce filtre.</div>';
+   const years=[...new Set(data.history.map(r=>r.year))].sort((a,b)=>b-a);
+   historyBox.innerHTML='<div style="font-size:11px;font-weight:900;margin-bottom:7px">Historique annuel · comparables éligibles</div><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:8px;border-bottom:1px solid #e3dbc9">Année</th><th style="text-align:left;padding:8px;border-bottom:1px solid #e3dbc9">Bien</th><th style="text-align:right;padding:8px;border-bottom:1px solid #e3dbc9">Ventes</th><th style="text-align:right;padding:8px;border-bottom:1px solid #e3dbc9">Comparables</th><th style="text-align:right;padding:8px;border-bottom:1px solid #e3dbc9">Médiane €/m²</th></tr></thead><tbody>'+data.history.filter(r=>type==="all"||r.property_type===type).sort((a,b)=>b.year-a.year||a.property_type.localeCompare(b.property_type)).map(r=>'<tr><td style="padding:8px;border-bottom:1px solid #eee6d8">'+esc(r.year)+'</td><td style="padding:8px;border-bottom:1px solid #eee6d8">'+esc(r.property_type)+'</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee6d8">'+fmt(r.sales)+'</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee6d8">'+fmt(r.eligible_comparables)+'</td><td style="text-align:right;padding:8px;border-bottom:1px solid #eee6d8">'+(r.median_price_per_m2===null?'—':fmt(r.median_price_per_m2))+'</td></tr>').join("")+'</tbody></table>';
+   status.textContent="Source : DVF+ Cerema · Département 08"+(data.communeCode?" · Code INSEE "+data.communeCode:" · toutes communes")+ (data.updatedAt?" · Dernière date de vente : "+data.updatedAt:"")+". Données historiques, pas un flux de ventes en temps réel.";
+  }catch(e){status.textContent=e.message||"Impossible de charger les indicateurs DVF+.";results.innerHTML="";}
+ }
+ $("dvfMarketRefresh")?.addEventListener("click",loadDvfMarket);
+ $("dvfMarketType")?.addEventListener("change",loadDvfMarket);
  async function setupGoogleCalendarLink(){
   const link=$("googleCalendarLink");
   if(!link)return;
@@ -243,6 +284,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
     }
   });
  }
+ try{await loadDvfMarket()}catch(e){console.warn(e)}
  try{await loadProspects();$("refreshProspects")?.addEventListener("click",loadProspects)}catch(e){console.warn(e)}
  try{await loadAppointmentRequests()}catch(e){console.warn(e)}
  try{await setupGoogleCalendarLink()}catch(e){console.warn(e)}
