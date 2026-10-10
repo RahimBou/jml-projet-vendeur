@@ -155,15 +155,13 @@ async function main() {
       stats.departmentRows++;
       if (cleanText(get("libnatmut")) !== "Vente") { stats.rejectedNature++; continue; }
       const label = cleanText(get("libtypbien"));
-      let propertyType, surface, rooms;
+      let propertyType, surface;
       if (label === "UNE MAISON") {
         propertyType = "Maison";
         surface = num(get("sbatmai"));
-        rooms = num(get("nbmai1pp"));
       } else if (label === "UN APPARTEMENT") {
         propertyType = "Appartement";
         surface = num(get("sbatapt"));
-        rooms = num(get("nbapt1pp"));
       } else { stats.rejectedType++; continue; }
 
       // Pour ne pas attribuer un prix global à plusieurs biens, on ne retient
@@ -184,7 +182,7 @@ async function main() {
       const rawParcels = cleanText(get("l_idparmut"));
       batch.push([
         mutationId, saleDate, sourceYear, propertyType, price, surface,
-        price / surface, rooms, num(get("sterr")), xy.latitude, xy.longitude,
+        price / surface, null, num(get("sterr")), xy.latitude, xy.longitude,
         cleanText(get("l_codinsee"))?.split(",")[0]?.trim() || null, rawParcels
       ]);
       stats.residentialSales++;
