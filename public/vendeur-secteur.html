@@ -1841,12 +1841,12 @@ function renderCharacteristicAnalysis(analysis){
  const currentComp=pageData.comparables||{};
  const currentUsed=Number(currentComp.valuationCount??currentComp.valuationSales?.length??currentComp.matchCount??0);
  const analysisUsed=Number(a.evidence?.dvfComparables||0);
- if(currentUsed>0&&analysisUsed>0&&currentUsed!==analysisUsed){
-   el.innerHTML='<div class="agent-adjustment"><div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Synchronisation des données nécessaire</b></div>'+
-    '<p class="agent-adjustment-note">L’analyse des caractéristiques enregistrée repose sur '+esc(String(analysisUsed))+' ventes DVF, tandis que l’Agent DVF principal en a retenu '+esc(String(currentUsed))+' pour le calcul actuel. Les deux résultats ne sont donc pas directement comparables. Les ajustements DPE, garage et état sont masqués jusqu’à synchronisation afin de ne pas présenter une fiabilité contradictoire.</p>'+
-    '<div class="agent-adjustment-grid"><div><small>REPÈRE DVF ACTUEL</small><strong>'+esc(eur(currentValue))+'</strong><span>'+esc(Number.isFinite(Number(currentComp.weightedPriceM2))?Math.round(Number(currentComp.weightedPriceM2)).toLocaleString("fr-FR")+" €/m²":"Ventes comparables actualisées")+'</span></div></div></div>';
-   return;
- }
+ // Les deux modules peuvent utiliser des périmètres différents : le nombre de ventes seul
+ // ne prouve pas que le repère est périmé. La vérification du prix de base ci-dessus
+ // protège déjà contre une analyse réellement calculée sur une ancienne valeur.
+ const evidenceScopeNote=currentUsed>0&&analysisUsed>0&&currentUsed!==analysisUsed
+   ? '<p class="agent-adjustment-note">Périmètres de calcul : l’analyse des caractéristiques s’appuie sur '+esc(String(analysisUsed))+' ventes de son échantillon, tandis que le repère DVF principal retient '+esc(String(currentUsed))+' ventes. Cette différence de volume ne signifie pas à elle seule que les résultats sont incompatibles ; le repère principal reste celui de l’Agent DVF et les ajustements demeurent indicatifs.</p>'
+   : "";
  const rowHtml=rows.map(x=>{
    const pct=Number(x.effectPct||0), eurv=Number(x.effectEur||0);
    const cls=pct>0?"up":pct<0?"down":"neutral";
@@ -1867,6 +1867,7 @@ function renderCharacteristicAnalysis(analysis){
  '<div><small>POSITIONNEMENT INDICATIF</small><strong>'+esc(value)+'</strong><span>Fourchette '+esc(low)+' → '+esc(high)+'</span></div>'+
  '</div>'+
  '<div class="agent-adjustment-rows">'+rowHtml+'</div>'+
+ evidenceScopeNote+
  '<p class="agent-adjustment-note">'+esc(a.explanation||"")+'</p>'+
  '<div class="agent-adjustment-meta">Fiabilité du repère DVF : <b>'+esc(p.confidence||"Faible")+'</b> · '+esc(String(currentUsed||a.evidence?.dvfComparables||0))+' ventes DVF utilisées pour le repère actuel · '+esc(String(a.evidence?.listingsComparableCount||0))+' annonces comparables · '+esc(String(currentComp.sameStreet?.length??a.evidence?.sameStreet??0))+' même rue</div>'+
  '<p class="agent-adjustment-note">Cette fiabilité décrit la quantité et la cohérence des ventes utilisées ; elle ne garantit pas le prix final. Le garage, le DPE et l’état du bien ne sont chiffrés séparément que si les données disponibles permettent de mesurer leur effet sans inventer de valeur.</p>'+
