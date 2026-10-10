@@ -90,6 +90,53 @@ app.get("/api/bpe-status", async (req,res) => {
     res.status(200).json({ok:false,ready:false,total:0,reason:String(error?.message||error)});
   }
 });
+app.get("/api/dvfplus-market-summary", async (req,res) => {
+  res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+  if(!pool) return res.status(503).json({ok:false,error:"PostgreSQL indisponible."});
+  const typeRaw=String(req.query.type||"all");
+  const type=typeRaw==="Maison"||typeRaw==="Appartement"?typeRaw:null;
+  const commune=String(req.query.commune||"").trim();
+  if(commune && !/^\d{5}$/.test(commune)) return res.status(400).json({ok:false,error:"Le code INSEE de commune doit contenir 5 chiffres."});
+  try{
+    const rows=await db(`
+      SELECT source_year AS year, property_type,
+        COUNT(*)::int AS sales,
+        COUNT(*) FILTER (WHERE comparable_eligible)::int AS eligible_comparables,
+        COUNT(*) FILTER (WHERE NOT comparable_eligible)::int AS excluded_from_comparables,
+        ROUND(percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2)
+          FILTER (WHERE comparable_eligible)::numeric, 2) AS median_price_per_m2,
+        MIN(sale_date)::text AS first_sale,
+        MAX(sale_date)::text AS last_sale
+      FROM jml_dvfplus_sales
+      WHERE ($1::text IS NULL OR property_type=$1)
+        AND ($2::text IS NULL OR commune_code=$2)
+      GROUP BY source_year, property_type
+      ORDER BY source_year, property_type
+    `,[type,commune||null]);
+    const history=rows.rows.map(r=>({...r,year:Number(r.year),sales:Number(r.sales),eligible_comparables:Number(r.eligible_comparables),excluded_from_comparables:Number(r.excluded_from_comparables),median_price_per_m2:r.median_price_per_m2===null?null:Number(r.median_price_per_m2)}));
+    const byType={};
+    for(const propertyType of ["Maison","Appartement"]){
+      const series=history.filter(r=>r.property_type===propertyType&&r.median_price_per_m2!==null);
+      const latest=series[series.length-1]||null;
+      const previous=series.length>1?series[series.length-2]:null;
+      const priceChangePct=latest&&previous&&previous.median_price_per_m2>0?Math.round((latest.median_price_per_m2/previous.median_price_per_m2-1)*1000)/10:null;
+      const volumeChangePct=latest&&previous&&previous.sales>0?Math.round((latest.sales/previous.sales-1)*1000)/10:null;
+      const n=latest?.eligible_comparables||0;
+      const confidence=n>=100?"Élevée":n>=40?"Moyenne":"Faible";
+      let signal="orange", signalLabel="Marché à surveiller", reason="Les signaux ne suffisent pas à conclure à un avantage net pour le vendeur.";
+      if(!latest||!previous||priceChangePct===null){signal="orange";signalLabel="Données insuffisantes";reason="Il faut au moins deux années avec des comparables éligibles pour mesurer une tendance.";}
+      else if(priceChangePct>=3&&(volumeChangePct===null||volumeChangePct>=-5)){signal="green";signalLabel="Plutôt favorable";reason="La médiane des comparables progresse et le volume de ventes ne montre pas de recul marqué.";}
+      else if(priceChangePct<=-3||(volumeChangePct!==null&&volumeChangePct<=-15)){signal="red";signalLabel="Marché sous pression";reason="La médiane recule nettement ou le nombre de ventes diminue fortement ; le prix et la stratégie de commercialisation méritent une attention particulière.";}
+      byType[propertyType]={latest,previous,priceChangePct,volumeChangePct,confidence,signal,signalLabel,reason};
+    }
+    return res.json({ok:true,source:"DVF+ Cerema",department:"08",communeCode:commune||null,propertyType:type||"Tous",updatedAt:history.reduce((max,r)=>r.last_sale&&r.last_sale>max?r.last_sale:max,"")||null,byType,history});
+  }catch(error){
+    const message=String(error?.message||error);
+    console.warn("DVF+ market summary unavailable:",message);
+    return res.status(200).json({ok:false,available:false,error:message.includes("does not exist")?"La table DVF+ n’est pas encore disponible dans cette base PostgreSQL.":"Impossible de lire les indicateurs DVF+ pour le moment."});
+  }
+});
+
 app.get("/api/dvf-quality", async (req,res) => {
   res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
   const sourceUrl="https://files.data.gouv.fr/geo-dvf/latest/csv/";
