@@ -1182,7 +1182,7 @@ body.guide-modal-open{overflow:hidden}
 <div id="fbSuccess" class="fb-success" style="display:block">
   <div class="fb-success-head">
     <div class="eyebrow">JML IMMOBILIER · DEMANDE ENREGISTRÉE</div>
-    <h2 style="margin:7px 0">Merci, votre demande est bien prise en compte.</h2>
+    <h2 id="fbThanksTitle" style="margin:7px 0">Merci, votre demande est bien prise en compte.</h2>
     <div>Votre projet est maintenant enregistré. Vous gardez la main sur la suite.</div>
   </div>
   <div class="fb-success-grid">
@@ -1581,7 +1581,7 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
        const dd=await rr.json();
        if(!rr.ok||!dd.ok)throw new Error(dd.error||"Espace introuvable");
        d={...(dd.space||{}),submitted:true,token:pathToken};sellerSpaceWrite(d);
-       saved={submitted:true,lead:{name:"",city:d.city||"",phone:"",email:""},prospectId:d.prospectId||"",spaceToken:pathToken};
+       saved={submitted:true,lead:{...(saved&&saved.lead||{}),name:(saved&&saved.lead&&saved.lead.name)||d.name||"",city:d.city||(saved&&saved.lead&&saved.lead.city)||"",phone:(saved&&saved.lead&&saved.lead.phone)||"",email:(saved&&saved.lead&&saved.lead.email)||""},prospectId:d.prospectId||(saved&&saved.prospectId)||"",spaceToken:pathToken};
        sellerSubmissionWrite(saved);
      }catch(e){
        console.warn("JML seller space load:",e);
@@ -1603,6 +1603,12 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
    success.style.display="block";
    const lead=saved.lead||{};
    publicLead={name:lead.name||"",city:lead.city||"",phone:lead.phone||"",email:lead.email||""};
+   const thanksTitle=document.getElementById("fbThanksTitle");
+   if(thanksTitle){
+     const cleanName=String(publicLead.name||"").trim().replace(/^(?:M(?:onsieur)?|Mme?|Madame|Mlle|Dr)\.?\s+/i,"").trim();
+     const firstName=cleanName.split(/\s+/)[0]||"";
+     thanksTitle.textContent=firstName?"Merci "+firstName+", votre demande est bien prise en compte.":"Merci, votre demande est bien prise en compte.";
+   }
    const apptName=document.getElementById("fbApptName"),apptEmail=document.getElementById("fbApptEmail"),apptPhone=document.getElementById("fbApptPhone");
    if(apptName)apptName.value=publicLead.name;
    if(apptEmail)apptEmail.value=publicLead.email;
