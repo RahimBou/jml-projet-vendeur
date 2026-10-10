@@ -2481,7 +2481,7 @@ app.post("/api/market-climate/analysis", async (req,res) => {
             date:String(x?.date||"").slice(0,10),
             priceM2:num(x?.pricePerM2??x?.price_per_m2,1,100000),
             type:txt(x?.type??x?.propertyType,40)
-          })).filter(x=>/^\\d{4}-\\d{2}-\\d{2}$/.test(x.date)&&x.priceM2!==null&&/^20\\d{2}-/.test(x.date));
+          })).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.priceM2!==null&&/^20\d{2}-/.test(x.date));
           const serverEligible=serverSales.filter(typeMatches);
           if(serverEligible.length>eligibleSales.length){
             eligibleSales=serverEligible;
