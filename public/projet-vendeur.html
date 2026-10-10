@@ -80,6 +80,12 @@ form{display:grid;grid-template-columns:1fr;gap:18px 40px}
 }
 </style>
 </style>
+<style id="jml-full-property-address-v1">
+#form .address-field{grid-column:1/-1;min-width:0}
+#form .address-field .in{width:100%}
+#form .address-hint{display:block;margin-top:6px;color:#6b6f6a;font-size:11px;line-height:1.4}
+@media(max-width:799px){#form .address-field{grid-column:1}}
+</style>
 <style id="ardenne-identity-final">
   /* V5 — première impression vendeur : confiance, humain, Ardennes */
   body{background:#f5f1e8;color:#173b31}
@@ -959,17 +965,17 @@ body.seller-modal-open{overflow:hidden}
   </div>
   <form id="form">
     <div class="f"><span class="n">01</span><div><label for="nom">Votre nom et prénom <i>*</i></label><div class="in"><input id="nom" required placeholder="Nom / prénom" autocomplete="name"></div></div></div>
-    <div class="f"><span class="n">02</span><div><label for="ville">Commune de votre bien</label><div class="in"><input id="ville" value="Charleville-Mézières"></div></div></div>
-    <div class="f"><span class="n">03</span><div><label for="tel">Votre téléphone</label><div class="in"><input id="tel" type="tel" placeholder="Votre numéro de téléphone" autocomplete="tel"></div></div></div>
-    <div class="f"><span class="n">04</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
-    <div class="f"><span class="n">05</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
-    <div class="f"><span class="n">06</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
-    <div class="f compact-property" id="surfaceField"><span class="n">07</span><div><label for="surface" id="surfaceLabel">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div></div>
-    <div class="f compact-property" id="piecesField"><span class="n">08</span><div><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div></div>
+    <div class="f"><span class="n">02</span><div><label for="ville">Commune de votre bien <i>*</i></label><div class="in"><input id="ville" value="Charleville-Mézières" required autocomplete="address-level2"></div></div></div>
+    <div class="f address-field"><span class="n">03</span><div><label for="adresse">Adresse complète du bien <i>*</i></label><div class="in"><input id="adresse" type="text" required autocomplete="street-address" placeholder="Numéro et nom de rue"></div><small class="address-hint">Pour rechercher les ventes réalisées à proximité de votre bien.</small></div></div>
+    <div class="f"><span class="n">04</span><div><label for="tel">Votre téléphone</label><div class="in"><input id="tel" type="tel" placeholder="Votre numéro de téléphone" autocomplete="tel"></div></div></div>
+    <div class="f"><span class="n">05</span><div><label for="email">Votre email</label><div class="in"><input id="email" type="email" placeholder="Votre adresse email" autocomplete="email"></div></div></div>
+    <div class="f"><span class="n">06</span><div><label for="type">Type de bien</label><div class="in"><select id="type"><option>Maison</option><option>Appartement</option><option>Terrain</option><option>Immeuble</option><option>Autre</option></select></div></div></div>
+    <div class="f"><span class="n">07</span><div><label for="delai">Quand envisagez-vous votre projet ?</label><div class="in"><select id="delai"><option>Dans les 3 mois</option><option>Dans les 6 mois</option><option>Dans l'année</option><option>Je me renseigne</option></select></div></div></div>
+    <div class="f compact-property" id="surfaceField"><span class="n">08</span><div><label for="surface" id="surfaceLabel">Surface habitable (m²)</label><div class="in"><input id="surface" type="number" min="0" step="0.1" inputmode="decimal" placeholder="Ex. 120"></div></div></div>
+    <div class="f compact-property" id="piecesField"><span class="n">09</span><div><label for="pieces">Nombre de pièces</label><div class="in"><input id="pieces" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 5"></div></div></div>
     <div class="extra edit-only-extra" id="extra" aria-hidden="true">
   <div class="extra-section-title full-extra">INFORMATIONS COMPLÉMENTAIRES — MODIFICATION</div>
   <div class="extra-field" id="terrainField"><label for="terrain">Surface du terrain (m²)</label><div class="in"><input id="terrain" type="number" min="0" step="1" inputmode="numeric" placeholder="Ex. 600"></div></div>
-  <div class="extra-field full-extra"><label for="adresse">Adresse du bien</label><div class="in"><input id="adresse" type="text" autocomplete="street-address" placeholder="Numéro et rue"></div></div>
   <div class="extra-field" id="dpeField"><label for="dpe">DPE</label><div class="in"><select id="dpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></div></div>
   <div class="extra-field"><label for="generalState">État général</label><div class="in"><select id="generalState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></div></div>
   <div class="extra-field"><label for="works">Travaux à prévoir</label><div class="in"><select id="works"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></div></div>
