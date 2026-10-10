@@ -125,7 +125,7 @@ async function main() {
         const rowsSql = uniqueBatch.map((row, rowIndex) => {
           const offset = rowIndex * 15;
           values.push(...row);
-          return `(${offset+1},${offset+2},${offset+3},${offset+4},${offset+5},${offset+6},${offset+7},${offset+8},${offset+9},${offset+10},${offset+11},${offset+12},${offset+13},${offset+14},${offset+15},'DVF+ Cerema')`;
+          return `($${offset+1},$${offset+2},$${offset+3},$${offset+4},$${offset+5},$${offset+6},$${offset+7},$${offset+8},$${offset+9},$${offset+10},$${offset+11},$${offset+12},$${offset+13},$${offset+14},$${offset+15},'DVF+ Cerema')`;
         });
         await client.query(`
           INSERT INTO jml_dvfplus_sales
