@@ -30,7 +30,14 @@ function parseCsvLine(line){
   return out;
 }
 
-function num(v){ const n=Number(String(v??"").replace(",", ".")); return Number.isFinite(n)?n:null; }
+function num(v){
+  // Une cellule vide DVF doit rester inconnue (null), jamais devenir 0.
+  // Sinon pièces/surface de terrain absentes sont stockées comme des valeurs réelles.
+  const raw=String(v??"").trim();
+  if(!raw) return null;
+  const n=Number(raw.replace(",", "."));
+  return Number.isFinite(n)?n:null;
+}
 function text(v){ return String(v??"").trim() || null; }
 
 async function importYear(client, year){
@@ -122,6 +129,9 @@ async function importYear(client, year){
     ambiguousMutations+" mutations multi-lignes ambiguës exclues; "+
     collapsedDuplicateRows+" lignes répétées regroupées; "+invalidRows+
     " lignes résidentielles incomplètes exclues.");
+  console.log("DVF "+year+" contrôle qualité: "+data.length+
+    " mutations résidentielles retenues; "+(transactionRows.size-data.length)+
+    " mutations non retenues au total (ambiguïté, type non résidentiel ou données insuffisantes).");
   const chunk=500;
   for(let i=0;i<data.length;i+=chunk){
     const part=data.slice(i,i+chunk);
