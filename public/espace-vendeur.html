@@ -1897,11 +1897,11 @@ function updateSellerProjectSummary(d){
       {icon:"🏠",title:"Mon bien",intro:"Préparez les informations qui permettront de mieux comprendre votre bien avant notre échange.",
        items:[
         ["Type de bien",d.propertyType||"À compléter"],["Commune",d.city||"À compléter"],["Adresse",d.address||"À compléter"],["Surface habitable",d.surface?d.surface+" m²":"À compléter"],["Pièces / chambres",d.rooms||"À compléter"],["Terrain",d.terrain||"À compléter"]
-       ],note:"Vous pouvez vérifier ou compléter ces informations dans le formulaire de votre espace."},
+       ],note:"Complétez les informations manquantes dans la rubrique « Votre bien ». Une étape cochée ne signifie pas que les caractéristiques ont été vérifiées par JML."},
       {icon:"📄",title:"Mes documents",intro:"Voici les documents utiles à rassembler progressivement. Vous n'avez pas besoin de tout avoir immédiatement.",
        checklist:["Titre de propriété","Dernier avis de taxe foncière","Diagnostics disponibles","Documents de copropriété si applicable","Factures ou justificatifs de travaux"],note:"Cette étape sert à préparer le dossier, pas à vous demander d'envoyer vos documents maintenant."},
       {icon:"⚡",title:"Mon DPE",intro:"Les informations énergétiques sont importantes pour préparer une vente dans de bonnes conditions.",
-       items:[["Classe DPE",d.dpe||"Non renseignée"],["Date de validité","À vérifier"],["Diagnostic disponible",d.dpe?"Oui, classe renseignée":"À préparer"]],note:"Gardez votre DPE à portée de main. Les informations définitives seront vérifiées avant toute utilisation."},
+       items:[["Classe DPE",d.dpe||"Non renseignée"],["Date de validité","À vérifier"],["État du document",d.dpe?"Classe renseignée, document à vérifier":"Document à préparer"]],note:"Cocher cette étape signifie que vous l’avez préparée, pas que le DPE a été vérifié par JML."},
       {icon:"🛠️",title:"Travaux",intro:"Préparez simplement les travaux et améliorations qui peuvent aider à comprendre l'état du bien.",
        checklist:["Travaux récents","Années approximatives","Factures disponibles","Améliorations énergétiques","Équipements remplacés"],note:"Même sans facture, une chronologie approximative peut être utile lors de notre échange."},
       {icon:"📸",title:"Présentation",intro:"Avant les photos ou la visite, quelques préparatifs simples peuvent faciliter la présentation du bien.",
@@ -1919,10 +1919,24 @@ function updateSellerProjectSummary(d){
       body+='<div class="seller-step-tips"><h4>À préparer</h4><ul>'+s.checklist.map(x=>'<li>'+esc2(x)+'</li>').join("")+'</ul></div>';
     }
     body+='<div class="seller-step-note">'+esc2(s.note)+'</div>';
-    body+='<div class="seller-step-actions"><button type="button" class="primary" id="sellerStepDone">'+(done?"Annuler la validation ↶":"Marquer cette étape comme faite")+'</button><button type="button" class="secondary" id="sellerStepClose">Fermer</button></div></div>';
+    if(index===0||index===2){
+      body+='<div class="seller-step-actions"><a class="primary seller-step-link" href="/vendeur-bien.html">'+(index===0?"Compléter les caractéristiques →":"Consulter les informations du bien →")+'</a></div>';
+    }else if(index===1||index===3||index===4){
+      const guidePath=index===1?"/vendeur-conseils.html":index===3?"/vendeur-bien.html":"/vendeur-conseils.html";
+      const guideLabel=index===1?"Voir les conseils pour les documents →":index===3?"Consulter mon bien et ses caractéristiques →":"Voir les conseils de présentation →";
+      body+='<div class="seller-step-actions"><a class="primary seller-step-link" href="'+guidePath+'">'+guideLabel+'</a></div>';
+    }else if(index===5){
+      body+='<div class="seller-step-actions"><button type="button" class="primary" id="sellerStepAppointment">Choisir un créneau →</button></div>';
+    }
+    body+='<div class="seller-step-actions"><button type="button" class="primary" id="sellerStepDone">'+(done?"Annuler la validation ↶":"Marquer comme préparée")+'</button><button type="button" class="secondary" id="sellerStepClose">Fermer</button></div></div>';
     m.title.textContent=s.title;m.body.innerHTML=body;m.box.classList.add("open");m.box.setAttribute("aria-hidden","false");document.body.style.overflow="hidden";
     const close=()=>{m.box.classList.remove("open");m.box.setAttribute("aria-hidden","true");document.body.style.overflow=""};
     document.getElementById("sellerStepClose")?.addEventListener("click",close);
+    document.getElementById("sellerStepAppointment")?.addEventListener("click",function(){
+      close();
+      document.getElementById("fbAppointmentForm")?.scrollIntoView({behavior:"smooth",block:"start"});
+      document.querySelector("#fbAppointmentForm input, #fbAppointmentForm select")?.focus({preventScroll:true});
+    });
     document.getElementById("sellerStepDone")?.addEventListener("click",async function(){
       const current=readSpace(), list=Array.isArray(current.checklist)?current.checklist.map(Number):[];
       const stepNumber=index+1, wasDone=list.includes(stepNumber);
@@ -1959,6 +1973,10 @@ function updateSellerProjectSummary(d){
 </script>
 <style>
 /* JML CHECKLIST INTERACTIVE V1 */
+.seller-step-link{display:flex;align-items:center;justify-content:center;text-align:center;text-decoration:none;color:#173b31!important;background:#f7f1e4!important;border:1px solid #d8bb7a!important;padding:10px 14px;border-radius:10px;font-weight:800;min-height:42px;flex:1}
+#sellerModal .seller-modal-dialog{max-height:min(88dvh,760px);overflow-y:auto;overscroll-behavior:contain}
+#sellerModal .seller-modal-close{position:sticky;top:0;z-index:3}
+@media(max-width:600px){#sellerModal .seller-modal-dialog{width:calc(100% - 20px);max-height:88dvh;padding:18px 14px}.seller-step-actions button,.seller-step-actions a{min-height:46px}}
 .seller-step-modal-hero{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:#f7f1e4;border:1px solid var(--line)}
 .seller-step-modal-hero>span{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#173b31;color:#e2c37d;font-size:21px;flex:0 0 42px}
 .seller-step-modal-hero strong{display:block;font-size:17px;color:#173b31}.seller-step-modal-hero p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.5}
