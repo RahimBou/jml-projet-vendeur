@@ -1812,6 +1812,7 @@ function updateSellerProjectSummary(d){
       if(i&&card)card.innerHTML="<div><div class='seller-advice-top'><span class='seller-advice-category'>"+esc(i.category)+"</span><span class='seller-advice-counter'>1 / "+x.items.length+"</span></div><h5>"+esc(i.title)+"</h5><p>"+esc(i.text)+"</p><div class='seller-advice-takeaway'><strong>À retenir :</strong> "+esc(i.takeaway)+"</div></div><div class='seller-advice-foot'><span class='seller-advice-source'>"+esc(i.sourceName)+"<br>"+esc(i.publishedAt)+"</span><a class='seller-advice-link' target='_blank' rel='noopener' href='"+esc(i.sourceUrl)+"'>Voir la source →</a></div>";
     }catch(_e){}
   }
+  }
   refresh();
 })();
 </script>
