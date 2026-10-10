@@ -308,13 +308,31 @@ function parseNotairesBenchmark(text, propertyType) {
 async function getPublicMarketBenchmarks({city,address,propertyType,surface,postalCode,communeCode,rooms,dpe,condition,terrain}={}){
   const cleanCity=normalizeText(city);
   const postal=String(postalCode||"").match(/\b\d{5}\b/)?.[0]||"";
-  if(!cleanCity||!/^\d{5}$/.test(postal)) return [];
+  // Le baromètre départemental des Notaires ne dépend ni d'une adresse ni d'un code postal.
+  // Il doit donc être tenté même lorsque le géocodage du bien échoue.
+  const notairesTask = readSource(
+    "Notaires de France",
+    "https://www.immobilier.notaires.fr/fr/prix-immobilier/pub-services/barometre-data/tendances?codeInsee=08&neuf=A&typeLocalisation=DEPARTEMENT",
+    propertyType,
+    surface,
+    parseNotairesBenchmark
+  ).then(row => row ? {
+    ...row,
+    level:"department",
+    quality:"notarial_median",
+    note:"Repère médian publié pour le département des Ardennes ; vérifier la période et le champ sur la source avant comparaison avec DVF."
+  } : null);
+
+  if(!cleanCity || !/^\d{5}$/.test(postal)) {
+    const notaires = await Promise.allSettled([notairesTask]);
+    return notaires.map(x=>x.status==="fulfilled"?x.value:null).filter(Boolean);
+  }
   const tasks=[
     (async()=>{
       if(!address) return null;
       return await getGeoRegistryEstimate({address,city:cleanCity,postalCode,propertyType,surface,rooms,dpe,condition,terrain});
     })(),
-    readSource("Notaires de France", "https://www.immobilier.notaires.fr/fr/prix-immobilier/pub-services/barometre-data/tendances?codeInsee=08&neuf=A&typeLocalisation=DEPARTEMENT", propertyType, surface, parseNotairesBenchmark).then(row => row ? {...row, quality:"notarial_median", note:"Repère médian issu du baromètre immobilier des Notaires de France pour le département des Ardennes ; période et champ à vérifier sur la source avant comparaison avec DVF."} : null),
+    notairesTask,
     readSource("Meilleurs Agents",meilleursAgentsUrl(cleanCity,postal),propertyType,surface,(text,type)=>{
       const direct=pairForType(text,type);
       if(direct) return direct;
