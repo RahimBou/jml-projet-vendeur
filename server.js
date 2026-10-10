@@ -46,8 +46,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.14.3";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1";
+const VERSION = "3.14.4";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -236,6 +236,40 @@ ${JSON.stringify(answers)}`;
     return res.status(502).json({ok:false,code:"AI_SYNTHESIS_ERROR",error:"Impossible de générer la synthèse Gemini pour le moment."});
   }
 });
+// Autocomplétion d'adresse par le service public de géocodage (BAN/IGN).
+const addressSuggestAttempts=new Map();
+app.get("/api/address-suggest",async(req,res)=>{
+  res.setHeader("Cache-Control","no-store");
+  const clientKey=String(req.ip||req.socket?.remoteAddress||"unknown").slice(0,120);
+  const now=Date.now();
+  const recent=(addressSuggestAttempts.get(clientKey)||[]).filter(ts=>now-ts<60*1000);
+  if(recent.length>=60) return res.status(429).json({ok:false,code:"RATE_LIMIT",suggestions:[],error:"Trop de recherches d'adresses. Réessayez dans une minute."});
+  recent.push(now); addressSuggestAttempts.set(clientKey,recent);
+  const query=String(req.query.q||"").replace(/[<>\\u0000-\\u001f\\u007f]/g," ").trim().slice(0,180);
+  if(query.length<3) return res.json({ok:true,suggestions:[]});
+  try{
+    const url="https://data.geopf.fr/geocodage/search?q="+encodeURIComponent(query)+"&limit=6";
+    const response=await fetch(url,{headers:{"User-Agent":"JML-Projet-Vendeur/3.14.4","Accept":"application/json"},signal:AbortSignal.timeout(5000)});
+    if(!response.ok) return res.status(502).json({ok:false,code:"GEOCODING_UNAVAILABLE",suggestions:[],error:"Le service d'adresses est temporairement indisponible."});
+    const payload=await response.json();
+    const features=Array.isArray(payload?.features)?payload.features:[];
+    const suggestions=features.map(feature=>{
+      const p=feature?.properties||{};
+      const coords=feature?.geometry?.coordinates;
+      const label=String(p.label||p.name||"").trim();
+      const city=String(p.city||p.commune||"").trim();
+      const postcode=String(p.postcode||p.postalcode||"").trim();
+      const citycode=String(p.citycode||p.cityCode||"").trim();
+      if(!label||!city) return null;
+      return {label,city,postcode,citycode,type:String(p.type||""),coordinates:Array.isArray(coords)&&coords.length>=2&&Number.isFinite(Number(coords[0]))&&Number.isFinite(Number(coords[1]))?{lon:Number(coords[0]),lat:Number(coords[1])}:null};
+    }).filter(Boolean);
+    return res.json({ok:true,source:"Géoplateforme IGN — géocodage des adresses",suggestions});
+  }catch(error){
+    console.warn("JML address autocomplete:",String(error?.message||error).slice(0,200));
+    return res.status(502).json({ok:false,code:"GEOCODING_UNAVAILABLE",suggestions:[],error:"Le service d'adresses n'a pas répondu. Vous pouvez réessayer dans un instant."});
+  }
+});
+
 // Recherche RNB pour identifier un bâtiment et préparer les rapprochements DVF/DPE.
 const rnbAttempts = new Map();
 app.get("/api/rnb/buildings", async (req,res) => {
