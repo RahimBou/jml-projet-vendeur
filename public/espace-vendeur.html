@@ -66,6 +66,35 @@ body{min-height:100vh;background:var(--cream)}.fb-wrap{max-width:720px;margin:0 
 .seller-cta{margin-top:14px;padding:20px;border-radius:18px;background:#153b32;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:15px}.seller-cta h4{margin:0 0 4px;font-size:19px}.seller-cta p{margin:0;color:#dce7e0;font-size:11px;line-height:1.45}.seller-cta .primary{white-space:nowrap;background:#d8bb7a;color:#17332c}
 @media(max-width:600px){.seller-brand-logo{width:150px;height:68px}.seller-brand-copy{padding-right:10px}.seller-hero{min-height:285px}.seller-hero-content{padding:20px}.seller-market{grid-template-columns:1fr}.seller-bars .seller-bar{grid-template-columns:70px 1fr 58px}.seller-video{min-height:165px}.seller-events{grid-template-columns:1fr}.seller-advice{grid-template-columns:1fr}.seller-cta{flex-direction:column;align-items:stretch}.seller-cta .primary{width:100%}}
 
+/* JML — amélioration isolée du bloc Conseil vendeur ; ne modifie pas les sections suivantes */
+.seller-advice-panel>.seller-panel-head{align-items:flex-start;gap:12px}
+.seller-advice-panel>.seller-panel-head h4{max-width:420px;font-size:clamp(20px,2.1vw,25px);line-height:1.18;letter-spacing:-.02em}
+.seller-advice-panel>.seller-panel-head p{max-width:42ch;font-size:12px;line-height:1.6}
+.seller-advice-panel>.seller-panel-head .seller-source-badge{flex-shrink:0}
+.seller-advice-panel>#sellerAdviceCard{position:relative;box-sizing:border-box;min-height:0;padding:clamp(16px,2.2vw,22px);gap:8px;border:1px solid #d6c18f;border-radius:16px;background:linear-gradient(145deg,#fffdf8 0%,#f7f0e2 100%);box-shadow:0 5px 18px rgba(23,59,49,.055);overflow-wrap:anywhere}
+.seller-advice-panel>#sellerAdviceCard:before{content:"";position:absolute;left:0;top:16px;bottom:16px;width:4px;border-radius:0 4px 4px 0;background:#b8944e}
+.seller-advice-panel>#sellerAdviceCard .seller-advice-top{padding-left:5px;align-items:center}
+.seller-advice-panel>#sellerAdviceCard .seller-advice-category{font-size:10px;letter-spacing:.1em;line-height:1.5}
+.seller-advice-panel>#sellerAdviceCard .seller-advice-counter{white-space:nowrap;font-size:10px}
+.seller-advice-panel>#sellerAdviceCard h5{margin:10px 0 9px;padding-left:5px;font-size:clamp(19px,2vw,23px);line-height:1.25;letter-spacing:-.015em}
+.seller-advice-panel>#sellerAdviceCard p{padding-left:5px;font-size:13px;line-height:1.7}
+.seller-advice-panel>#sellerAdviceCard .seller-advice-takeaway{margin:15px 0 0;padding:13px 14px;border:1px solid rgba(216,187,122,.28);border-radius:12px;background:#173b31;color:#fffdf8;font-size:12px;line-height:1.65}
+.seller-advice-panel>#sellerAdviceCard .seller-advice-foot{align-items:flex-end;flex-wrap:wrap;gap:9px;margin-top:14px;padding-left:5px}
+.seller-advice-panel>#sellerAdviceCard .seller-advice-source{flex:1 1 150px;min-width:0;font-size:10px;line-height:1.55;overflow-wrap:anywhere}
+.seller-advice-panel>#sellerAdviceCard .seller-advice-link{font-size:11px;line-height:1.5;white-space:normal}
+.seller-advice-panel>#sellerAdviceDots{display:flex;align-items:center;gap:7px;min-height:20px;margin:9px 0 2px}
+.seller-advice-panel>#sellerAdviceDots button{width:8px;height:8px;flex:0 0 8px;cursor:pointer;transition:transform .15s ease,background .15s ease}
+.seller-advice-panel>#sellerAdviceDots button.active{transform:scale(1.25);background:#8a6b2e}
+.seller-advice-panel>#sellerAdviceDots button:focus-visible{outline:2px solid #173b31;outline-offset:3px}
+@media(max-width:600px){
+ .seller-advice-panel>.seller-panel-head h4{font-size:22px}
+ .seller-advice-panel>#sellerAdviceCard{padding:16px 14px 15px}
+ .seller-advice-panel>#sellerAdviceCard h5{font-size:20px}
+ .seller-advice-panel>#sellerAdviceCard p{font-size:13px}
+ .seller-advice-panel>#sellerAdviceCard .seller-advice-foot{align-items:flex-start;flex-direction:column}
+ .seller-advice-panel>#sellerAdviceCard .seller-advice-link{align-self:flex-start}
+}
+
 /* V2.0 — espace vendeur premium / responsive */
 .fb-wrap{max-width:1040px;padding:24px 18px 54px}
 .fb-success{padding:20px;border-radius:20px;background:#fffdf8;box-shadow:0 10px 35px rgba(23,51,44,.06)}
