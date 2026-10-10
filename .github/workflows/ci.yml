@@ -18,3 +18,4 @@ jobs:
       - run: node --check market-intelligence.js
       - run: node --check external-estimators.js
       - run: node --check scripts/import-dvf.js
+      - run: node --check scripts/import-dvfplus.js
