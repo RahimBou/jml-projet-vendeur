@@ -3093,5 +3093,25 @@ function updateSellerProjectSummary(d){
 }
 </style>
 
+
+<style id="jml-quick-icon-position-fix">
+/* Les pastilles sont remontées dans la zone photo pour dégager les titres et textes des cartes. */
+.seller-space .seller-quick-grid>.seller-quick-card{position:relative!important}
+.seller-space .seller-quick-grid>.seller-quick-card>.seller-quick-icon{
+  position:absolute!important;
+  top:50px!important;
+  left:14px!important;
+  z-index:3!important;
+  margin:0!important;
+  flex:0 0 46px!important;
+}
+@media(max-width:850px){
+  .seller-space .seller-quick-grid>.seller-quick-card>.seller-quick-icon{top:43px!important}
+}
+@media(max-width:560px){
+  .seller-space .seller-quick-grid>.seller-quick-card>.seller-quick-icon{top:35px!important;left:12px!important}
+}
+</style>
+
 </body>
 </html>
