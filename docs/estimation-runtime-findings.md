@@ -94,3 +94,26 @@ Les nouveaux garde-fous ne changent ni la formule de production, ni les pages, n
 4. confirmation qu'aucune page ne dépend d'un champ modifié.
 
 **Conclusion :** une valeur figée peut provenir d'un secours communal, d'un jeu de comparables inchangé, du cache communal ou d'un échec de collecte masqué par un tableau vide. Le prochain correctif métier doit améliorer la traçabilité des modes dégradés avant de changer la formule.
+
+
+## 6. Replay exploratoire sur le fichier DVF+ fourni
+
+Le fichier disponible `maisons_dvf_autour_payer_guillemain_3km.csv` contient 1 131 mutations de maisons à moins de 3 km, datées du 3 janvier 2020 au 29 décembre 2025. En appliquant la fenêtre de 48 mois à la date de contrôle du 11 octobre 2026, il reste 559 ventes de maisons avec prix et surface bâtie exploitables ; 36 se trouvent à moins de 500 m.
+
+Une simulation hors ligne de la logique de score et de pondération, à partir de ce fichier seul, donne :
+
+| Scénario | Ventes candidates | Ventes après filtre statistique | Prix pondéré indicatif | Total à la surface du scénario |
+|---|---:|---:|---:|---:|
+| Maison, 135 m² | 559 | 549 | ~1 667 €/m² | ~225 000 € |
+| Maison, 150 m² | 559 | 549 | ~1 667 €/m² | ~250 000 € |
+| Maison, 165 m² | 559 | 549 | ~1 667 €/m² | ~275 000 € |
+| Maison, 150 m², ventes à moins de 500 m exclues | 523 | 513 | ~1 643 €/m² | ~246 429 € |
+
+Cette simulation illustre deux comportements :
+- le prix au m² peut rester identique quand la variation de surface ne change pas le comparable qui franchit la médiane pondérée ;
+- le total doit néanmoins évoluer avec la surface : ici, environ ±25 000 € pour ±15 m² à base constante ;
+- retirer les ventes les plus proches modifie le prix pondéré simulé d'environ 1 667 à 1 643 €/m², soit environ -1,4 %.
+
+Ventes très proches et récentes dans le fichier, à titre de contrôle de dispersion : à 34 m, 180 000 € pour 130 m² (~1 385 €/m², juin 2024) ; à 59 m, 315 000 € pour 157 m² (~2 006 €/m², juillet 2024) ; à 135 m, 295 000 € pour 116 m² (~2 543 €/m², août 2025) ; à 142 m, 290 000 € pour 130 m² (~2 231 €/m², avril 2025). Cette dispersion explique pourquoi il faut examiner les caractéristiques et le poids de chaque vente, et non la seule proximité.
+
+**Limite à ne pas masquer :** ce n'est pas un replay du moteur de production. Le CSV n'expose pas toutes les colonnes utilisées par le moteur (adresse exacte, pièces, terrain, bases de surface, autres sources DVF/PostgreSQL et éventuels doublons). Le prix/m² simulé est donc un contrôle indépendant du jeu disponible, pas une valeur certifiée de l'API Render. Le fichier ne contient que des maisons : l'absence d'appartements dans cet extrait ne signifie pas qu'il n'existe aucune vente d'appartement dans le secteur.
