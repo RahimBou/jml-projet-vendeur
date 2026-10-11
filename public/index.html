@@ -247,7 +247,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
  async function removeProperty(id){
   const property=sellerProperties.find(x=>String(x.id)===String(id));if(!property)return;
   const address=[property.address,property.city].filter(Boolean).join(", ")||"bien sans adresse";
-  if(!confirm("Supprimer définitivement le bien « "+address+" » ?\\n\\nSeule cette fiche de bien sera supprimée. Le prospect et ses autres biens seront conservés."))return;
+  if(!confirm("Supprimer définitivement le bien « "+address+" » ?\n\nSeule cette fiche de bien sera supprimée. Le prospect et ses autres biens seront conservés."))return;
   try{await api("/api/prospect-properties/"+enc(id),{method:"DELETE"});await loadProspects()}
   catch(e){alert(e.message||"Suppression du bien impossible.")}
  }
