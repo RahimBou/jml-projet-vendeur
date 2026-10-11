@@ -13,6 +13,24 @@
 6. DVF reste la preuve des ventes réelles. Les données INSEE, CCI, Notaires, annonces et autres sources sont des éléments de contexte ou de comparaison, pas des ventes DVF. Ne jamais présenter une donnée nationale comme une mesure locale.
 7. L'année 2025 reste la dernière année de référence DVF à utiliser tant que les données 2026 ne sont pas publiées et intégrées.
 
+## Contrat d'exécution — responsabilité de l'assistant
+
+**La feuille de route est pilotée par l'assistant. L'utilisateur n'a pas à la gérer ni à se souvenir de la prochaine étape.**
+
+À chaque reprise de travail sur JML Projet Vendeur, l'assistant doit :
+1. relire cette feuille de route et reprendre à la première tâche non validée;
+2. vérifier les derniers commits, PR, CI et déploiement pertinents avant de proposer un changement;
+3. poursuivre l'action concrète la plus utile, sans redemander des contrôles déjà prouvés;
+4. après chaque changement, contrôler le diff, lancer les vérifications adaptées et inspecter les éventuelles régressions;
+5. distinguer clairement ce qui est commité, fusionné, déployé et testé en production;
+6. mettre à jour cette feuille de route avec la preuve, le résultat et le statut de l'étape;
+7. ne jamais marquer « Validé » sur la seule base d'une intention, d'un commit ou d'une CI si le test requis est un test de production;
+8. si un test nécessite une action ou un accès de l'utilisateur, expliquer uniquement l'action minimale requise, puis reprendre l'audit dès que le résultat est disponible;
+9. terminer chaque compte rendu par **la prochaine action précise** et la preuve attendue;
+10. ne pas créer de nouvelle branche de travail ni élargir le périmètre sans raison documentée.
+
+**Boucle obligatoire :** inspecter l'état actuel → agir sur le point prioritaire → tester → comparer au résultat attendu → vérifier les régressions → mettre à jour la feuille de route → passer au point suivant.
+
 ## P0 — Clôturer l'audit du moteur DVF avant toute nouvelle modification métier
 
 ### P0.1 — État exact du code et du déploiement
@@ -131,6 +149,7 @@ Ne passer à la phase suivante que lorsque P0.1 à P0.6 sont documentés. À ce 
 | Date | Étape | Résultat / preuve | Statut |
 |---|---|---|---|
 | 2026-10-11 | Création de la feuille de route | Point de départ commun; aucune modification du moteur déclenchée par ce document | En cours |
+| 2026-10-11 | Contrat d'exécution | Responsabilité de suivi, recontrôle et mise à jour explicitement attribuée à l'assistant | Validé |
 
 **Statuts autorisés :** À faire · En cours · Bloqué · Validé · Non applicable.
 
