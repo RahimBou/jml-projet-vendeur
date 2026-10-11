@@ -3155,7 +3155,7 @@ function updateSellerProjectSummary(d){
  function shut(){overlay.classList.remove("is-open");document.body.style.overflow="";if(lastTrigger)lastTrigger.focus();}
  close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&overlay.classList.contains("is-open"))shut();});
- function escapeRegExp(s){return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g,"\\</body>");}
+ function escapeRegExp(s){return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");}
  function decorate(root,items){
   const terms=items.filter(x=>x&&x.title&&String(x.title).trim().length>=2).sort((a,b)=>String(b.title).length-String(a.title).length);
   if(!terms.length)return;
