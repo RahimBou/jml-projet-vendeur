@@ -134,6 +134,7 @@ async function importYear(client, year){
     " mutations résidentielles retenues; "+(transactionRows.size-data.length)+
     " mutations non retenues au total (ambiguïté, type non résidentiel ou données insuffisantes).");
   const chunk=500;
+  let insertedRows=0;
   for(let i=0;i<data.length;i+=chunk){
     const part=data.slice(i,i+chunk);
     const values=[], params=[];
@@ -142,15 +143,18 @@ async function importYear(client, year){
       values.push("(" + Array.from({length:18},(_,j)=>"$"+(b+j+1)).join(",") + ")");
       params.push(r.mutation_id,r.sale_date,r.property_type,r.price,r.surface,r.rooms,r.land_surface,r.latitude,r.longitude,r.address,r.street,r.postal_code,r.commune_code,r.commune_name,r.parcel_id,r.source_year,r.price/r.surface,"DVF");
     });
-    await client.query(`INSERT INTO jml_dvf_sales
+    const inserted=await client.query(`INSERT INTO jml_dvf_sales
       (mutation_id,sale_date,property_type,price,surface,rooms,land_surface,latitude,longitude,address,street,postal_code,commune_code,commune_name,parcel_id,source_year,price_per_m2,source)
       VALUES ${values.join(",")}
       ON CONFLICT DO NOTHING`,params);
+    insertedRows+=Number(inserted.rowCount||0);
     process.stdout.write("\rDVF "+year+": "+Math.min(i+chunk,data.length)+"/"+data.length);
   }
   await client.query("COMMIT");
-  console.log("\nDVF "+year+": "+data.length+" mutations résidentielles importées.");
-  return data.length;
+  console.log("\nDVF "+year+": lignes préparées="+data.length+
+    "; lignes réellement insérées="+insertedRows+
+    "; conflits ignorés par PostgreSQL="+(data.length-insertedRows)+".");
+  return {year,preparedRows:data.length,insertedRows,conflictRows:data.length-insertedRows};
 }
 
 async function main(){
@@ -212,11 +216,17 @@ async function main(){
     const failures=[];
     const unavailableYears=[];
     let successfulYears=0;
+    let preparedRowsTotal=0,insertedRowsTotal=0,conflictRowsTotal=0;
     for(const year of YEARS){
       try{
         const imported = await importYear(client,year);
         if(imported && imported.unavailable) unavailableYears.push(year);
-        else if(imported !== null) successfulYears++;
+        else if(imported !== null){
+          successfulYears++;
+          preparedRowsTotal+=Number(imported.preparedRows||0);
+          insertedRowsTotal+=Number(imported.insertedRows||0);
+          conflictRowsTotal+=Number(imported.conflictRows||0);
+        }
       } catch(error){
         try{ await client.query("ROLLBACK"); }catch(_){}
         const message=String(error?.message||error);
@@ -234,6 +244,7 @@ async function main(){
     if(!successfulYears) throw new Error("Aucune année DVF n'a été importée.");
     const count=await client.query("SELECT COUNT(*)::int AS count, MAX(imported_at) AS imported_at FROM jml_dvf_sales");
     console.log("DVF import terminé:",count.rows[0]);
+    console.log("DVF bilan des lignes:",JSON.stringify({preparedRows:preparedRowsTotal,insertedRows:insertedRowsTotal,conflictRows:conflictRowsTotal,retainedRowsInDatabase:Number(count.rows[0]?.count||0)}));
     console.log("DVF bilan des années demandées:",JSON.stringify({requestedYears:YEARS,importedYears:successfulYears,unavailableYears,failedYears:failures.map(f=>f.year)}));
   } finally {
     client.release();
