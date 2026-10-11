@@ -5162,6 +5162,19 @@ app.post("/api/leads", async (req,res) => {
           prospectId,
           client
         );
+        // Chaque soumission conserve les caractéristiques du bien même si le contact existe déjà.
+        const propertyAddress=clean(b.address,240);
+        if(propertyAddress){
+          const propertySurface=String(b.surface??"").trim().replace(",",".");
+          const propertyRooms=String(b.rooms??"").trim();
+          await client.query(`INSERT INTO jml_prospect_properties
+            (id,prospect_id,address,city,property_type,surface_m2,rooms,dpe,created_at,updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())`,
+            [newId(),prospectId,propertyAddress,lead.city||null,clean(lead.propertyType||"Maison",40),
+             propertySurface!==""&&Number.isFinite(Number(propertySurface))&&Number(propertySurface)>0?Number(propertySurface):null,
+             propertyRooms!==""&&Number.isInteger(Number(propertyRooms))&&Number(propertyRooms)>0?Number(propertyRooms):null,
+             clean(b.dpe,10)||null]);
+        }
         await client.query("COMMIT");
         setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
         setImmediate(()=>startListingResearchForSpace(sellerSpace));
@@ -5208,6 +5221,15 @@ app.post("/api/leads", async (req,res) => {
     // son propre espace vendeur et son propre jeton, avec l'adresse saisie.
     const initialOwnerData=sellerOwnerDataFromLead(lead);
     const sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},prospectId);
+    const propertyAddress=clean(b.address,240);
+    if(propertyAddress&&prospectId){
+      const owner=memory.prospects.get(prospectId);
+      if(owner){
+        owner.properties=owner.properties||[];
+        owner.properties.unshift({id:newId(),prospect_id:prospectId,address:propertyAddress,city:lead.city||null,property_type:clean(lead.propertyType||"Maison",40),surface_m2:(b.surface!==""&&Number.isFinite(Number(String(b.surface).replace(",",".")))?Number(String(b.surface).replace(",",".")):null),rooms:(b.rooms!==""&&Number.isInteger(Number(b.rooms))?Number(b.rooms):null),dpe:clean(b.dpe,10)||null,created_at:now(),updated_at:now()});
+        memory.prospects.set(prospectId,owner);
+      }
+    }
     setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
     setImmediate(()=>startListingResearchForSpace(sellerSpace));
     const sellerSpaceUrl=req.protocol+"://"+req.get("host")+"/espace-vendeur/"+sellerSpace.accessToken;
