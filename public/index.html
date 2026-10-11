@@ -24,6 +24,15 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
 @media(max-width:650px){.prospect-row{align-items:flex-start;flex-direction:column}.prospect-right{width:100%;justify-content:flex-start}.detail-grid,.form-grid{grid-template-columns:1fr}.form-full{grid-column:auto}}
 @media(max-width:760px){.pro-top{align-items:flex-start;flex-direction:column}.pro-stats{grid-template-columns:1fr 1fr}.pro-grid{grid-template-columns:1fr}}
 @media(max-width:430px){.pro-wrap{padding:18px 12px}.pro-stats{grid-template-columns:1fr 1fr}.pro-actions{grid-template-columns:1fr}.pro-head h1{font-size:29px}}
+
+ .prospect-properties{grid-column:1/-1;margin:8px 0 0;padding:12px;border:1px solid #e6dccb;border-radius:12px;background:#fbf8f2}
+ .prospect-properties-title{font-weight:700;color:#244c40;margin-bottom:8px;font-size:.9rem}
+ .prospect-property{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #e9e0d3}
+ .prospect-property-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+ .prospect-property-main strong{overflow-wrap:anywhere}
+ .prospect-property-main small{color:#6c706d}
+ .prospect-properties-empty{grid-column:1/-1;margin-top:8px;color:#777;font-size:.88rem}
+ @media(max-width:700px){.prospect-property{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body>
@@ -83,7 +92,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
 <script>
 (async function(){
  const STATUS=["À qualifier","Contacté","À relancer","RDV pris","Estimation","Mandat","Pas de projet"];
- let prospects=[];
+ let prospects=[]; let sellerProperties=[];
  const $=id=>document.getElementById(id);
  function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
  function enc(v){return encodeURIComponent(String(v??""))}
@@ -154,12 +163,23 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
  async function loadProspects(){
   try{
    const d=await api("/api/prospects");prospects=Array.isArray(d.prospects)?d.prospects:[];
+   // Les biens sont chargés séparément : un même contact peut déposer plusieurs demandes.
+   try{const pd=await api("/api/prospect-properties");sellerProperties=Array.isArray(pd.properties)?pd.properties:[]}
+   catch(propertyError){console.warn("Lecture des biens par prospect indisponible",propertyError);sellerProperties=[]}
    set("nProspects",prospects.length);set("nHot",prospects.filter(x=>x.horizon==="0-3"||x.horizon==="3-6").length);set("nRdv",prospects.filter(x=>x.status==="RDV pris").length);set("nMandats",prospects.filter(x=>x.status==="Mandat").length);
    renderFollowups();
    const box=$("prospectsBox");if(!box)return;
    if(!prospects.length){box.innerHTML='<div class="prospect-empty">Aucun prospect enregistré.<br>Les nouveaux propriétaires apparaîtront ici.</div>';return}
-   box.innerHTML=prospects.map(p=>`
-    <div class="prospect-row" data-id="${esc(p.id)}">
+   box.innerHTML=prospects.map(p=>{
+    const homes=sellerProperties.filter(x=>String(x.prospectId||"")===String(p.id));
+    const homesHtml=homes.length?'<div class="prospect-properties"><div class="prospect-properties-title">🏠 Biens et demandes de ce client · '+homes.length+'</div>'+homes.map((x,i)=>{
+      const details=[x.propertyType||"Type à préciser",x.surface?x.surface+" m²":"Surface à préciser",x.rooms?x.rooms+" pièces":""].filter(Boolean).join(" · ");
+      const date=fmtDate(x.createdAt);
+      const address=[x.address,x.city].filter(Boolean).join(", ")||"Adresse non renseignée";
+      const href=x.accessToken?'/espace-vendeur/'+enc(x.accessToken):"";
+      return '<div class="prospect-property"><div class="prospect-property-main"><strong>Bien '+(i+1)+' — '+esc(address)+'</strong><small>'+esc(details)+'</small><small>Demande enregistrée le '+esc(date)+(x.dpe?' · DPE '+esc(x.dpe):"")+'</small></div>'+(href?'<a class="prospect-btn" target="_blank" rel="noopener" href="'+href+'">Voir le bien</a>':'')+'</div>';
+    }).join("")+'</div>':'<div class="prospect-properties-empty">Aucun bien lié visible pour le moment. Les prochaines demandes du client apparaîtront ici.</div>';
+    return `<div class="prospect-row" data-id="${esc(p.id)}">
       <div class="prospect-main"><strong>${esc(p.name||"Sans nom")}</strong><small>${esc(p.city||"Ville non renseignée")} · ${esc(p.phone||"Téléphone non renseigné")} · ${esc(p.propertyType||"Bien non renseigné")}</small><small>${esc(p.source||"Source non renseignée")} · horizon ${esc(p.horizon||"—")} · dernière activité ${fmtDate(p.lastContactAt)}</small></div>
       <div class="prospect-right">
         <select class="prospect-status" data-action="status" data-id="${esc(p.id)}">${statusOptions(p.status)}</select>
@@ -173,7 +193,9 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
           <button type="button" class="prospect-btn danger" data-action="delete" data-id="${esc(p.id)}">Supprimer</button>
         </div>
       </div>
-    </div>`).join("");
+      ${homesHtml}
+    </div>`;
+   }).join("");
   }catch(e){console.warn(e);$("prospectsBox").innerHTML='<div class="prospect-empty" style="color:#9a3b32"><strong>Erreur chargement prospects</strong><br><small>'+esc(e.message||e)+'</small></div>'}
  }
 
