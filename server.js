@@ -47,7 +47,7 @@ process.on("unhandledRejection",(reason)=>{
 
 const PORT = Number(process.env.PORT || 10000);
 const VERSION = "3.14.7";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1-seller-owner-prefill-v2-backfill-dvf-trace-fix-v1";
+const BUILD_MARKER = "seller-positioning-v2-dpe-local-comparables-only-core-fields";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -2256,14 +2256,16 @@ async function buildComparableSales(market,property){
   // Le DPE est un enrichissement secondaire : il ne doit jamais bloquer le calcul DVF.
   // On limite donc la vérification aux 4 meilleurs comparables et on la lance en une seule vague.
   // Le prix, le minimum DVF et la valeur centrale sont déjà calculés à partir des données DVF.
-  const dpeRows=top40.slice(0,4);
-  // L'ADEME est secondaire : son API peut enchaîner plusieurs recherches textuelles.
-  // On plafonne l'attente totale à 2,5 s pour que le calcul DVF ne dépasse pas le délai
-  // du client. Les ventes restent valides sans DPE ; les échecs sont simplement ignorés.
-  const dpeEnrichment=Promise.all(dpeRows.map(async sale=>{
+  const dpeRows=top40.slice(0,40);
+  // Le DPE n'entre pas dans le score ni dans la médiane DVF principale.
+  // Pour le positionnement secondaire, on enrichit jusqu'à 40 comparables avec
+  // la base ADEME locale ; l'API distante reste limitée aux 4 premiers pour éviter
+  // de multiplier les requêtes externes et de ralentir le repère DVF.
+  const dpeEnrichment=Promise.all(dpeRows.map(async (sale,index)=>{
     try{
       const dpeAddress=[sale.address,sale.postal].filter(Boolean).join(" ").trim();
-      const found=await getAdemeDpeByAddress(dpeAddress||sale.address,sale.city||city,sale.postal||"");
+      const local=await getLocalDpeByAddress(dpeAddress||sale.address,sale.city||city,sale.postal||"");
+      const found=local?.dpe?local:(index<4?await getAdemeDpeByAddress(dpeAddress||sale.address,sale.city||city,sale.postal||""):null);
       sale.dpeChecked=true;
       return {sale,found};
     }catch(_e){
@@ -2273,7 +2275,7 @@ async function buildComparableSales(market,property){
   }));
   const enriched=await Promise.race([
     dpeEnrichment,
-    new Promise(resolve=>setTimeout(()=>resolve([]),2500))
+    new Promise(resolve=>setTimeout(()=>resolve([]),3500))
   ]);
   for(const item of enriched){
     if(item.found?.dpe){
@@ -4494,26 +4496,37 @@ async function createSellerSpace(data, prospectId, transactionClient = null){
 
 function medianNumber(values){const a=(values||[]).map(Number).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
 function sellerAdjustment(factor,pct,count,confidence,note,baseline){return {factor,effectPct:Number(pct.toFixed(1)),effectEur:Math.round(baseline?baseline*pct/100:0),evidenceCount:count||0,confidence,note};}
-function buildSellerCharacteristicAnalysis(space,comp,listingsData){
+function buildSellerCharacteristicAnalysis(space,comp){
  const surface=Number(space?.surface),baseM2=Number(comp?.weightedPriceM2),baseline=Number.isFinite(surface)&&surface>0&&Number.isFinite(baseM2)&&baseM2>0?Math.round(surface*baseM2):null;
- const sales=Array.isArray(comp?.valuationSales)&&comp.valuationSales.length?comp.valuationSales:(Array.isArray(comp?.sales)?comp.sales:[]),listings=Array.isArray(listingsData?.listings)?listingsData.listings:[],adjustments=[],dpe=String(space?.dpe||"").toUpperCase().trim();
- const dpeRows=sales.filter(x=>/^[A-G]$/.test(String(x.dpe||"").toUpperCase())&&Number.isFinite(Number(x.pricePerM2)));let total=0;
+ const sales=Array.isArray(comp?.valuationSales)&&comp.valuationSales.length?comp.valuationSales:(Array.isArray(comp?.sales)?comp.sales:[]),adjustments=[],dpe=String(space?.dpe||"").toUpperCase().trim();
+ const dpeRows=sales.filter(x=>/^[A-G]$/.test(String(x.dpe||"").toUpperCase())&&Number.isFinite(Number(x.pricePerM2)));
+ let total=0;
  if(dpe&&dpe!=="JE NE SAIS PAS"){
-  if(dpe==="D")adjustments.push(sellerAdjustment("DPE",0,dpeRows.length,"Neutre","D est la classe de référence.",baseline));
-  else{const a=dpeRows.filter(x=>String(x.dpe).toUpperCase()===dpe).map(x=>Number(x.pricePerM2)),ref=dpeRows.filter(x=>String(x.dpe).toUpperCase()==="D").map(x=>Number(x.pricePerM2));if(a.length>=3&&ref.length>=3){let pct=((medianNumber(a)/medianNumber(ref))-1)*100;pct=Math.max(-15,Math.min(15,pct));total+=pct;adjustments.push(sellerAdjustment("DPE",pct,a.length+ref.length,"Bonne","Écart observé sur des ventes comparables avec DPE ADEME.",baseline));}else adjustments.push(sellerAdjustment("DPE",0,a.length+ref.length,"Non mesurable","Pas assez de comparables locaux avec DPE exploitable.",baseline));}
+  if(dpe==="D"){
+   adjustments.push(sellerAdjustment("DPE",0,dpeRows.length,"Référence","La classe D sert de référence ; aucun ajustement énergétique supplémentaire.",baseline));
+  }else{
+   const target=dpeRows.filter(x=>String(x.dpe).toUpperCase()===dpe).map(x=>Number(x.pricePerM2));
+   const reference=dpeRows.filter(x=>String(x.dpe).toUpperCase()==="D").map(x=>Number(x.pricePerM2));
+   if(target.length>=3&&reference.length>=3&&medianNumber(reference)>0){
+    // Comparaison de médianes des ventes proches, après les filtres DVF du moteur.
+    // Plafond prudent : évite qu'un petit échantillon produise une correction extrême.
+    const observed=((medianNumber(target)/medianNumber(reference))-1)*100;
+    const pct=Math.max(-15,Math.min(15,observed));
+    total+=pct;
+    adjustments.push(sellerAdjustment("DPE",pct,target.length+reference.length,"Mesuré localement","Écart médian observé entre ventes comparables de cette classe et de classe D ; correction plafonnée à ±15 % par prudence.",baseline));
+   }else{
+    adjustments.push(sellerAdjustment("DPE",0,target.length+reference.length,"Non mesurable","Moins de 3 ventes comparables avec ce DPE et 3 en classe D : aucun pourcentage n'est inventé.",baseline));
+   }
+  }
  }
- const declaredGarage=String(space?.conditionData?.garage||"").toLowerCase();
- const garageRelevant=declaredGarage.includes("garage")||declaredGarage.includes("sans garage");
- const gr=listings.filter(x=>x?.features&&typeof x.features.garage==="boolean"&&Number.isFinite(Number(x.priceM2))),gy=gr.filter(x=>x.features.garage).map(x=>Number(x.priceM2)),gn=gr.filter(x=>!x.features.garage).map(x=>Number(x.priceM2));
- if(garageRelevant&&declaredGarage!=="non renseigné"&&declaredGarage!=="ne sait pas"){
-  if(gy.length>=3&&gn.length>=3){let pct=((medianNumber(gy)/medianNumber(gn))-1)*100;pct=Math.max(-8,Math.min(8,pct));if(declaredGarage.includes("sans")||declaredGarage.includes("non"))pct=-pct;total+=pct;adjustments.push(sellerAdjustment("Garage",pct,gr.length,"Indicatif","Écart observé sur des annonces comparables ; signal de positionnement et non transaction DVF.",baseline));}
-  else adjustments.push(sellerAdjustment("Garage",0,gr.length,"Non mesurable","Pas assez d'annonces comparables documentées pour isoler sa valeur.",baseline));
- }
- adjustments.push(sellerAdjustment("Surface / pièces / terrain",0,sales.length,sales.length>=5?"Intégré":"Insuffisant","Déjà intégrés dans la sélection et la pondération DVF ; aucun double ajustement.",baseline));
- total=Math.max(-15,Math.min(15,total));const value=baseline?Math.round(baseline*(1+total/100)):null;
- const low=value&&Number(comp?.rangeLow)?Math.round(Number(comp.rangeLow)*surface*(1+total/100)):null,high=value&&Number(comp?.rangeHigh)?Math.round(Number(comp.rangeHigh)*surface*(1+total/100)):null;
- const measured=adjustments.filter(x=>x.effectPct!==0).length;
- return {version:"seller-characteristics-v1",generatedAt:new Date().toISOString(),baseline:{value,m2:Number.isFinite(baseM2)?Math.round(baseM2):null,source:"DVF comparables"},adjustments,positioning:{value,low,high,adjustmentPct:Number(total.toFixed(1)),confidence:baseline?(measured>=1&&comp?.confidence==="Bonne"?"Bonne":comp?.confidence||"Faible"):"Faible"},evidence:{dvfComparables:sales.length,sameStreet:Array.isArray(comp?.sameStreet)?comp.sameStreet.length:0,dpeComparableCount:dpeRows.length,listingsComparableCount:listings.length,garageListings:gr.length},explanation:baseline?(measured?"Les corrections affichées viennent uniquement d'écarts observés dans les données locales disponibles. Une caractéristique insuffisamment documentée reste neutre.":"Le repère DVF est conservé : les données locales ne permettent pas d'isoler un effet supplémentaire avec assez de fiabilité."):"Pas assez de comparables DVF pour produire une valeur ajustée."};
+ // Surface, pièces et terrain sont déjà utilisés pour sélectionner/pondérer les ventes.
+ // Ne pas appliquer une seconde correction pour ces mêmes critères.
+ adjustments.push(sellerAdjustment("Surface / pièces / terrain",0,sales.length,sales.length>=5?"Intégré":"Insuffisant","Déjà pris en compte dans la sélection et la pondération DVF ; aucun double ajustement.",baseline));
+ const value=baseline?Math.round(baseline*(1+total/100)):null;
+ const low=value&&Number(comp?.rangeLow)?Math.round(Number(comp.rangeLow)*surface*(1+total/100)):null;
+ const high=value&&Number(comp?.rangeHigh)?Math.round(Number(comp.rangeHigh)*surface*(1+total/100)):null;
+ const measured=adjustments.some(x=>x.factor==="DPE"&&x.effectPct!==0);
+ return {version:"seller-characteristics-v2-dpe",generatedAt:new Date().toISOString(),baseline:{value,m2:Number.isFinite(baseM2)?Math.round(baseM2):null,source:"DVF comparables"},adjustments,positioning:{value,low,high,adjustmentPct:Number(total.toFixed(1)),confidence:baseline?(measured&&comp?.confidence==="Bonne"?"Bonne":comp?.confidence||"Faible"):"Faible"},evidence:{dvfComparables:sales.length,sameStreet:Array.isArray(comp?.sameStreet)?comp.sameStreet.length:0,dpeComparableCount:dpeRows.length},explanation:baseline?(measured?"Le positionnement tient compte d'un écart DPE mesuré sur les ventes comparables locales, avec un plafonnement prudent.":"Le repère DVF est conservé : les ventes comparables avec DPE vérifié sont insuffisantes pour chiffrer un effet énergétique."):"Pas assez de comparables DVF pour produire une valeur ajustée."};
 }
 async function refreshSellerValuationAnalysis(accessToken){if(!accessToken)return;try{let row=null;if(pool){const q=await db("SELECT * FROM jml_seller_spaces WHERE access_token=$1 LIMIT 1",[accessToken]);if(!q.rowCount)return;row=q.rows[0];}else row=memory.sellerSpaces.get(accessToken);if(!row)return;const space=sellerSpacePublic(row),city=clean(space.city,100);const comp=await buildComparableSales({city,recentSales:[]},{city,address:space.address,propertyType:space.propertyType,surface:space.surface,rooms:space.rooms,landSurface:space.terrain,terrain:space.terrain,dpe:space.dpe});const analysis=buildSellerCharacteristicAnalysis(space,comp,space.listingResearch),current=row.estimator_agent_data&&typeof row.estimator_agent_data==="object"?row.estimator_agent_data:{},next={...current,valuationAnalysis:analysis};if(pool)await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[accessToken,JSON.stringify(next)]);else if(memory.sellerSpaces.has(accessToken))memory.sellerSpaces.get(accessToken).estimatorAgent=next;}catch(error){console.warn("JML characteristic analysis:",String(error?.message||error));}}
 async function startListingResearchForSpace(space){
