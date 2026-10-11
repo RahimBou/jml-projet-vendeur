@@ -467,7 +467,7 @@ registerGoogleCalendarRoutes(app, { pool, isAdminAuthenticated }).catch(error =>
   console.warn("JML Google Calendar routes init:", error?.message || error);
 });
 
-const memory = { prospects: new Map(), leads: new Map(), sellerSpaces: new Map(), sellerAccounts: new Map() };
+const memory = { prospects: new Map(), leads: new Map(), sellerSpaces: new Map(), sellerAccounts: new Map(), buildings: new Map(), propertyUnits: new Map() };
 const clean = (v, max = 500) => String(v ?? "").trim().slice(0, max);
 function stripHtml(value){
   let s=String(value||"");
@@ -3726,6 +3726,37 @@ async function initDb() {
     );
 
 
+    CREATE TABLE IF NOT EXISTS jml_buildings (
+      id TEXT PRIMARY KEY,
+      address TEXT NOT NULL,
+      city TEXT NOT NULL DEFAULT '',
+      label TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_jml_buildings_address ON jml_buildings(address);
+
+    CREATE TABLE IF NOT EXISTS jml_property_units (
+      id TEXT PRIMARY KEY,
+      building_id TEXT NOT NULL REFERENCES jml_buildings(id) ON DELETE CASCADE,
+      prospect_id TEXT REFERENCES jml_prospects(id) ON DELETE SET NULL,
+      unit_ref TEXT NOT NULL DEFAULT '',
+      property_type TEXT NOT NULL DEFAULT 'Appartement',
+      surface NUMERIC,
+      rooms INTEGER,
+      owner_name TEXT NOT NULL DEFAULT '',
+      owner_phone TEXT NOT NULL DEFAULT '',
+      owner_email TEXT NOT NULL DEFAULT '',
+      seller_space_token TEXT NOT NULL DEFAULT '',
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    ALTER TABLE jml_property_units ADD COLUMN IF NOT EXISTS prospect_id TEXT REFERENCES jml_prospects(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_jml_units_prospect ON jml_property_units(prospect_id);
+    CREATE INDEX IF NOT EXISTS idx_jml_units_building ON jml_property_units(building_id);
+    CREATE INDEX IF NOT EXISTS idx_jml_units_ref ON jml_property_units(unit_ref);
     CREATE TABLE IF NOT EXISTS jml_seller_spaces (
       id TEXT PRIMARY KEY,
       access_token TEXT NOT NULL UNIQUE,
@@ -4080,6 +4111,98 @@ app.post("/api/admin/logout", async (req,res)=>{
   if(token)adminSessions.delete(token);
   setAdminSessionCookie(res,req,"",0);
   res.json({ok:true});
+});
+
+
+function cleanUnitInput(b={}){
+  return {
+    address:clean(b.address,180), city:clean(b.city,100), label:clean(b.label,120),
+    notes:clean(b.notes,2000), unitRef:clean(b.unitRef,80),
+    propertyType:clean(b.propertyType||"Appartement",60),
+    surface: b.surface===null||b.surface===undefined||String(b.surface).trim()===""?null:Number(b.surface),
+    rooms: b.rooms===null||b.rooms===undefined||String(b.rooms).trim()===""?null:Number(b.rooms),
+    ownerName:clean(b.ownerName,160), ownerPhone:clean(b.ownerPhone,40), ownerEmail:cleanEmail(b.ownerEmail),
+    sellerSpaceToken:clean(b.sellerSpaceToken,100),
+    prospectId:clean(b.prospectId,100)
+  };
+}
+app.get("/api/buildings",async(req,res)=>{
+  if(!requireAdminOr401(req,res))return;
+  const q=clean(req.query.q,180).toLocaleLowerCase("fr");
+  try{
+    let buildings=[],units=[];
+    if(pool){
+      const br=await db("SELECT * FROM jml_buildings ORDER BY city,address,label");
+      const ur=await db("SELECT * FROM jml_property_units ORDER BY building_id,unit_ref,created_at");
+      buildings=br.rows.map(r=>({id:r.id,address:r.address,city:r.city,label:r.label,notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}));
+      units=ur.rows.map(r=>({id:r.id,buildingId:r.building_id,prospectId:r.prospect_id||null,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}));
+    }else{
+      buildings=[...memory.buildings.values()];units=[...memory.propertyUnits.values()];
+    }
+    const filtered=buildings.filter(b=>!q||[b.address,b.city,b.label,...units.filter(u=>u.buildingId===b.id).flatMap(u=>[u.unitRef,u.ownerName,u.surface,u.rooms,u.ownerPhone,u.ownerEmail])].some(v=>String(v||"").toLocaleLowerCase("fr").includes(q)));
+    const ids=new Set(filtered.map(b=>b.id));
+    res.json({ok:true,persisted:!!pool,buildings:filtered.map(b=>({...b,units:units.filter(u=>u.buildingId===b.id)})),count:filtered.length,unitCount:units.filter(u=>ids.has(u.buildingId)).length});
+  }catch(e){unexpected(res,"JML-BLD-001","Lecture du registre immeubles indisponible.",e);}
+});
+app.post("/api/buildings",async(req,res)=>{
+  if(!requireAdminOr401(req,res))return;
+  const b=cleanUnitInput(req.body||{});
+  if(!b.address)return apiError(res,400,"JML-BLD-002","Adresse de l’immeuble obligatoire.");
+  const id=crypto.randomUUID?crypto.randomUUID():require("crypto").randomBytes(16).toString("hex");
+  const record={id,address:b.address,city:b.city,label:b.label,notes:b.notes,createdAt:now(),updatedAt:now()};
+  try{
+    if(pool){
+      const q=await db("INSERT INTO jml_buildings(id,address,city,label,notes) VALUES($1,$2,$3,$4,$5) RETURNING *",[id,b.address,b.city,b.label,b.notes]);
+      const r=q.rows[0];return res.status(201).json({ok:true,building:{id:r.id,address:r.address,city:r.city,label:r.label,notes:r.notes,createdAt:r.created_at,units:[]}});
+    }
+    memory.buildings.set(id,record);return res.status(201).json({ok:true,building:{...record,units:[]}});
+  }catch(e){unexpected(res,"JML-BLD-003","Création de l’immeuble impossible.",e);}
+});
+app.post("/api/buildings/:id/units",async(req,res)=>{
+  if(!requireAdminOr401(req,res))return;
+  const buildingId=clean(req.params.id,100),b=cleanUnitInput(req.body||{});
+  if(!b.unitRef&&!b.surface&&!b.ownerName)return apiError(res,400,"JML-UNIT-001","Renseignez au moins une référence, une surface ou un propriétaire.");
+  if(b.surface!==null&&(!Number.isFinite(b.surface)||b.surface<=0||b.surface>10000))return apiError(res,400,"JML-UNIT-002","Surface invalide.");
+  if(b.rooms!==null&&(!Number.isInteger(b.rooms)||b.rooms<0||b.rooms>100))return apiError(res,400,"JML-UNIT-003","Nombre de pièces invalide.");
+  const id=crypto.randomUUID?crypto.randomUUID():require("crypto").randomBytes(16).toString("hex");
+  try{
+    if(pool){
+      if(b.prospectId){const owner=await db("SELECT id FROM jml_prospects WHERE id=$1",[b.prospectId]);if(!owner.rowCount)return apiError(res,400,"JML-UNIT-008","Prospect associé introuvable.");}
+      const exists=await db("SELECT id FROM jml_buildings WHERE id=$1",[buildingId]);
+      if(!exists.rowCount)return apiError(res,404,"JML-BLD-004","Immeuble introuvable.");
+      const q=await db("INSERT INTO jml_property_units(id,building_id,prospect_id,unit_ref,property_type,surface,rooms,owner_name,owner_phone,owner_email,seller_space_token,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *",[id,buildingId,b.prospectId||null,b.unitRef,b.propertyType,b.surface,b.rooms,b.ownerName,b.ownerPhone,b.ownerEmail,b.sellerSpaceToken,b.notes]);
+      const r=q.rows[0];return res.status(201).json({ok:true,unit:{id:r.id,buildingId:r.building_id,prospectId:r.prospect_id||null,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes}});
+    }
+    if(!memory.buildings.has(buildingId))return apiError(res,404,"JML-BLD-004","Immeuble introuvable.");
+    const unit={id,buildingId,prospectId:b.prospectId||null,unitRef:b.unitRef,propertyType:b.propertyType,surface:b.surface,rooms:b.rooms,ownerName:b.ownerName,ownerPhone:b.ownerPhone,ownerEmail:b.ownerEmail,sellerSpaceToken:b.sellerSpaceToken,notes:b.notes,createdAt:now(),updatedAt:now()};
+    memory.propertyUnits.set(id,unit);return res.status(201).json({ok:true,unit});
+  }catch(e){unexpected(res,"JML-UNIT-004","Enregistrement de l’appartement impossible.",e);}
+});
+app.patch("/api/buildings/:id/units/:unitId",async(req,res)=>{
+  if(!requireAdminOr401(req,res))return;
+  const buildingId=clean(req.params.id,100),unitId=clean(req.params.unitId,100),b=cleanUnitInput(req.body||{});
+  if(b.surface!==null&&(!Number.isFinite(b.surface)||b.surface<=0||b.surface>10000))return apiError(res,400,"JML-UNIT-002","Surface invalide.");
+  if(b.rooms!==null&&(!Number.isInteger(b.rooms)||b.rooms<0||b.rooms>100))return apiError(res,400,"JML-UNIT-003","Nombre de pièces invalide.");
+  try{
+    if(pool){
+      if(b.prospectId){const owner=await db("SELECT id FROM jml_prospects WHERE id=$1",[b.prospectId]);if(!owner.rowCount)return apiError(res,400,"JML-UNIT-008","Prospect associé introuvable.");}
+      const q=await db("UPDATE jml_property_units SET prospect_id=$3,unit_ref=$4,property_type=$5,surface=$6,rooms=$7,owner_name=$8,owner_phone=$9,owner_email=$10,seller_space_token=$11,notes=$12,updated_at=NOW() WHERE id=$1 AND building_id=$2 RETURNING *",[unitId,buildingId,b.prospectId||null,b.unitRef,b.propertyType,b.surface,b.rooms,b.ownerName,b.ownerPhone,b.ownerEmail,b.sellerSpaceToken,b.notes]);
+      if(!q.rowCount)return apiError(res,404,"JML-UNIT-005","Appartement introuvable.");
+      const r=q.rows[0];return res.json({ok:true,unit:{id:r.id,buildingId:r.building_id,prospectId:r.prospect_id||null,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes}});
+    }
+    const u=memory.propertyUnits.get(unitId);if(!u||u.buildingId!==buildingId)return apiError(res,404,"JML-UNIT-005","Appartement introuvable.");
+    Object.assign(u,{prospectId:b.prospectId||null,unitRef:b.unitRef,propertyType:b.propertyType,surface:b.surface,rooms:b.rooms,ownerName:b.ownerName,ownerPhone:b.ownerPhone,ownerEmail:b.ownerEmail,sellerSpaceToken:b.sellerSpaceToken,notes:b.notes,updatedAt:now()});
+    return res.json({ok:true,unit:u});
+  }catch(e){unexpected(res,"JML-UNIT-006","Modification de l’appartement impossible.",e);}
+});
+app.delete("/api/buildings/:id/units/:unitId",async(req,res)=>{
+  if(!requireAdminOr401(req,res))return;
+  const buildingId=clean(req.params.id,100),unitId=clean(req.params.unitId,100);
+  try{
+    if(pool){const q=await db("DELETE FROM jml_property_units WHERE id=$1 AND building_id=$2 RETURNING id",[unitId,buildingId]);if(!q.rowCount)return apiError(res,404,"JML-UNIT-005","Appartement introuvable.");}
+    else {const u=memory.propertyUnits.get(unitId);if(!u||u.buildingId!==buildingId)return apiError(res,404,"JML-UNIT-005","Appartement introuvable.");memory.propertyUnits.delete(unitId);}
+    res.json({ok:true});
+  }catch(e){unexpected(res,"JML-UNIT-007","Suppression de l’appartement impossible.",e);}
 });
 
 app.get("/api/prospects", async (req,res) => {

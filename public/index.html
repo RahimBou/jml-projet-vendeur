@@ -24,6 +24,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
 @media(max-width:650px){.prospect-row{align-items:flex-start;flex-direction:column}.prospect-right{width:100%;justify-content:flex-start}.detail-grid,.form-grid{grid-template-columns:1fr}.form-full{grid-column:auto}}
 @media(max-width:760px){.pro-top{align-items:flex-start;flex-direction:column}.pro-stats{grid-template-columns:1fr 1fr}.pro-grid{grid-template-columns:1fr}}
 @media(max-width:430px){.pro-wrap{padding:18px 12px}.pro-stats{grid-template-columns:1fr 1fr}.pro-actions{grid-template-columns:1fr}.pro-head h1{font-size:29px}}
+.jml-building-form{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px}.jml-building-form input,.jml-building-form select,.jml-building-search{min-width:0;width:100%;box-sizing:border-box;border:1px solid #ddd2be;background:#fff;border-radius:9px;padding:10px;font:inherit;font-size:12px;color:#173b31}.jml-building-form .wide{grid-column:span 2}.jml-building-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.jml-building-card{border:1px solid #e5dbc8;border-radius:13px;padding:13px;background:#fbf8f0;margin-top:9px}.jml-building-unit{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;border-top:1px solid #e8dfcf;padding:10px 0}.jml-building-unit:first-child{margin-top:8px}.jml-building-muted{font-size:10px;color:#69716b;line-height:1.5}.jml-building-tag{font-size:10px;background:#e8dec8;border-radius:999px;padding:5px 8px;white-space:nowrap}@media(max-width:700px){.jml-building-form{grid-template-columns:1fr 1fr}.jml-building-form .wide{grid-column:span 2}.jml-building-unit{grid-template-columns:1fr}.jml-building-actions>*{flex:1}}
 </style>
 </head>
 <body>
@@ -69,6 +70,39 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
 <a class="pro-action" href="/projet-vendeur"><strong>👤 Tester l’espace vendeur</strong><span>Créer une demande de test puis ouvrir l’espace personnel généré.</span></a>
 </div></section>
 </div>
+
+<section id="buildingRegister" class="pro-card" style="margin-top:14px">
+ <h2>🏢 Registre des immeubles et appartements</h2>
+ <p>Regrouper les logements d’une même adresse sans mélanger leurs surfaces, leurs propriétaires ni leurs estimations.</p>
+ <div class="jml-building-form">
+  <input id="buildingAddress" class="wide" placeholder="Adresse de l’immeuble *" maxlength="180">
+  <input id="buildingCity" placeholder="Commune" maxlength="100">
+  <input id="buildingLabel" placeholder="Nom / entrée (facultatif)" maxlength="120">
+ </div>
+ <div class="jml-building-actions"><button id="createBuilding" type="button" class="prospect-btn primary">＋ Créer la fiche immeuble</button><span id="buildingMessage" class="jml-building-muted" aria-live="polite"></span></div>
+ <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px"><input id="buildingSearch" class="jml-building-search" style="max-width:420px" placeholder="Rechercher adresse, lot, surface ou propriétaire"><button id="refreshBuildings" type="button" class="prospect-btn">↻ Actualiser</button></div>
+ <div id="buildingList" class="pro-list"><div class="prospect-empty">Chargement du registre…</div></div>
+ <div id="unitModal" class="jml-modal" aria-hidden="true"><div class="jml-modal-card"><div class="jml-modal-head"><div><div class="eyebrow">JML · FICHE APPARTEMENT</div><h3 id="unitModalTitle">Ajouter un appartement</h3></div><button type="button" class="jml-close" id="closeUnitModal">✕</button></div>
+  <form id="unitForm">
+   <input type="hidden" id="unitBuildingId"><input type="hidden" id="unitId">
+   <div class="jml-building-form">
+    <input id="unitRef" placeholder="Référence lot / JML" maxlength="80">
+    <select id="unitType"><option>Appartement</option><option>Maison</option><option>Local commercial</option><option>Studio</option><option>Autre</option></select>
+    <input id="unitSurface" type="number" min="1" max="10000" step="0.1" placeholder="Surface m²">
+    <input id="unitRooms" type="number" min="0" max="100" step="1" placeholder="Nombre de pièces">
+    <select id="unitProspect" class="wide"><option value="">Aucun prospect associé</option></select>
+    <input id="unitOwner" class="wide" placeholder="Nom du propriétaire (si non référencé)" maxlength="160">
+    <input id="unitPhone" type="tel" placeholder="Téléphone" maxlength="40">
+    <input id="unitEmail" type="email" placeholder="E-mail" maxlength="180">
+    <input id="unitToken" class="wide" placeholder="Lien / jeton espace vendeur (facultatif)" maxlength="100">
+    <input id="unitNotes" class="wide" placeholder="Notes (facultatif)" maxlength="2000">
+   </div>
+   <div class="jml-building-actions"><button type="submit" class="prospect-btn primary">Enregistrer l’appartement</button><button id="cancelUnit" type="button" class="prospect-btn">Annuler</button></div>
+   <div id="unitMessage" class="jml-building-muted" aria-live="polite"></div>
+  </form>
+ </div></div>
+</section>
+
 <section id="prospects" class="pro-card" style="margin-top:14px"><h2>👥 Mes prospects vendeurs</h2><p>Retrouver ici les propriétaires captés par le formulaire et piloter chaque contact jusqu'au mandat.</p><div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0"><button id="refreshProspects" type="button" class="prospect-btn primary">↻ Actualiser</button><a class="prospect-btn" href="/projet-vendeur">＋ Nouveau prospect</a></div><div id="prospectsBox" class="pro-list"><div class="pro-item">Chargement des prospects…</div></div></section>
 <div id="prospectModal" class="jml-modal" aria-hidden="true"><div class="jml-modal-card"><div class="jml-modal-head"><div><div class="eyebrow">JML · FICHE PROSPECT</div><h3 id="modalTitle">Prospect</h3></div><button type="button" class="jml-close" id="closeModal">✕</button></div><div id="modalBody"></div></div></div><section class="pro-card" style="margin-top:14px"><h2>📅 Demandes de rendez-vous</h2><p>Les demandes envoyées depuis l’espace vendeur apparaissent ici. Confirmez un créneau pour le valider et le synchroniser avec Google Calendar.</p><div id="appointmentRequestsBox" class="pro-list"><div class="pro-item">Chargement des demandes…</div></div></section>
 <section class="pro-card" style="margin-top:14px"><h2>📋 Parcours JML</h2><p>Attirer → capter → qualifier → relancer → rendez-vous → mandat.</p>
@@ -324,5 +358,38 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
   <a href="https://fr.linkedin.com/in/abderrahim-boujnikh-7a401b104" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn Abderrahim Boujnikh">in&nbsp; LinkedIn</a>
   <div class="jml-agency-link"><span>Site de l'agence</span><a href="https://www.jml-immobilier.fr/" target="_blank" rel="noopener noreferrer">JML Immobilier</a></div>
 </div>
+
+<script id="jml-building-register-script">
+(function(){
+ const $=id=>document.getElementById(id);
+ const esc=v=>String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+ let buildings=[],currentBuilding=null,prospects=[];
+ async function apiB(url,options={}){const r=await fetch(url,{cache:"no-store",credentials:"same-origin",...options});let d={};try{d=await r.json()}catch{}if(r.status===401){throw new Error("Session professionnelle expirée : reconnecte-toi à l’espace pro puis actualise.")}if(!r.ok)throw new Error(d.error||("Erreur HTTP "+r.status));return d;}
+ function msg(id,t,bad=false){const e=$(id);if(e){e.textContent=t;e.style.color=bad?"#9a3b32":"#69716b";}}
+ async function loadProspectOptions(){try{const d=await apiB("/api/prospects");prospects=Array.isArray(d.prospects)?d.prospects:[];const select=$("unitProspect");if(!select)return;const chosen=select.value;select.innerHTML="<option value=\"\">Aucun prospect associé</option>"+prospects.map(p=>"<option value=\""+esc(p.id)+"\">"+esc(p.name||"Sans nom")+" · "+esc(p.phone||p.email||p.city||"Coordonnées manquantes")+"</option>").join("");select.value=chosen;}catch(e){msg("unitMessage","Impossible de charger les prospects : "+e.message,true);}}
+ function openUnit(b,u=null){currentBuilding=b;$("unitBuildingId").value=b.id;$("unitId").value=u?.id||"";$("unitModalTitle").textContent=u?"Modifier "+(u.unitRef||"l’appartement"):"Ajouter un appartement — "+b.address;$("unitRef").value=u?.unitRef||"";$("unitType").value=u?.propertyType||"Appartement";$("unitSurface").value=u?.surface??"";$("unitRooms").value=u?.rooms??"";$("unitProspect").value=u?.prospectId||"";$("unitOwner").value=u?.ownerName||"";$("unitPhone").value=u?.ownerPhone||"";$("unitEmail").value=u?.ownerEmail||"";$("unitToken").value=u?.sellerSpaceToken||"";$("unitNotes").value=u?.notes||"";msg("unitMessage","");$("unitModal").classList.add("open");$("unitModal").setAttribute("aria-hidden","false");}
+ function closeUnit(){$("unitModal").classList.remove("open");$("unitModal").setAttribute("aria-hidden","true");currentBuilding=null;}
+ $("closeUnitModal")?.addEventListener("click",closeUnit);$("cancelUnit")?.addEventListener("click",closeUnit);$("unitModal")?.addEventListener("click",e=>{if(e.target.id==="unitModal")closeUnit()});
+ function renderBuildings(){
+  const box=$("buildingList");if(!box)return;
+  if(!buildings.length){box.innerHTML='<div class="prospect-empty">Aucun immeuble enregistré. Crée une fiche ci-dessus pour commencer.</div>';return;}
+  box.innerHTML=buildings.map(b=>{
+   const units=Array.isArray(b.units)?b.units:[];
+   const unitHtml=units.length?units.map(u=>'<div class="jml-building-unit"><div><strong>'+esc(u.unitRef||("Logement "+u.id.slice(0,6)))+' · '+esc(u.propertyType||"Appartement")+'</strong><div class="jml-building-muted">'+(u.surface?esc(u.surface)+" m²":"Surface non renseignée")+' · '+(u.rooms!==null&&u.rooms!==undefined?esc(u.rooms)+" pièce(s)":"Pièces non renseignées")+' · '+esc((prospects.find(p=>p.id===u.prospectId)?.name)||u.ownerName||"Propriétaire non renseigné")+'</div><div class="jml-building-muted">'+(u.ownerPhone?esc(u.ownerPhone)+" · ":"")+(u.ownerEmail?esc(u.ownerEmail):"")+(u.sellerSpaceToken?" · Espace vendeur associé":"")+'</div></div><div class="jml-building-actions"><button type="button" class="prospect-btn" data-edit-unit="'+esc(b.id)+'" data-unit-id="'+esc(u.id)+'">Modifier</button><button type="button" class="prospect-btn danger" data-delete-unit="'+esc(b.id)+'" data-unit-id="'+esc(u.id)+'">Supprimer</button></div></div>').join(""):'<div class="jml-building-muted" style="margin-top:10px">Aucun logement associé à cette fiche.</div>';
+   return '<article class="jml-building-card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap"><div><strong>'+esc(b.address)+'</strong><div class="jml-building-muted">'+esc(b.city||"Commune non renseignée")+(b.label?" · "+esc(b.label):"")+'</div><div class="jml-building-muted">'+units.length+' logement(s) · référence immeuble '+esc(b.id.slice(0,8))+'</div></div><button type="button" class="prospect-btn primary" data-add-unit="'+esc(b.id)+'">＋ Ajouter un logement</button></div>'+unitHtml+'</article>';
+  }).join("");
+ }
+ async function loadBuildings(){try{const q=$("buildingSearch").value.trim();const d=await apiB("/api/buildings"+(q?"?q="+encodeURIComponent(q):""));buildings=Array.isArray(d.buildings)?d.buildings:[];renderBuildings();msg("buildingMessage",d.persisted?"Registre enregistré en base de données.":"Mode mémoire : les données ne sont pas persistantes sans PostgreSQL.");}catch(e){$("buildingList").innerHTML='<div class="prospect-empty" style="color:#9a3b32">'+esc(e.message)+'</div>';msg("buildingMessage",e.message,true);}}
+ $("createBuilding")?.addEventListener("click",async()=>{const address=$("buildingAddress").value.trim();if(!address){msg("buildingMessage","Renseigne l’adresse de l’immeuble.",true);$("buildingAddress").focus();return;}const btn=$("createBuilding");btn.disabled=true;try{const d=await apiB("/api/buildings",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({address,city:$("buildingCity").value.trim(),label:$("buildingLabel").value.trim()})});$("buildingAddress").value="";$("buildingCity").value="";$("buildingLabel").value="";msg("buildingMessage","Fiche immeuble créée. Tu peux maintenant ajouter chaque appartement séparément.");await loadBuildings();const b=buildings.find(x=>x.id===d.building.id);if(b)openUnit(b);}catch(e){msg("buildingMessage",e.message,true);}finally{btn.disabled=false;}});
+ $("unitProspect")?.addEventListener("change",()=>{const p=prospects.find(x=>x.id===$("unitProspect").value);if(!p)return;if(!$("unitOwner").value.trim())$("unitOwner").value=p.name||"";if(!$("unitPhone").value.trim())$("unitPhone").value=p.phone||"";if(!$("unitEmail").value.trim())$("unitEmail").value=p.email||"";});
+ $("refreshBuildings")?.addEventListener("click",loadBuildings);let timer; $("buildingSearch")?.addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(loadBuildings,250);});
+ $("buildingList")?.addEventListener("click",async e=>{const add=e.target.closest("[data-add-unit]"),edit=e.target.closest("[data-edit-unit]"),del=e.target.closest("[data-delete-unit]");if(add){const b=buildings.find(x=>x.id===add.dataset.addUnit);if(b)openUnit(b);return;}if(edit){const b=buildings.find(x=>x.id===edit.dataset.editUnit),u=b?.units?.find(x=>x.id===edit.dataset.unitId);if(b&&u)openUnit(b,u);return;}if(del){if(!confirm("Supprimer cette fiche appartement ? Cette action ne supprime pas l’espace vendeur associé."))return;try{await apiB("/api/buildings/"+encodeURIComponent(del.dataset.deleteUnit)+"/units/"+encodeURIComponent(del.dataset.unitId),{method:"DELETE"});await loadBuildings();}catch(e){alert(e.message);}}});
+ $("unitForm")?.addEventListener("submit",async e=>{e.preventDefault();const buildingId=$("unitBuildingId").value,unitId=$("unitId").value;const payload={unitRef:$("unitRef").value.trim(),propertyType:$("unitType").value,surface:$("unitSurface").value||null,rooms:$("unitRooms").value||null,prospectId:$("unitProspect").value||null,ownerName:$("unitOwner").value.trim(),ownerPhone:$("unitPhone").value.trim(),ownerEmail:$("unitEmail").value.trim(),sellerSpaceToken:$("unitToken").value.trim(),notes:$("unitNotes").value.trim()};try{const url="/api/buildings/"+encodeURIComponent(buildingId)+"/units"+(unitId?"/"+encodeURIComponent(unitId):"");await apiB(url,{method:unitId?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});closeUnit();await loadBuildings();}catch(e){msg("unitMessage",e.message,true);}});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("unitModal")?.classList.contains("open"))closeUnit();});
+ loadProspectOptions();
+ loadBuildings();
+})();
+</script>
+
 </body>
 </html>
