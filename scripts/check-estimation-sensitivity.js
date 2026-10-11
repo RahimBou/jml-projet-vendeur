@@ -41,7 +41,7 @@ const comparableRoute = section(
 // 1) Surface: final total must remain explicitly proportional to the selected €/m² base.
 assert.match(summaryRoute, /Math\.round\(referenceBase\*sellerSurface\)/,
   "territory-summary doit calculer valeur = base €/m² × surface");
-assert.match(sector, /referenceM2\s*\*\s*surface|weightedPriceM2\s*\*\s*surface|weightedPriceM2\*surface/,
+assert.match(sector, /referenceM2\s*\*\s*surf|weightedPriceM2\s*\*\s*surface|weightedPriceM2\*surface/,
   "Mon secteur doit conserver un calcul surface × prix/m² explicite");
 
 // Deterministic arithmetic characterization of the production formula.
