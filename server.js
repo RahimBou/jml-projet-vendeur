@@ -2177,12 +2177,26 @@ async function buildComparableSales(market,property){
     for(const sale of rows){
       sourceCounts[sourceName]=(sourceCounts[sourceName]||0)+1;
       const id=String(sale.id||[sale.date,sale.address,sale.price,sale.surface,sale.land,sale.lat,sale.lon].join("|"));
-      if(seen.has(id)){
+      // DVF+ et PostgreSQL peuvent attribuer des identifiants différents à la même vente.
+      // Quand l'adresse est disponible, dédupliquer avec une empreinte métier commune.
+      const addressKey=normalizeAddress(sale.address||"");
+      const coordinateKey=Number.isFinite(Number(sale.lat))&&Number.isFinite(Number(sale.lon))
+        ?Number(sale.lat).toFixed(5)+","+Number(sale.lon).toFixed(5):"";
+      const fingerprint=[
+        String(sale.date||"").slice(0,10),
+        normalizeAddress(sale.type||sale.propertyType||""),
+        parsePositiveNumber(sale.price)??"",
+        parsePositiveNumber(sale.surface)??"",
+        parsePositiveNumber(sale.land)??"",
+        addressKey||coordinateKey
+      ].join("|");
+      const dedupeKey=(addressKey||coordinateKey)?"sale:"+fingerprint:"id:"+id;
+      if(seen.has(dedupeKey)){
         duplicateSourceRows++;
         duplicateSourceCounts[sourceName]=(duplicateSourceCounts[sourceName]||0)+1;
         continue;
       }
-      seen.add(id);
+      seen.add(dedupeKey);
       const distanceKm=haversineKm(origin,{lat:Number(sale.lat),lon:Number(sale.lon)});
       if(distanceKm==null)continue;
       const normalized={...sale,distanceKm:Number(distanceKm.toFixed(3))};
