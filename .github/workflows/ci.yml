@@ -20,4 +20,5 @@ jobs:
       - run: node --check scripts/import-dvf.js
       - run: node --check scripts/import-dvfplus.js
       - run: node scripts/check-weighted-median-order.js
+      - run: node scripts/check-estimation-sensitivity.js
       - run: node scripts/check-inline-html.js
