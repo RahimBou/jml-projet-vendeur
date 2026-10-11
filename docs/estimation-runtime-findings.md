@@ -117,3 +117,53 @@ Cette simulation illustre deux comportements :
 Ventes très proches et récentes dans le fichier, à titre de contrôle de dispersion : à 34 m, 180 000 € pour 130 m² (~1 385 €/m², juin 2024) ; à 59 m, 315 000 € pour 157 m² (~2 006 €/m², juillet 2024) ; à 135 m, 295 000 € pour 116 m² (~2 543 €/m², août 2025) ; à 142 m, 290 000 € pour 130 m² (~2 231 €/m², avril 2025). Cette dispersion explique pourquoi il faut examiner les caractéristiques et le poids de chaque vente, et non la seule proximité.
 
 **Limite à ne pas masquer :** ce n'est pas un replay du moteur de production. Le CSV n'expose pas toutes les colonnes utilisées par le moteur (adresse exacte, pièces, terrain, bases de surface, autres sources DVF/PostgreSQL et éventuels doublons). Le prix/m² simulé est donc un contrôle indépendant du jeu disponible, pas une valeur certifiée de l'API Render. Le fichier ne contient que des maisons : l'absence d'appartements dans cet extrait ne signifie pas qu'il n'existe aucune vente d'appartement dans le secteur.
+
+
+## 7. Contrôle croisé avec des références publiques consultées le 11 octobre 2026
+
+Sources publiques consultées pour l'adresse :
+- Flatway, fiche du n°6 : https://flatway.fr/estimation/08/charleville-mezieres-08000-08105/rue-payer-guillemain-3090/6
+  - 2 266 €/m² pour la maison, fourchette 1 740–2 861 €/m², confiance affichée 1/5 ;
+  - bâtiment indiqué comme ancien (1905), 3 niveaux, 68 m² au sol ;
+  - aucune vente recensée à cette adresse au cours des cinq dernières années ;
+  - 33 ventes mixtes dans un rayon de moins de 100 m, comprenant notamment des appartements : ces ventes ne sont pas toutes des comparables de maison.
+- Meilleurs Agents, fiche de la rue mise à jour au 1er octobre 2026 : https://www.meilleursagents.com/prix-immobilier/charleville-mezieres-08000/rue-payer-guillemain-1106437044/
+  - maisons : 1 964 €/m² en moyenne sur la rue, fourchette 843–3 456 €/m² ;
+  - appartements : 1 400 €/m² en moyenne ;
+  - moyenne maisons annoncée pour Charleville-Mézières : 1 723 €/m² ;
+  - évolution maisons annoncée : -0,5 % sur un an et +5,4 % sur cinq ans.
+
+Ces valeurs externes sont des indices de marché, pas des prix de vente DVF et pas des estimations de la base de production. La confiance faible affichée par Flatway et les larges fourchettes de Meilleurs Agents interdisent d'en faire une vérité terrain.
+
+### Rejeu local du fichier DVF+ disponible
+
+Le CSV a été recalculé localement avec une approximation du score du moteur (distance, écart de surface bâtie vs surface du dossier, récence, cohérence des prix et revalorisation annuelle) et une origine géographique approximative proche des ventes les plus proches. Ce rejeu n'est **pas certifié exact**, car le CSV ne contient pas le géocodage officiel du numéro, les adresses de mutation, les pièces, les surfaces de terrain, la base de surface du dossier ni les ventes de la base PostgreSQL. Les résultats sont donc un contrôle exploratoire du fichier réel, pas une reproduction de l'API Render.
+
+| Scénario simulé | Candidats évalués | Ventes retenues pour la valeur | Prix pondéré arrondi | Valeur pour la surface |
+|---|---:|---:|---:|---:|
+| Maison, 135 m² | 558 | 548 | 1 667 €/m² | 225 000 € |
+| Maison, 150 m² | 558 | 548 | 1 667 €/m² | 250 000 € |
+| Maison, 165 m² | 558 | 548 | 1 667 €/m² | 275 000 € |
+
+L'origine approximative change légèrement les comptes par rapport au simple comptage du CSV : les 559 lignes dans la fenêtre temporelle ne deviennent pas toutes des candidates après le calcul de distance. L'API doit être rejouée avec ses coordonnées officielles pour certifier les nombres.
+
+### Interprétation de l'écart
+
+À 150 m², le fichier DVF+ simulé donne environ 250 000 € (1 667 €/m²), contre :
+- environ 294 600 € en appliquant la moyenne de rue Meilleurs Agents de 1 964 €/m² ;
+- environ 339 900 € en appliquant le repère Flatway du n°6 de 2 266 €/m².
+
+Ces montants ne sont pas directement équivalents : les sources n'utilisent pas la même méthode, le même ensemble de biens ni nécessairement la même définition de surface. La fiche Flatway indique 68 m² au sol et trois niveaux, mais cela ne certifie pas une surface habitable de 150 m². **Il faut vérifier la surface habitable réelle du dossier avant de comparer des valeurs totales.**
+
+### Ce qui manque pour clore le contrôle production
+
+Le dépôt GitHub ne donne pas accès à `DATABASE_URL`, aux lignes de `jml_dvf_sales` / `jml_dvfplus_sales` de Render, ni aux variables d'environnement du service. La tentative de lecture publique de l'URL de santé Render n'a pas fourni de réponse exploitable via l'accès disponible ici. En conséquence, il n'est pas possible de prétendre avoir comparé la sortie de production.
+
+Le dernier contrôle de production doit enregistrer, pour la même requête et sans modifier les données :
+1. la réponse JSON brute de `/api/territory-comparables` ;
+2. la réponse JSON brute de `/api/territory-summary` ;
+3. `origin`, `originSource`, `postgresRows`, `freshRows`, `marketRows`, `candidateCount`, `valuationCount`, `weightedMedianSaleId`, `weightedMedianPriceM2`, `referenceSource`, `confidence` et les éventuels `timeout`/diagnostics ;
+4. le même appel avec surface 135/150/165 m², puis type Appartement (contrôle négatif de cohérence pour ce fichier composé uniquement de maisons) ;
+5. un appel identique après modification du seul prix envisagé par le propriétaire, qui doit laisser l'estimation automatique inchangée.
+
+La PR demeure ouverte et non fusionnée. Le dernier run CI associé au commit `f44f5669dba6218a503750acfff6ebef7e468e4d` est vert. Aucune donnée de production ni aucune page n'a été modifiée.
