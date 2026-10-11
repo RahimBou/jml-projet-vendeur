@@ -3888,22 +3888,9 @@ async function initDb() {
       updated_at = COALESCE(updated_at,NOW())
   `);
 
-  await db(`
-    DELETE FROM jml_prospects p
-    USING jml_prospects d
-    WHERE p.id <> d.id
-      AND p.phone IS NOT NULL AND p.phone <> ''
-      AND d.phone = p.phone
-      AND p.id > d.id
-  `);
-  await db(`
-    DELETE FROM jml_prospects p
-    USING jml_prospects d
-    WHERE p.id <> d.id
-      AND p.email IS NOT NULL AND p.email <> ''
-      AND LOWER(p.email) = LOWER(d.email)
-      AND p.id > d.id
-  `);
+  // Ne jamais supprimer automatiquement des fiches partageant un téléphone ou un email :
+  // un même propriétaire peut avoir plusieurs biens. Le regroupement se fait via le contact
+  // et les biens restent enregistrés séparément dans jml_seller_spaces.
 
   await db("CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_date ON jml_dvf_sales(commune_code,sale_date DESC)");
   await db("CREATE INDEX IF NOT EXISTS idx_jml_dpe_address ON jml_dpe(postal_code,street_norm,number_norm)");
@@ -3918,8 +3905,11 @@ async function initDb() {
   await db("CREATE INDEX IF NOT EXISTS idx_jml_leads_created ON jml_leads(created_at DESC)");
   await db("CREATE INDEX IF NOT EXISTS idx_jml_seller_spaces_prospect ON jml_seller_spaces(prospect_id)");
   await db("CREATE INDEX IF NOT EXISTS idx_jml_seller_spaces_updated ON jml_seller_spaces(updated_at DESC)");
-  await db("CREATE UNIQUE INDEX IF NOT EXISTS uq_jml_prospects_phone ON jml_prospects(phone) WHERE phone IS NOT NULL AND phone <> ''");
-  await db("CREATE UNIQUE INDEX IF NOT EXISTS uq_jml_prospects_email ON jml_prospects(LOWER(email)) WHERE email IS NOT NULL AND email <> ''");
+  // Les coordonnées identifient un contact, pas un bien. Les index restent non uniques.
+  await db("DROP INDEX IF EXISTS uq_jml_prospects_phone");
+  await db("DROP INDEX IF EXISTS uq_jml_prospects_email");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_prospects_phone ON jml_prospects(phone)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_prospects_email_lower ON jml_prospects(LOWER(email))");
 }
 
 function normalizeProspect(body, existing = {}) {
@@ -4093,6 +4083,36 @@ app.get("/api/prospects", async (req,res) => {
     res.json({ok:true,persisted:false,prospects:[...memory.prospects.values()].sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt))});
   }catch(e){
     unexpected(res,"JML-P005","Lecture des prospects indisponible.",e);
+  }
+});
+
+app.get("/api/prospect-properties", async (req,res) => {
+  if(!requireAdminOr401(req,res)) return;
+  try {
+    if(pool) {
+      const q=await db(`SELECT ss.id,ss.access_token,ss.prospect_id,ss.city,ss.address,ss.property_type,ss.horizon,
+        ss.surface,ss.rooms,ss.dpe,ss.terrain,ss.created_at,ss.updated_at,
+        p.name AS prospect_name,p.phone AS prospect_phone,p.email AS prospect_email
+        FROM jml_seller_spaces ss
+        LEFT JOIN jml_prospects p ON p.id=ss.prospect_id
+        ORDER BY ss.created_at DESC,ss.updated_at DESC`);
+      return res.json({ok:true,persisted:true,properties:q.rows.map(r=>({
+        id:r.id,accessToken:r.access_token,prospectId:r.prospect_id||null,name:r.prospect_name||"",
+        phone:r.prospect_phone||"",email:r.prospect_email||"",city:r.city||"",address:r.address||"",
+        propertyType:r.property_type||"",horizon:r.horizon||"unknown",surface:r.surface||"",rooms:r.rooms||"",
+        dpe:r.dpe||"",terrain:r.terrain||"",createdAt:r.created_at,updatedAt:r.updated_at
+      }))});
+    }
+    const properties=[...memory.sellerSpaces.values()].map(ss=>{
+      const p=[...memory.prospects.values()].find(x=>String(x.id)===String(ss.prospectId));
+      return {id:ss.id,accessToken:ss.accessToken,prospectId:ss.prospectId||null,name:p?.name||"",
+        phone:p?.phone||"",email:p?.email||"",city:ss.city||"",address:ss.address||"",
+        propertyType:ss.propertyType||"",horizon:ss.horizon||"unknown",surface:ss.surface||"",rooms:ss.rooms||"",
+        dpe:ss.dpe||"",terrain:ss.terrain||"",createdAt:ss.createdAt,updatedAt:ss.updatedAt};
+    }).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+    return res.json({ok:true,persisted:false,properties});
+  } catch(e) {
+    return unexpected(res,"JML-P013","Lecture des biens associés aux prospects indisponible.",e);
   }
 });
 
