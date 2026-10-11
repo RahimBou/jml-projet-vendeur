@@ -987,24 +987,8 @@ section:has(.method-card){
       <label>Surface habitable (m²)<input id="editSurface" type="number" min="0" step="0.1"></label>
       <label>Nombre de pièces<input id="editRooms" type="number" min="0" step="1"></label>
       <label>Surface du terrain (m²)<input id="editTerrain" type="number" min="0" step="1"></label>
-      <div class="property-form-section">02 · ÉNERGIE & ÉTAT</div>
+      <div class="property-form-section">02 · DONNÉE ÉNERGÉTIQUE</div>
       <label>DPE<select id="editDpe"><option value="">Non renseigné</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>Je ne sais pas</option></select></label>
-      <label>État général<select id="editGeneralState"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>État correct</option><option>À rafraîchir</option><option>Travaux importants</option></select></label>
-      <label>Travaux à prévoir<select id="editWorks"><option value="">Non renseigné</option><option>Aucun</option><option>Légers</option><option>Modérés</option><option>Importants</option></select></label>
-      <label>Garage / stationnement<select id="editGarage"><option value="">Non renseigné</option><option>Garage</option><option>Parking / stationnement</option><option>Garage + stationnement</option><option>Sans garage / stationnement</option><option>Ne sait pas</option></select></label>
-      <label>Toiture<select id="editRoof"><option value="">Non renseigné</option><option>Très bon état</option><option>Bon état</option><option>À surveiller</option><option>À rénover</option><option>Ne sait pas</option></select></label>
-      <label>Rénovation récente<select id="editRenovation"><option value="">Non renseigné</option><option>Oui</option><option>Partielle</option><option>Non</option></select></label>
-      <div class="property-form-section">03 · ÉQUIPEMENTS & PRESTATIONS</div>
-      <label>Électricité<select id="editElectricity"><option value="">Non renseigné</option><option>Récente / conforme</option><option>Correcte</option><option>À vérifier</option><option>À refaire</option></select></label>
-      <label>Isolation<select id="editInsulation"><option value="">Non renseigné</option><option>Bonne</option><option>Correcte</option><option>À améliorer</option><option>À refaire</option></select></label>
-      <label>Chauffage<select id="editHeating"><option value="">Non renseigné</option><option>Récent</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
-      <label>Fenêtres<select id="editWindows"><option value="">Non renseigné</option><option>Récentes</option><option>Bon état</option><option>À améliorer</option><option>À remplacer</option></select></label>
-      <label>Cuisine<select id="editKitchen"><option value="">Non renseigné</option><option>Récente</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
-      <label>Salle(s) de bains<select id="editBathrooms"><option value="">Non renseigné</option><option>Récente(s)</option><option>Bon état</option><option>À rafraîchir</option><option>À rénover</option></select></label>
-      <label>Façade<select id="editFacade"><option value="">Non renseigné</option><option>Bon état</option><option>Correcte</option><option>À surveiller</option><option>À rénover</option></select></label>
-      <label>Extérieurs / dépendances<select id="editExtras"><option value="">Non renseigné</option><option>Jardin / terrain</option><option>Terrasse</option><option>Dépendances</option><option>Jardin + dépendances</option><option>Aucun</option></select></label>
-      <div class="property-form-section">04 · PRÉCISIONS</div>
-      <label class="full">Précisions utiles<textarea id="editConditionNotes" maxlength="300" placeholder="Ex. toiture refaite en 2023, garage double, électricité à prévoir…"></textarea></label>
     </div>
     <div class="property-modal-note">Ces corrections servent uniquement à affiner le repère de marché du bien.</div>
     <div class="property-modal-actions"><button type="button" class="secondary-btn" data-close-property>Annuler</button><button type="button" class="secondary-btn property-reset-btn" id="resetAddedCharacteristics" title="Effacer les caractéristiques ajoutées après le premier repère">↻ Réinitialiser les caractéristiques</button><button type="button" class="primary-btn" id="savePropertyEdits">Enregistrer et recalculer</button></div>
@@ -1873,7 +1857,7 @@ function renderCharacteristicAnalysis(analysis){
  evidenceScopeNote+
  '<p class="agent-adjustment-note">'+esc(a.explanation||"")+'</p>'+
  '<div class="agent-adjustment-meta">Fiabilité du repère DVF : <b>'+esc(p.confidence||"Faible")+'</b> · '+esc(String(currentUsed||a.evidence?.dvfComparables||0))+' ventes DVF utilisées pour le repère actuel · '+esc(String(a.evidence?.listingsComparableCount||0))+' annonces comparables · '+esc(String(currentComp.sameStreet?.length??a.evidence?.sameStreet??0))+' même rue</div>'+
- '<p class="agent-adjustment-note">Cette fiabilité décrit la quantité et la cohérence des ventes utilisées ; elle ne garantit pas le prix final. Le garage, le DPE et l’état du bien ne sont chiffrés séparément que si les données disponibles permettent de mesurer leur effet sans inventer de valeur.</p>'+
+ '<p class="agent-adjustment-note">Cette fiabilité décrit la quantité et la cohérence des ventes utilisées ; elle ne garantit pas le prix final. Le DPE n’ajuste le positionnement que si un écart est mesurable sur les ventes comparables locales.</p>'+
  '</div>';
 }
 async function pollListingResearch(token){
@@ -1940,23 +1924,7 @@ async function pollListingResearch(token){
  });
  save.addEventListener("click",async()=>{
    const d=pageData.space||getSpace(), oldCd=d.conditionData&&typeof d.conditionData==="object"?d.conditionData:{};
-   const conditionData={
-     ...oldCd,
-     generalState:get("GeneralState"),
-     works:get("Works"),
-     garage:get("Garage"),
-     roof:get("Roof"),
-     renovation:get("Renovation"),
-     electricity:get("Electricity"),
-     insulation:get("Insulation"),
-     heating:get("Heating"),
-     windows:get("Windows"),
-     kitchen:get("Kitchen"),
-     bathrooms:get("Bathrooms"),
-     facade:get("Facade"),
-     extras:get("Extras"),
-     notes:get("ConditionNotes")
-   };
+   const conditionData={};
    const overrides={propertyType:get("PropertyType"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData};
    try{localStorage.setItem(getSellerOverrideKey(),JSON.stringify(overrides));}catch(e){}
    save.disabled=true;save.textContent="Enregistrement…";
