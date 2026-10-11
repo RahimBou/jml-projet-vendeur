@@ -96,7 +96,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
 <script>
 (async function(){
  const STATUS=["À qualifier","Contacté","À relancer","RDV pris","Estimation","Mandat","Pas de projet"];
- let prospects=[]; let sellerProperties=[];
+ let prospects=[]; let sellerProperties=[]; let sellerPropertiesLoadError=null;
  const $=id=>document.getElementById(id);
  function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
  function enc(v){return encodeURIComponent(String(v??""))}
@@ -168,13 +168,13 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
   try{
    const d=await api("/api/prospects");prospects=Array.isArray(d.prospects)?d.prospects:[];
    // Les biens sont chargés séparément : un même contact peut déposer plusieurs demandes.
-   try{const pd=await api("/api/prospect-properties");sellerProperties=Array.isArray(pd.properties)?pd.properties:[]}
-   catch(propertyError){console.warn("Lecture des biens par prospect indisponible",propertyError);sellerProperties=[]}
+   try{const pd=await api("/api/prospect-properties");sellerProperties=Array.isArray(pd.properties)?pd.properties:[];sellerPropertiesLoadError=null}
+   catch(propertyError){console.warn("Lecture des biens par prospect indisponible",propertyError);sellerPropertiesLoadError=propertyError?.message||"Service des biens indisponible";/* conserver les dernières données chargées plutôt que d’afficher à tort zéro bien */}
    set("nProspects",prospects.length);set("nHot",prospects.filter(x=>x.horizon==="0-3"||x.horizon==="3-6").length);set("nRdv",prospects.filter(x=>x.status==="RDV pris").length);set("nMandats",prospects.filter(x=>x.status==="Mandat").length);
    renderFollowups();
    const box=$("prospectsBox");if(!box)return;
    if(!prospects.length){box.innerHTML='<div class="prospect-empty">Aucun prospect enregistré.<br>Les nouveaux propriétaires apparaîtront ici.</div>';return}
-   box.innerHTML=prospects.map(p=>{
+   box.innerHTML=(sellerPropertiesLoadError?'<div class="prospect-empty" role="alert" style="color:#9a3b32;border:1px solid #e4b9b5"><strong>Erreur chargement biens</strong><br><small>Les fiches clients sont chargées, mais la liste des biens n’a pas pu être actualisée. Les dernières données affichées sont conservées. Détail : '+esc(sellerPropertiesLoadError)+'</small></div>':'')+prospects.map(p=>{
     const homes=sellerProperties.filter(x=>String(x.prospectId||"")===String(p.id));
     const homesHtml=homes.length?'<button type="button" class="prospect-btn prospect-properties-toggle" data-action="toggle-properties" data-id="'+esc(p.id)+'" aria-expanded="false">🏠 Voir ses biens ('+homes.length+')</button><div class="prospect-properties" data-properties-for="'+esc(p.id)+'" hidden><div class="prospect-properties-title">🏠 Biens et demandes de ce client · '+homes.length+'</div>'+homes.map((x,i)=>{
       const details=[x.propertyType||"Type à préciser",x.surface?x.surface+" m²":"Surface à préciser",x.rooms?x.rooms+" pièces":""].filter(Boolean).join(" · ");
@@ -328,7 +328,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
    if(box)box.setAttribute("aria-live","polite");
    await Promise.all([loadProspects(),loadAppointmentRequests()]);
    const errorBox=box?.querySelector(".prospect-empty strong");
-   const failed=errorBox&&/Erreur chargement prospects/i.test(errorBox.textContent||"");
+   const failed=errorBox&&/Erreur chargement (prospects|biens)/i.test(errorBox.textContent||"");
    if(button)button.textContent=failed?"Réessayer":"✓ Actualisé";
    if(button)button.title=failed?"Le chargement a échoué. Consulte le message affiché dans la liste.":"Liste des prospects rechargée.";
    if(!failed)setTimeout(()=>{if(button&&button.dataset.loading!=="true")button.textContent=original;},1800);
