@@ -284,8 +284,32 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
     }
   });
  }
+ async function refreshProspectsFromButton(){
+  const button=$("refreshProspects");
+  if(button?.dataset.loading==="true")return;
+  const original=button?.textContent||"↻ Actualiser";
+  if(button){button.dataset.loading="true";button.disabled=true;button.textContent="Actualisation…";button.setAttribute("aria-busy","true");}
+  const box=$("prospectsBox");
+  try{
+   if(box)box.setAttribute("aria-live","polite");
+   await Promise.all([loadProspects(),loadAppointmentRequests()]);
+   const errorBox=box?.querySelector(".prospect-empty strong");
+   const failed=errorBox&&/Erreur chargement prospects/i.test(errorBox.textContent||"");
+   if(button)button.textContent=failed?"Réessayer":"✓ Actualisé";
+   if(button)button.title=failed?"Le chargement a échoué. Consulte le message affiché dans la liste.":"Liste des prospects rechargée.";
+   if(!failed)setTimeout(()=>{if(button&&button.dataset.loading!=="true")button.textContent=original;},1800);
+  }catch(e){
+   console.error("JML refresh prospects:",e);
+   if(box)box.innerHTML='<div class="prospect-empty" style="color:#9a3b32"><strong>Actualisation impossible</strong><br><small>'+esc(e.message||e)+'</small></div>';
+   if(button){button.textContent="Réessayer";button.title=e.message||"Actualisation impossible";}
+  }finally{
+   if(button){button.disabled=false;button.dataset.loading="false";button.removeAttribute("aria-busy");}
+  }
+ }
+ $("refreshProspects")?.addEventListener("click",refreshProspectsFromButton);
+ $("refreshProspects")?.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();refreshProspectsFromButton();}});
  try{await loadDvfMarket()}catch(e){console.warn(e)}
- try{await loadProspects();$("refreshProspects")?.addEventListener("click",loadProspects)}catch(e){console.warn(e)}
+ try{await loadProspects()}catch(e){console.warn(e)}
  try{await loadAppointmentRequests()}catch(e){console.warn(e)}
  try{await setupGoogleCalendarLink()}catch(e){console.warn(e)}
  try{
