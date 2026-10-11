@@ -34,12 +34,14 @@
 ## P0 — Clôturer l'audit du moteur DVF avant toute nouvelle modification métier
 
 ### P0.1 — État exact du code et du déploiement
-- [ ] Relever la branche et le commit actifs sur GitHub.
-- [ ] Vérifier l'état, les contrôles CI et les changements des PR #12 (diagnostic/sensibilité) et #13 (initialisation de la médiane pondérée).
-- [ ] Vérifier le commit réellement servi par Render et la version/build marker exposée par l'application.
-- [ ] Ne fusionner/déployer que les changements audités et nécessaires, après contrôle des contrats existants.
+- [x] Relever les commits récents sur la branche par défaut : feuille de route créée au commit `4faf1f563185930202cd4cfc9e64e0654d3c825e`; les corrections précédentes incluent dédoublonnage (`bd96c0a...`), trace médiane (`1f95991...`) et audit/sensibilité (`703d83f...`).
+- [x] Vérifier PR #12 : fusionnée dans `main` au commit `703d83f67027eb974a9b184c7b7924b36af4984b`.
+- [x] Vérifier PR #13 : encore ouverte, non fusionnée; sa CI « Vérification code » est passée sur le commit `92f459230793d5b8f7d297c96db7ab2bacbc079d`.
+- [ ] Résoudre la PR #13 : GitHub indique `mergeable=false`; inspecter les conflits et ne pas fusionner tant que la base n'est pas réconciliée.
+- [ ] Vérifier le commit réellement servi par Render et la version/build marker exposée par l'application. L'accès GitHub seul ne permet pas de certifier le déploiement Render.
+- [ ] Après résolution de PR #13, relancer les tests et vérifier les contrats JSON avant fusion/déploiement.
 
-**Preuve de clôture :** commit, statut CI, statut PR, build Render et date de vérification consignés ici.
+**État au 11/10/2026 : P0.1 PARTIELLEMENT VALIDÉ.** PR #12 est fusionnée et la CI de PR #13 réussit, mais la PR #13 est non fusionnée et signalée non fusionnable; le commit Render reste à confirmer.
 
 ### P0.2 — Reproduire l'estimation réelle du 6 rue Payer-Guillemain
 Bien de référence : maison, 150 m² saisis, 6 pièces, DPE D. Le repère affiché dans les captures est de **1 669 €/m², soit 250 350 €**.
@@ -150,6 +152,7 @@ Ne passer à la phase suivante que lorsque P0.1 à P0.6 sont documentés. À ce 
 |---|---|---|---|
 | 2026-10-11 | Création de la feuille de route | Point de départ commun; aucune modification du moteur déclenchée par ce document | En cours |
 | 2026-10-11 | Contrat d'exécution | Responsabilité de suivi, recontrôle et mise à jour explicitement attribuée à l'assistant | Validé |
+| 2026-10-11 | P0.1 — état GitHub/CI | PR #12 fusionnée; CI de PR #13 réussie, mais PR #13 ouverte et `mergeable=false`; déploiement Render non vérifié | En cours / bloqué sur conflit et preuve Render |
 
 **Statuts autorisés :** À faire · En cours · Bloqué · Validé · Non applicable.
 
