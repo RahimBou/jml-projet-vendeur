@@ -13,9 +13,10 @@ assert.notEqual(end, -1, "fin de buildComparableSales introuvable");
 const body = source.slice(start, end);
 
 const declaration = body.indexOf("let weightedMedianPriceM2=null,weightedMedianSaleId=null,acc=0;");
-const winnerRead = body.indexOf("sale.weightedMedianWinner=String(sale.id)===weightedMedianSaleId;");
 const winnerCalculation = body.indexOf("for(const x of weightedRows){acc+=x.weight;");
 const winnerFallback = body.indexOf("if(weightedMedianPriceM2===null&&weightedRows.length)");
+const winnerRead = body.search(/weightedMedianWinner=String\(sale\.id\)===String?\(weightedMedianSaleId\)/);
+
 assert.ok(declaration >= 0, "la médiane pondérée doit déclarer ses variables");
 assert.ok(winnerCalculation >= 0, "la médiane pondérée doit être calculée");
 assert.ok(winnerFallback >= 0, "le cas de secours de la médiane doit être conservé");
