@@ -227,7 +227,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
    }catch(err){alert(err.message||"Enregistrement du bien impossible.");if(submit){submit.disabled=false;submit.textContent="💾 Enregistrer ce bien";}}
   };
  }
- $("prospectProperties")?.addEventListener("click",async e=>{
+ $("modalBody")?.addEventListener("click",async e=>{
   const add=e.target.closest("[data-property-add]");
   if(add){propertyForm(add.dataset.propertyAdd);return;}
   const del=e.target.closest("[data-property-delete]");
