@@ -5066,32 +5066,19 @@ app.post("/api/leads", async (req,res) => {
 
         // Le prospect et son espace vendeur doivent être créés dans la même
         // transaction : si l'un échoue, rien n'est validé partiellement.
-        const existingSpaceResult=await client.query(
-          "SELECT * FROM jml_seller_spaces WHERE prospect_id=$1 ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST LIMIT 1",
-          [prospectId]
-        );
+        // Chaque envoi du formulaire décrit potentiellement un bien différent.
+        // On conserve le prospect existant (même contact), mais on crée un espace
+        // vendeur et un jeton propres à cette demande afin de ne pas rouvrir
+        // l'ancienne adresse / les anciennes caractéristiques.
         const initialOwnerData=sellerOwnerDataFromLead(lead);
-        if(existingSpaceResult.rowCount){
-          const currentOwners=existingSpaceResult.rows[0].owner_data;
-          const hasSavedOwners=Array.isArray(currentOwners)&&currentOwners.length>0;
-          const hasIdentity=initialOwnerData.some(owner=>owner.firstName||owner.lastName||owner.phone||owner.email);
-          if(!hasSavedOwners&&hasIdentity){
-            const updated=await client.query(
-              "UPDATE jml_seller_spaces SET owner_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1 RETURNING *",
-              [existingSpaceResult.rows[0].access_token,JSON.stringify(initialOwnerData)]
-            );
-            if(updated.rowCount) existingSpaceResult.rows[0]=updated.rows[0];
-          }
-        }
-        const sellerSpace=existingSpaceResult.rowCount
-          ? sellerSpacePublic(existingSpaceResult.rows[0])
-          : await createSellerSpace(
-              {city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},
-              prospectId,
-              client
-            );
+        const sellerSpace=await createSellerSpace(
+          {city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},
+          prospectId,
+          client
+        );
         await client.query("COMMIT");
-        if(!existingSpaceResult.rowCount){ setImmediate(()=>startEstimatorAgentForSpace(sellerSpace)); setImmediate(()=>startListingResearchForSpace(sellerSpace)); }
+        setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
+        setImmediate(()=>startListingResearchForSpace(sellerSpace));
 
         const sellerSpaceUrl=(process.env.PUBLIC_APP_URL||((req.secure||String(req.headers["x-forwarded-proto"]||"").split(",")[0].trim()==="https")?"https":"http")+"://"+req.get("host"))+"/espace-vendeur/"+sellerSpace.accessToken;
         let emailConfirmation = { sent: false, reason: "no-email" };
@@ -5131,17 +5118,12 @@ app.post("/api/leads", async (req,res) => {
       memory.prospects.set(p.id,out);
       prospectId=p.id;
     }
-    let sellerSpace=[...memory.sellerSpaces.values()].find(s=>String(s.prospectId||"")===String(prospectId||""))||null;
+    // Même contact ne signifie pas forcément même bien : chaque envoi reçoit
+    // son propre espace vendeur et son propre jeton, avec l'adresse saisie.
     const initialOwnerData=sellerOwnerDataFromLead(lead);
-    if(!sellerSpace){
-      sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},prospectId);
-    }else if(!Array.isArray(sellerSpace.ownerData)||!sellerSpace.ownerData.length){
-      sellerSpace.ownerData=initialOwnerData;
-      sellerSpace.updatedAt=now();
-      memory.sellerSpaces.set(sellerSpace.accessToken,sellerSpace);
-    }
-    if(!sellerSpace.estimatorAgent || sellerSpace.estimatorAgent.status==="pending") setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
-    if(!sellerSpace.listingResearch || sellerSpace.listingResearch.status==="pending") setImmediate(()=>startListingResearchForSpace(sellerSpace));
+    const sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},prospectId);
+    setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
+    setImmediate(()=>startListingResearchForSpace(sellerSpace));
     const sellerSpaceUrl=req.protocol+"://"+req.get("host")+"/espace-vendeur/"+sellerSpace.accessToken;
     let emailConfirmation = { sent: false, reason: "no-email" };
     try {
