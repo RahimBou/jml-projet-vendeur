@@ -922,7 +922,7 @@ section:has(.method-card){
    </div>
    <div>
     <p class="reading-title">À garder en tête</p>
-    <p>Ce repère permet de situer le bien dans le marché. La valeur finale doit ensuite tenir compte de l'état réel du logement, de ses prestations, de ses éventuels travaux et de la stratégie de mise en vente.</p>
+    <p>Ce repère permet de situer le bien dans le marché. Le positionnement final repose sur les ventes comparables et les caractéristiques effectivement utilisées par le calcul ; le DPE n’est ajusté que si les données locales le permettent.</p>
    </div>
   </div>
  </div>
@@ -1742,16 +1742,13 @@ function renderSellerPost(){
 }
 
 function renderSellerNextStep(){
- const el=$("#sellerNextStep"),d=pageData.space||{},cd=d.conditionData||{};
+ const el=$("#sellerNextStep"),d=pageData.space||{};
  if(!el)return;
  const missing=[];
  if(!d.surface)missing.push(["Surface","Améliore le calcul du repère"]);
  if(!d.rooms)missing.push(["Nombre de pièces","Affinage des comparables"]);
- if(!d.dpe)missing.push(["DPE","Lecture énergétique"]);
- if(!cd.generalState)missing.push(["État général","Positionnement du bien"]);
- if(!cd.works)missing.push(["Travaux","Impact potentiel des travaux"]);
- if(!cd.garage)missing.push(["Garage / stationnement","Caractéristique mesurable"]);
- if(!d.terrain && /maison/i.test(d.propertyType||""))missing.push(["Terrain","Comparaison plus précise"]);
+ if(!d.dpe)missing.push(["DPE","Ajustement éventuel si les comparables le permettent"]);
+  if(!d.terrain && /maison/i.test(d.propertyType||""))missing.push(["Terrain","Comparaison plus précise"]);
  const shown=missing.slice(0,3);
  if(!shown.length){el.style.display="none";return;}
  el.style.display="block";
