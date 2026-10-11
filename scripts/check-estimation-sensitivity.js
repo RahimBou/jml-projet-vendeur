@@ -2,7 +2,7 @@
 "use strict";
 
 // Characterization/guard tests for the existing estimation path.
-// These tests inspect the production source and exercise the exposed arithmetic;
+// These tests inspect production source and exercise exposed arithmetic;
 // they do not replace a live PostgreSQL/Render replay with real DVF rows.
 const fs = require("node:fs");
 const assert = require("node:assert/strict");
@@ -53,22 +53,22 @@ assert.equal(estimate(165), 281160, "surface +10 % doit augmenter la valeur de 1
 assert.equal(estimate(165) - estimate(150), 25560, "écart de valeur cohérent avec +15 m²");
 
 // 2) Type: incompatible DVF sales must be filtered before scoring.
-assert.match(comparableFn, /if\(typeWanted&&classifyDvfType\(sale\.type,sale\.codtypbien\|\|""\)\)!==typeWanted\)return null/,
+assert.ok(comparableFn.includes('if(typeWanted&&classifyDvfType(sale.type,sale.codtypbien||"")!==typeWanted)return null;'),
   "le moteur doit filtrer les ventes dont le type ne correspond pas");
 assert.match(comparableFn, /classifyDvfType\(property\?\.propertyType/,
   "le type du dossier doit déterminer le type DVF recherché");
 assert.match(server, /isApartment\?Number\(market\?\.apartmentPrice\):isHouse\?Number\(market\?\.housePrice\)/,
   "le secours communal doit distinguer maison et appartement");
 
-// 3) Comparable set: the final value must derive from the returned comparable price when available.
+// 3) Comparable set: final value derives from the comparable price when available.
 assert.match(summaryRoute, /Number\(comparable\?\.weightedPriceM2\)/,
   "territory-summary doit lire le prix/m² calculé des comparables");
 assert.match(summaryRoute, /else if\(Number\.isFinite\(comparableBase\)&&comparableBase>0\)/,
   "le chemin de secours doit privilégier les comparables positifs avant le prix communal");
-assert.match(comparableFn, /const weight=|x\.weight=Math\.max\(0\.0001,\(x\.score\/100\)\*\*2\*/,
+assert.match(comparableFn, /x\.weight=Math\.max\(0\.0001,\(x\.score\/100\)\*\*2/,
   "le poids des comparables doit être calculé depuis le score de similarité");
 
-// 4) The owner-entered expected price must not be an input to the automated calculation.
+// 4) Owner-entered expected price must not be an input to the automated calculation.
 const summaryCall = summaryRoute.match(/buildComparableSales\(market,\{([^}]*)\}\)/);
 assert.ok(summaryCall, "l'appel du moteur comparable doit être explicite");
 assert.doesNotMatch(summaryCall[1], /owner|expected|prix|price/i,
