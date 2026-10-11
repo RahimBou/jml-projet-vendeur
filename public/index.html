@@ -181,7 +181,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
       const date=fmtDate(x.createdAt);
       const address=[x.address,x.city].filter(Boolean).join(", ")||"Adresse non renseignée";
       const href=x.accessToken?'/espace-vendeur/'+enc(x.accessToken):"";
-      return '<div class="prospect-property"><div class="prospect-property-main"><strong>Bien '+(i+1)+' — '+esc(address)+'</strong><small>'+esc(details)+'</small><small>Demande enregistrée le '+esc(date)+(x.dpe?' · DPE '+esc(x.dpe):"")+'</small></div>'+(href?'<a class="prospect-btn" target="_blank" rel="noopener" href="'+href+'">Voir le bien</a>':'')+'</div>';
+      return '<div class="prospect-property"><div class="prospect-property-main"><strong>Bien '+(i+1)+' — '+esc(address)+'</strong><small>'+esc(details)+'</small><small>Demande enregistrée le '+esc(date)+(x.dpe?' · DPE '+esc(x.dpe):"")+'</small></div>'+(href?'<a class="prospect-btn" target="_blank" rel="noopener" href="'+href+'">Voir le bien</a>':'')+'<button type="button" class="prospect-btn danger" data-action="delete-property" data-id="'+esc(x.id)+'">Supprimer le bien</button></div>';
     }).join("")+'</div>':'<div class="prospect-properties-empty">Aucun bien lié visible pour le moment. Les prochaines demandes du client apparaîtront ici.</div>';
     return `<div class="prospect-row" data-id="${esc(p.id)}">
       <div class="prospect-main"><strong>${esc(p.name||"Sans nom")}</strong><small>${esc(p.city||"Ville non renseignée")} · ${esc(p.phone||"Téléphone non renseigné")} · ${esc(p.propertyType||"Bien non renseigné")}</small><small>${esc(p.source||"Source non renseignée")} · horizon ${esc(p.horizon||"—")} · dernière activité ${fmtDate(p.lastContactAt)}</small></div>
@@ -244,9 +244,17 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
  async function qualify(id){try{await api("/api/prospects/"+enc(id)+"/qualify",{method:"POST"});await loadProspects();await showDetail(id)}catch(e){alert(e.message)}}
  async function removeProspect(id){const p=findProspect(id);if(!p)return;if(!confirm("Supprimer définitivement le prospect « "+(p.name||"Sans nom")+" » ?\nCette action supprime aussi son historique d'activités associé."))return;try{await api("/api/prospects/"+enc(id),{method:"DELETE"});closeModal();await loadProspects()}catch(e){alert(e.message)}}
 
+ async function removeProperty(id){
+  const property=sellerProperties.find(x=>String(x.id)===String(id));if(!property)return;
+  const address=[property.address,property.city].filter(Boolean).join(", ")||"bien sans adresse";
+  if(!confirm("Supprimer définitivement le bien « "+address+" » ?\n\nSeule cette fiche de bien sera supprimée. Le prospect et ses autres biens seront conservés."))return;
+  try{await api("/api/prospect-properties/"+enc(id),{method:"DELETE"});await loadProspects()}
+  catch(e){alert(e.message||"Suppression du bien impossible.")}
+ }
+
  $("followupsBox")?.addEventListener("click",e=>{const b=e.target.closest("[data-follow-detail]");if(!b)return;showDetail(b.dataset.followDetail)});
 
- $("prospectsBox")?.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(!b)return;const id=b.dataset.id;const a=b.dataset.action;if(a==="detail")showDetail(id);if(a==="edit")editProspect(id);if(a==="activity")activityForm(id);if(a==="delete")removeProspect(id);if(a==="toggle-properties"){const panel=$("prospectsBox").querySelector('[data-properties-for="'+CSS.escape(String(id))+'"]');if(panel){const opening=panel.hidden;panel.hidden=!opening;b.setAttribute("aria-expanded",String(opening));b.textContent=(opening?"▾ Masquer les biens (":"🏠 Voir ses biens (")+(panel.querySelectorAll(".prospect-property").length)+")"}}});
+ $("prospectsBox")?.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(!b)return;const id=b.dataset.id;const a=b.dataset.action;if(a==="detail")showDetail(id);if(a==="edit")editProspect(id);if(a==="activity")activityForm(id);if(a==="delete")removeProspect(id);if(a==="delete-property")removeProperty(id);if(a==="toggle-properties"){const panel=$("prospectsBox").querySelector('[data-properties-for="'+CSS.escape(String(id))+'"]');if(panel){const opening=panel.hidden;panel.hidden=!opening;b.setAttribute("aria-expanded",String(opening));b.textContent=(opening?"▾ Masquer les biens (":"🏠 Voir ses biens (")+(panel.querySelectorAll(".prospect-property").length)+")"}}});
  $("prospectsBox")?.addEventListener("change",async e=>{const s=e.target.closest("[data-action='status']");if(!s)return;try{await api("/api/prospects/"+enc(s.dataset.id)+"/status",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:s.value})});await loadProspects()}catch(err){alert(err.message);await loadProspects()}});
  $("modalBody")?.addEventListener("click",e=>{const b=e.target.closest("[data-modal-action]");if(!b)return;const id=b.dataset.id;const a=b.dataset.modalAction;if(a==="activity")activityForm(id);if(a==="followup")followupForm(id);if(a==="edit")editProspect(id);if(a==="qualify")qualify(id)});
 

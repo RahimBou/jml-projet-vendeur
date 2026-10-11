@@ -4120,6 +4120,29 @@ app.get("/api/prospect-properties", async (req,res) => {
   }
 });
 
+
+app.delete("/api/prospect-properties/:id", async (req,res) => {
+  if(!requireAdminOr401(req,res)) return;
+  const id=String(req.params.id||"").trim();
+  if(!id || id.length>200) return apiError(res,400,"JML-P014","Identifiant de bien invalide.");
+  try{
+    if(pool){
+      const deleted=await db("DELETE FROM jml_seller_spaces WHERE id=$1 RETURNING id",[id]);
+      if(!deleted.rowCount) return apiError(res,404,"JML-P015","Ce bien n’existe plus ou a déjà été supprimé.");
+      return res.json({ok:true,deletedId:deleted.rows[0].id});
+    }
+    let accessToken=null;
+    for(const [token,space] of memory.sellerSpaces.entries()){
+      if(String(space.id)===id){accessToken=token;break;}
+    }
+    if(!accessToken) return apiError(res,404,"JML-P015","Ce bien n’existe plus ou a déjà été supprimé.");
+    memory.sellerSpaces.delete(accessToken);
+    return res.json({ok:true,deletedId:id});
+  }catch(e){
+    return unexpected(res,"JML-P016","Suppression du bien impossible.",e);
+  }
+});
+
 app.post("/api/prospects", async (req,res) => {
   if(!requireAdminOr401(req,res)) return;
 
