@@ -46,8 +46,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.14.6";
-const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1-seller-owner-prefill-v2-backfill";
+const VERSION = "3.14.7";
+const BUILD_MARKER = "seller-characteristics-agent-v1-dvf-dpe-listings-v22-webstat-gemini-market-analysis-v2-external-sources-insee-cci-notaires-benchmarks-rnb-dvf-match-v1-ban-address-autocomplete-v1-seller-owner-prefill-v2-backfill-dvf-trace-fix-v1";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -2068,6 +2068,9 @@ async function buildComparableSales(market,property){
   const freshDvfPlus=Array.isArray(freshResult)?freshResult:[];
 
   const seen=new Set(),candidates=[];
+  const sourceCounts={dvfPlus:0,market:0,postgres:0};
+  const duplicateSourceCounts={dvfPlus:0,market:0,postgres:0};
+  let duplicateSourceRows=0;
   const now=Date.now();
   // Normalisation robuste de la voie : DVF+ expose parfois la rue dans
   // un champ dédié (street) et parfois uniquement dans l'adresse complète.
@@ -2170,11 +2173,15 @@ async function buildComparableSales(market,property){
     return {...sale,rawPricePerM2:effectivePriceM2,pricePerM2:effectivePriceM2,score,scoreComponents:{base:20,distance:24*distanceSim,surface:20*surfaceSim,rooms:12*roomsSim,land:10*landSim,recency:9*recencySim,freshBonus,exactBonus,streetBonus:sameStreet?5:0,rawScore:raw,finalScore:score},sameStreet,sameAddress,fresh12m,surfaceGap:surfaceRatio,surfaceSignalGap:surfaceSignalRatio,surfaceBasisComparable,landGap:landRatio,roomDiff,ageMonths:Number(age.toFixed(1)),tierId:dist<=0.5?"A":dist<=1?"B":dist<=2?"C":"D",tier:dist<=0.5?"0–500 m":dist<=1?"500 m–1 km":dist<=2?"1–2 km":"2–3 km"};
   };
 
-  const sourceRows=[...(Array.isArray(freshDvfPlus)?freshDvfPlus:[]),...(Array.isArray(market?.recentSales)?market.recentSales:[]),...(Array.isArray(local)?local:[])];
-  const evaluateRows=rows=>{
+  const evaluateRows=(rows,sourceName)=>{
     for(const sale of rows){
+      sourceCounts[sourceName]=(sourceCounts[sourceName]||0)+1;
       const id=String(sale.id||[sale.date,sale.address,sale.price,sale.surface,sale.land,sale.lat,sale.lon].join("|"));
-      if(seen.has(id))continue;
+      if(seen.has(id)){
+        duplicateSourceRows++;
+        duplicateSourceCounts[sourceName]=(duplicateSourceCounts[sourceName]||0)+1;
+        continue;
+      }
       seen.add(id);
       const distanceKm=haversineKm(origin,{lat:Number(sale.lat),lon:Number(sale.lon)});
       if(distanceKm==null)continue;
@@ -2183,7 +2190,11 @@ async function buildComparableSales(market,property){
       if(x)candidates.push(x);
     }
   };
-  evaluateRows(sourceRows);
+  // Ordre déterministe : DVF+ récent, ventes du repère communal, PostgreSQL local.
+  // Les lignes déjà rencontrées sont comptées comme doublons et ne repassent pas au scoring.
+  evaluateRows(Array.isArray(freshDvfPlus)?freshDvfPlus:[],"dvfPlus");
+  evaluateRows(Array.isArray(market?.recentSales)?market.recentSales:[],"market");
+  evaluateRows(Array.isArray(local)?local:[],"postgres");
 
   let externalRows=0;
   // Secours DVF externe uniquement si les sources principales n'ont pas fourni
@@ -2268,11 +2279,14 @@ async function buildComparableSales(market,property){
 
   const weightedRows=valuationSales.filter(x=>Number.isFinite(x.pricePerM2)&&x.weight>0).slice().sort((a,b)=>a.pricePerM2-b.pricePerM2);
   const totalWeight=weightedRows.reduce((s,x)=>s+x.weight,0);
+  // La médiane pondérée est calculée après avoir annoté les ventes :
+  // déclarer ici évite la ReferenceError de la zone morte temporelle.
+  let weightedMedianPriceM2=null,weightedMedianSaleId=null,acc=0;
   const valuationIds=new Set(weightedRows.map(x=>String(x.id)));
   // Part relative du poids total effectivement utilisé pour calculer la médiane pondérée.
   for(const sale of top40){
     sale.inValuation=valuationIds.has(String(sale.id));
-    sale.weightedMedianWinner=String(sale.id)===weightedMedianSaleId;
+    sale.weightedMedianWinner=false;
     sale.influencePct=sale.inValuation&&totalWeight>0?Math.round(sale.weight/totalWeight*1000)/10:0;
     sale.influenceReason=sale.statisticalOutlier
       ?"Prix atypique : influence réduite par le contrôle statistique"
@@ -2280,9 +2294,10 @@ async function buildComparableSales(market,property){
         ?"Poids calculé selon la similarité, la proximité et la cohérence du prix"
         :"Écart statistique : vente affichée comme repère, non retenue dans la valeur centrale";
   }
-  let weightedMedianPriceM2=null,weightedMedianSaleId=null,acc=0;
   for(const x of weightedRows){acc+=x.weight;if(acc>=totalWeight/2){weightedMedianPriceM2=x.pricePerM2;weightedMedianSaleId=String(x.id);break;}}
   if(weightedMedianPriceM2===null&&weightedRows.length){weightedMedianPriceM2=weightedRows.at(-1).pricePerM2;weightedMedianSaleId=String(weightedRows.at(-1).id);}
+  // Marquer le gagnant une fois la médiane déterminée (et pas avant).
+  for(const sale of top40) sale.weightedMedianWinner=String(sale.id)===String(weightedMedianSaleId);
 
   const values=valuationSales.map(x=>Number(x.pricePerM2)).sort((a,b)=>a-b);
   const median=values.length?(values.length%2?values[(values.length-1)/2]:(values[values.length/2-1]+values[values.length/2])/2):null;
@@ -2325,6 +2340,10 @@ async function buildComparableSales(market,property){
       weightFormula:"(score / 100)^2 * (0.35 + 0.65 * priceCoherence)",
       rawPricePerM2CapturedBeforeTemporalRevaluation:true,
       temporalRevaluationApplied:Boolean(temporalIndex?.available),
+      sourceCounts:{...sourceCounts},
+      duplicateSourceRows,
+      duplicateSourceCounts:{...duplicateSourceCounts},
+      uniqueSourceRows:seen.size,
       candidateCount:candidates.length,
       outlierCount,
       valuationCount:weightedRows.length,
