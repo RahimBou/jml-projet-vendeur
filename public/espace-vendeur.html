@@ -3129,29 +3129,42 @@ function updateSellerProjectSummary(d){
 .jml-lex-sources a{color:#725625;font-size:12px;font-weight:800}
 @media(max-width:560px){.jml-lex-card{padding:17px}.jml-lex-title{font-size:20px}}
 </style>
+<style id="jml-lex-browser-style">
+.jml-lex-launch{position:fixed;right:18px;bottom:18px;z-index:9998;border:1px solid #d9c79d;border-radius:999px;padding:12px 16px;background:#173b31;color:#fffdf8;font:700 13px system-ui;box-shadow:0 5px 20px #0003;cursor:pointer}
+.jml-lex-browser{margin:14px 0 18px}.jml-lex-search{box-sizing:border-box;width:100%;padding:11px 12px;border:1px solid #d9c79d;border-radius:9px;font:inherit;color:#173b31;background:#fff}
+.jml-lex-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.jml-lex-choice{border:1px solid #e5dccb;background:#fff;border-radius:8px;padding:9px;text-align:left;color:#173b31;font:600 12px system-ui;cursor:pointer}.jml-lex-choice:hover{background:#f1e5c9}.jml-lex-back{margin-top:12px;border:0;background:transparent;color:#725625;font-weight:800;cursor:pointer;padding:6px 0}.jml-lex-count{font-size:11px;color:#68716b;margin-top:7px}
+@media(max-width:560px){.jml-lex-launch{right:10px;bottom:10px;padding:10px 12px}.jml-lex-list{grid-template-columns:1fr}}
+</style>
 <div class="jml-lex-overlay" id="jmlLexOverlay" role="dialog" aria-modal="true" aria-labelledby="jmlLexTitle">
  <section class="jml-lex-card">
   <div class="jml-lex-head"><h2 class="jml-lex-title" id="jmlLexTitle">Lexique immobilier</h2><button class="jml-lex-close" id="jmlLexClose" type="button" aria-label="Fermer l'explication">Fermer ✕</button></div>
+  <div class="jml-lex-browser" id="jmlLexBrowser" hidden><p>Rechercher une définition dans le lexique immobilier.</p><input class="jml-lex-search" id="jmlLexSearch" type="search" placeholder="Ex. : DPE, compromis, diagnostics…" aria-label="Rechercher dans le lexique"><div class="jml-lex-count" id="jmlLexCount"></div><div class="jml-lex-list" id="jmlLexList"></div></div><button type="button" class="jml-lex-back" id="jmlLexBack" hidden>← Retour au lexique</button>
   <div class="jml-lex-category" id="jmlLexCategory"></div>
   <div class="jml-lex-definition" id="jmlLexDefinition"></div>
   <div class="jml-lex-note">Cette explication est fournie à titre informatif. Les obligations peuvent dépendre du bien et de la situation ; vérifiez les sources officielles avant toute décision.</div>
   <div class="jml-lex-sources"><a href="https://www.service-public.gouv.fr/" target="_blank" rel="noopener noreferrer">Service-Public.fr ↗</a><a href="https://www.legifrance.gouv.fr/" target="_blank" rel="noopener noreferrer">Légifrance ↗</a></div>
  </section>
 </div>
+<button type="button" id="jmlLexOpen" class="jml-lex-launch" aria-haspopup="dialog">📖 Lexique immobilier</button>
 <script id="jml-lexicon-script">
 (function(){
  if(window.__jmlLexiconStarted)return;window.__jmlLexiconStarted=true;
- const overlay=document.getElementById("jmlLexOverlay"),close=document.getElementById("jmlLexClose");
+ const overlay=document.getElementById("jmlLexOverlay"),close=document.getElementById("jmlLexClose"),launch=document.getElementById("jmlLexOpen");
  const titleNode=document.getElementById("jmlLexTitle"),catNode=document.getElementById("jmlLexCategory"),defNode=document.getElementById("jmlLexDefinition");
+ const browser=document.getElementById("jmlLexBrowser"),searchBox=document.getElementById("jmlLexSearch"),listNode=document.getElementById("jmlLexList"),countNode=document.getElementById("jmlLexCount"),back=document.getElementById("jmlLexBack");
+ let catalogItems=[];
  if(!overlay||!close)return;
  let lastTrigger=null;
  function open(item,trigger){
-  lastTrigger=trigger||null;titleNode.textContent=item.title||"Terme immobilier";
+  lastTrigger=trigger||null;if(browser)browser.hidden=true;if(back)back.hidden=false;catNode.hidden=false;defNode.hidden=false;titleNode.textContent=item.title||"Terme immobilier";
   catNode.textContent=String(item.category||"Lexique immobilier").replace(/[-_]/g," ");
   defNode.textContent=item.definition||"La fiche est présente dans le catalogue, mais sa définition détaillée n’est pas disponible pour le moment.";
   overlay.classList.add("is-open");document.body.style.overflow="hidden";close.focus();
  }
  function shut(){overlay.classList.remove("is-open");document.body.style.overflow="";if(lastTrigger)lastTrigger.focus();}
+ function renderList(){if(!listNode)return;const q=String(searchBox&&searchBox.value||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().trim();const found=catalogItems.filter(x=>String(x.title||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().includes(q)||String(x.category||"").toLowerCase().includes(q));listNode.replaceChildren();found.slice(0,100).forEach(item=>{const b=document.createElement("button");b.type="button";b.className="jml-lex-choice";b.textContent=item.title;b.addEventListener("click",()=>open(item,b));listNode.appendChild(b);});if(countNode)countNode.textContent=found.length+" terme(s) trouvé(s)";}
+ function openCatalog(){lastTrigger=launch;if(browser)browser.hidden=false;if(back)back.hidden=true;catNode.hidden=true;defNode.hidden=true;titleNode.textContent="Lexique immobilier";overlay.classList.add("is-open");document.body.style.overflow="hidden";renderList();if(searchBox)searchBox.focus();}
+ if(launch)launch.addEventListener("click",openCatalog);if(back)back.addEventListener("click",openCatalog);if(searchBox)searchBox.addEventListener("input",renderList);
  close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&overlay.classList.contains("is-open"))shut();});
  function escapeRegExp(s){return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");}
@@ -3179,7 +3192,7 @@ function updateSellerProjectSummary(d){
   }
  }
  fetch("/api/encyclopedia?limit=100",{headers:{Accept:"application/json"}}).then(r=>{if(!r.ok)throw new Error("Lexique indisponible");return r.json();})
-  .then(data=>{if(!data||!Array.isArray(data.items))return;const root=document.querySelector(".seller-space")||document.querySelector("main")||document.body;decorate(root,data.items);})
+  .then(data=>{if(!data||!Array.isArray(data.items))throw new Error("Catalogue vide ou réponse invalide");catalogItems=data.items;renderList();const root=document.querySelector(".seller-space")||document.querySelector("main")||document.body;decorate(root,catalogItems);})
   .catch(()=>{/* Aucun changement visuel si le service de lexique est indisponible. */});
 })();
 </script>
