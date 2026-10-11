@@ -3740,6 +3740,7 @@ async function initDb() {
     CREATE TABLE IF NOT EXISTS jml_property_units (
       id TEXT PRIMARY KEY,
       building_id TEXT NOT NULL REFERENCES jml_buildings(id) ON DELETE CASCADE,
+      prospect_id TEXT REFERENCES jml_prospects(id) ON DELETE SET NULL,
       unit_ref TEXT NOT NULL DEFAULT '',
       property_type TEXT NOT NULL DEFAULT 'Appartement',
       surface NUMERIC,
@@ -3752,6 +3753,8 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE jml_property_units ADD COLUMN IF NOT EXISTS prospect_id TEXT REFERENCES jml_prospects(id) ON DELETE SET NULL;
+    CREATE INDEX IF NOT EXISTS idx_jml_units_prospect ON jml_property_units(prospect_id);
     CREATE INDEX IF NOT EXISTS idx_jml_units_building ON jml_property_units(building_id);
     CREATE INDEX IF NOT EXISTS idx_jml_units_ref ON jml_property_units(unit_ref);
     CREATE TABLE IF NOT EXISTS jml_seller_spaces (
@@ -4119,7 +4122,8 @@ function cleanUnitInput(b={}){
     surface: b.surface===null||b.surface===undefined||String(b.surface).trim()===""?null:Number(b.surface),
     rooms: b.rooms===null||b.rooms===undefined||String(b.rooms).trim()===""?null:Number(b.rooms),
     ownerName:clean(b.ownerName,160), ownerPhone:clean(b.ownerPhone,40), ownerEmail:cleanEmail(b.ownerEmail),
-    sellerSpaceToken:clean(b.sellerSpaceToken,100)
+    sellerSpaceToken:clean(b.sellerSpaceToken,100),
+    prospectId:clean(b.prospectId,100)
   };
 }
 app.get("/api/buildings",async(req,res)=>{
@@ -4131,7 +4135,7 @@ app.get("/api/buildings",async(req,res)=>{
       const br=await db("SELECT * FROM jml_buildings ORDER BY city,address,label");
       const ur=await db("SELECT * FROM jml_property_units ORDER BY building_id,unit_ref,created_at");
       buildings=br.rows.map(r=>({id:r.id,address:r.address,city:r.city,label:r.label,notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}));
-      units=ur.rows.map(r=>({id:r.id,buildingId:r.building_id,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}));
+      units=ur.rows.map(r=>({id:r.id,buildingId:r.building_id,prospectId:r.prospect_id||null,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes,createdAt:r.created_at,updatedAt:r.updated_at}));
     }else{
       buildings=[...memory.buildings.values()];units=[...memory.propertyUnits.values()];
     }
@@ -4163,13 +4167,14 @@ app.post("/api/buildings/:id/units",async(req,res)=>{
   const id=crypto.randomUUID?crypto.randomUUID():require("crypto").randomBytes(16).toString("hex");
   try{
     if(pool){
+      if(b.prospectId){const owner=await db("SELECT id FROM jml_prospects WHERE id=$1",[b.prospectId]);if(!owner.rowCount)return apiError(res,400,"JML-UNIT-008","Prospect associé introuvable.");}
       const exists=await db("SELECT id FROM jml_buildings WHERE id=$1",[buildingId]);
       if(!exists.rowCount)return apiError(res,404,"JML-BLD-004","Immeuble introuvable.");
-      const q=await db("INSERT INTO jml_property_units(id,building_id,unit_ref,property_type,surface,rooms,owner_name,owner_phone,owner_email,seller_space_token,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *",[id,buildingId,b.unitRef,b.propertyType,b.surface,b.rooms,b.ownerName,b.ownerPhone,b.ownerEmail,b.sellerSpaceToken,b.notes]);
-      const r=q.rows[0];return res.status(201).json({ok:true,unit:{id:r.id,buildingId:r.building_id,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes}});
+      const q=await db("INSERT INTO jml_property_units(id,building_id,prospect_id,unit_ref,property_type,surface,rooms,owner_name,owner_phone,owner_email,seller_space_token,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *",[id,buildingId,b.prospectId||null,b.unitRef,b.propertyType,b.surface,b.rooms,b.ownerName,b.ownerPhone,b.ownerEmail,b.sellerSpaceToken,b.notes]);
+      const r=q.rows[0];return res.status(201).json({ok:true,unit:{id:r.id,buildingId:r.building_id,prospectId:r.prospect_id||null,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes}});
     }
     if(!memory.buildings.has(buildingId))return apiError(res,404,"JML-BLD-004","Immeuble introuvable.");
-    const unit={id,buildingId,unitRef:b.unitRef,propertyType:b.propertyType,surface:b.surface,rooms:b.rooms,ownerName:b.ownerName,ownerPhone:b.ownerPhone,ownerEmail:b.ownerEmail,sellerSpaceToken:b.sellerSpaceToken,notes:b.notes,createdAt:now(),updatedAt:now()};
+    const unit={id,buildingId,prospectId:b.prospectId||null,unitRef:b.unitRef,propertyType:b.propertyType,surface:b.surface,rooms:b.rooms,ownerName:b.ownerName,ownerPhone:b.ownerPhone,ownerEmail:b.ownerEmail,sellerSpaceToken:b.sellerSpaceToken,notes:b.notes,createdAt:now(),updatedAt:now()};
     memory.propertyUnits.set(id,unit);return res.status(201).json({ok:true,unit});
   }catch(e){unexpected(res,"JML-UNIT-004","Enregistrement de l’appartement impossible.",e);}
 });
@@ -4180,12 +4185,13 @@ app.patch("/api/buildings/:id/units/:unitId",async(req,res)=>{
   if(b.rooms!==null&&(!Number.isInteger(b.rooms)||b.rooms<0||b.rooms>100))return apiError(res,400,"JML-UNIT-003","Nombre de pièces invalide.");
   try{
     if(pool){
-      const q=await db("UPDATE jml_property_units SET unit_ref=$3,property_type=$4,surface=$5,rooms=$6,owner_name=$7,owner_phone=$8,owner_email=$9,seller_space_token=$10,notes=$11,updated_at=NOW() WHERE id=$1 AND building_id=$2 RETURNING *",[unitId,buildingId,b.unitRef,b.propertyType,b.surface,b.rooms,b.ownerName,b.ownerPhone,b.ownerEmail,b.sellerSpaceToken,b.notes]);
+      if(b.prospectId){const owner=await db("SELECT id FROM jml_prospects WHERE id=$1",[b.prospectId]);if(!owner.rowCount)return apiError(res,400,"JML-UNIT-008","Prospect associé introuvable.");}
+      const q=await db("UPDATE jml_property_units SET prospect_id=$3,unit_ref=$4,property_type=$5,surface=$6,rooms=$7,owner_name=$8,owner_phone=$9,owner_email=$10,seller_space_token=$11,notes=$12,updated_at=NOW() WHERE id=$1 AND building_id=$2 RETURNING *",[unitId,buildingId,b.prospectId||null,b.unitRef,b.propertyType,b.surface,b.rooms,b.ownerName,b.ownerPhone,b.ownerEmail,b.sellerSpaceToken,b.notes]);
       if(!q.rowCount)return apiError(res,404,"JML-UNIT-005","Appartement introuvable.");
-      const r=q.rows[0];return res.json({ok:true,unit:{id:r.id,buildingId:r.building_id,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes}});
+      const r=q.rows[0];return res.json({ok:true,unit:{id:r.id,buildingId:r.building_id,prospectId:r.prospect_id||null,unitRef:r.unit_ref,propertyType:r.property_type,surface:r.surface===null?null:Number(r.surface),rooms:r.rooms===null?null:Number(r.rooms),ownerName:r.owner_name,ownerPhone:r.owner_phone,ownerEmail:r.owner_email,sellerSpaceToken:r.seller_space_token,notes:r.notes}});
     }
     const u=memory.propertyUnits.get(unitId);if(!u||u.buildingId!==buildingId)return apiError(res,404,"JML-UNIT-005","Appartement introuvable.");
-    Object.assign(u,{unitRef:b.unitRef,propertyType:b.propertyType,surface:b.surface,rooms:b.rooms,ownerName:b.ownerName,ownerPhone:b.ownerPhone,ownerEmail:b.ownerEmail,sellerSpaceToken:b.sellerSpaceToken,notes:b.notes,updatedAt:now()});
+    Object.assign(u,{prospectId:b.prospectId||null,unitRef:b.unitRef,propertyType:b.propertyType,surface:b.surface,rooms:b.rooms,ownerName:b.ownerName,ownerPhone:b.ownerPhone,ownerEmail:b.ownerEmail,sellerSpaceToken:b.sellerSpaceToken,notes:b.notes,updatedAt:now()});
     return res.json({ok:true,unit:u});
   }catch(e){unexpected(res,"JML-UNIT-006","Modification de l’appartement impossible.",e);}
 });
