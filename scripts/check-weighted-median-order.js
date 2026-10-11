@@ -15,7 +15,7 @@ const body = source.slice(start, end);
 const declaration = body.indexOf("let weightedMedianPriceM2=null,weightedMedianSaleId=null,acc=0;");
 const winnerCalculation = body.indexOf("for(const x of weightedRows){acc+=x.weight;");
 const winnerFallback = body.indexOf("if(weightedMedianPriceM2===null&&weightedRows.length)");
-const winnerRead = body.search(/weightedMedianWinner=String\(sale\.id\)===String?\(weightedMedianSaleId\)/);
+const winnerRead = body.search(/weightedMedianWinner=String\(sale\.id\)===(?:String\(weightedMedianSaleId\)|weightedMedianSaleId)/);
 
 assert.ok(declaration >= 0, "la médiane pondérée doit déclarer ses variables");
 assert.ok(winnerCalculation >= 0, "la médiane pondérée doit être calculée");
