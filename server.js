@@ -5071,17 +5071,32 @@ app.post("/api/leads", async (req,res) => {
         );
 
         // Une demande explicite devient immédiatement un prospect exploitable.
-        // Si le contact existe déjà, on réutilise la fiche au lieu de créer un doublon.
+        // Téléphone et email sont vérifiés séparément pour ne jamais rattacher
+        // silencieusement une demande à la mauvaise personne.
         let existing=null;
         if(lead.phone||lead.email){
-          const dup=await client.query(
-            `SELECT * FROM jml_prospects
-             WHERE (phone IS NOT NULL AND phone <> '' AND phone=$1)
-                OR (email IS NOT NULL AND email <> '' AND LOWER(email)=LOWER($2))
-             ORDER BY created_at ASC LIMIT 1`,
-            [lead.phone||null,lead.email||null]
-          );
-          if(dup.rowCount) existing=dup.rows[0];
+          const phoneMatch=lead.phone
+            ? await client.query(
+                `SELECT * FROM jml_prospects WHERE phone=$1 ORDER BY created_at ASC LIMIT 1`,
+                [lead.phone]
+              )
+            : {rowCount:0,rows:[]};
+          const emailMatch=lead.email
+            ? await client.query(
+                `SELECT * FROM jml_prospects WHERE LOWER(email)=LOWER($1) ORDER BY created_at ASC LIMIT 1`,
+                [lead.email]
+              )
+            : {rowCount:0,rows:[]};
+          const byPhone=phoneMatch.rows[0]||null;
+          const byEmail=emailMatch.rows[0]||null;
+          if(byPhone && byEmail && String(byPhone.id)!==String(byEmail.id)){
+            await client.query("ROLLBACK");
+            return apiError(
+              res,409,"JML-L007",
+              "Le téléphone et l’email correspondent à deux fiches client différentes. Vérifiez les coordonnées avant d’enregistrer cette demande."
+            );
+          }
+          existing=byPhone||byEmail;
         }
 
         let prospectId=existing?.id||newId();
@@ -5145,10 +5160,13 @@ app.post("/api/leads", async (req,res) => {
     }
 
     memory.leads.set(lead.id,lead);
-    const existing=[...memory.prospects.values()].find(p=>
-      (lead.phone&&p.phone&&lead.phone===p.phone) ||
-      (lead.email&&p.email&&lead.email.toLowerCase()===String(p.email).toLowerCase())
-    );
+    const byPhone=lead.phone?[...memory.prospects.values()].find(p=>p.phone&&lead.phone===p.phone):null;
+    const byEmail=lead.email?[...memory.prospects.values()].find(p=>p.email&&lead.email.toLowerCase()===String(p.email).toLowerCase()):null;
+    if(byPhone&&byEmail&&String(byPhone.id)!==String(byEmail.id)){
+      memory.leads.delete(lead.id);
+      return apiError(res,409,"JML-L007","Le téléphone et l’email correspondent à deux fiches client différentes. Vérifiez les coordonnées avant d’enregistrer cette demande.");
+    }
+    const existing=byPhone||byEmail;
     let prospectId=existing?.id;
     if(!existing){
       const p=normalizeProspect({
