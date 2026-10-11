@@ -3113,5 +3113,76 @@ function updateSellerProjectSummary(d){
 }
 </style>
 
+
+<style id="jml-lexicon-style">
+.jml-lex-term{appearance:none;border:0;border-bottom:1px dotted #9b7a3b;background:transparent;color:inherit;padding:0;display:inline;font:inherit;cursor:pointer;text-decoration:none;border-radius:2px}
+.jml-lex-term:hover,.jml-lex-term:focus-visible{background:#f1e5c9;outline:2px solid #c7a45a;outline-offset:2px}
+.jml-lex-overlay{position:fixed;inset:0;z-index:99999;background:rgba(18,39,32,.46);display:none;align-items:center;justify-content:center;padding:18px}
+.jml-lex-overlay.is-open{display:flex}
+.jml-lex-card{width:min(520px,100%);max-height:82vh;overflow:auto;background:#fffdf8;color:#173b31;border:1px solid #d9c79d;border-radius:16px;box-shadow:0 18px 60px rgba(0,0,0,.24);padding:22px}
+.jml-lex-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.jml-lex-title{font:700 23px Georgia,serif;margin:0}
+.jml-lex-close{border:1px solid #ded4c1;background:#f7f1e4;border-radius:9px;padding:7px 10px;color:#173b31;font-weight:800;cursor:pointer}
+.jml-lex-category{margin:10px 0;color:#8b6a2e;font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.jml-lex-definition{font-size:14px;line-height:1.65;white-space:pre-line;margin:10px 0 16px}
+.jml-lex-note{font-size:11px;line-height:1.5;color:#68716b;border-top:1px solid #eee5d4;padding-top:12px}
+.jml-lex-sources{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
+.jml-lex-sources a{color:#725625;font-size:12px;font-weight:800}
+@media(max-width:560px){.jml-lex-card{padding:17px}.jml-lex-title{font-size:20px}}
+</style>
+<div class="jml-lex-overlay" id="jmlLexOverlay" role="dialog" aria-modal="true" aria-labelledby="jmlLexTitle">
+ <section class="jml-lex-card">
+  <div class="jml-lex-head"><h2 class="jml-lex-title" id="jmlLexTitle">Lexique immobilier</h2><button class="jml-lex-close" id="jmlLexClose" type="button" aria-label="Fermer l'explication">Fermer ✕</button></div>
+  <div class="jml-lex-category" id="jmlLexCategory"></div>
+  <div class="jml-lex-definition" id="jmlLexDefinition"></div>
+  <div class="jml-lex-note">Cette explication est fournie à titre informatif. Les obligations peuvent dépendre du bien et de la situation ; vérifiez les sources officielles avant toute décision.</div>
+  <div class="jml-lex-sources"><a href="https://www.service-public.gouv.fr/" target="_blank" rel="noopener noreferrer">Service-Public.fr ↗</a><a href="https://www.legifrance.gouv.fr/" target="_blank" rel="noopener noreferrer">Légifrance ↗</a></div>
+ </section>
+</div>
+<script id="jml-lexicon-script">
+(function(){
+ if(window.__jmlLexiconStarted)return;window.__jmlLexiconStarted=true;
+ const overlay=document.getElementById("jmlLexOverlay"),close=document.getElementById("jmlLexClose");
+ const titleNode=document.getElementById("jmlLexTitle"),catNode=document.getElementById("jmlLexCategory"),defNode=document.getElementById("jmlLexDefinition");
+ if(!overlay||!close)return;
+ let lastTrigger=null;
+ function open(item,trigger){
+  lastTrigger=trigger||null;titleNode.textContent=item.title||"Terme immobilier";
+  catNode.textContent=String(item.category||"Lexique immobilier").replace(/[-_]/g," ");
+  defNode.textContent=item.definition||"La fiche est présente dans le catalogue, mais sa définition détaillée n’est pas disponible pour le moment.";
+  overlay.classList.add("is-open");document.body.style.overflow="hidden";close.focus();
+ }
+ function shut(){overlay.classList.remove("is-open");document.body.style.overflow="";if(lastTrigger)lastTrigger.focus();}
+ close.addEventListener("click",shut);overlay.addEventListener("click",e=>{if(e.target===overlay)shut();});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&overlay.classList.contains("is-open"))shut();});
+ function escapeRegExp(s){return s.replace(/[-[\]{}()*+?.,\\^$|#\s]/g,"\\</body>");}
+ function decorate(root,items){
+  const terms=items.filter(x=>x&&x.title&&String(x.title).trim().length>=2).sort((a,b)=>String(b.title).length-String(a.title).length);
+  if(!terms.length)return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){
+   const p=node.parentElement;if(!p||!node.nodeValue||!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+   if(p.closest("a,button,input,textarea,select,option,script,style,svg,code,pre,[contenteditable='true'],.jml-lex-overlay,.jml-lex-term,[data-no-lexicon]"))return NodeFilter.FILTER_REJECT;
+   if(node.nodeValue.length>6000)return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;
+  }});
+  const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);let count=0;
+  for(const node of nodes){
+   if(count>=220)break;const text=node.nodeValue;let matches=[];
+   for(const item of terms){
+    if(count+matches.length>=220)break;const term=String(item.title).trim();if(term.length<2)continue;
+    let re;try{re=new RegExp("(?<![\\p{L}\\p{N}])"+escapeRegExp(term)+"(?![\\p{L}\\p{N}])","giu");}catch(_){re=new RegExp("\\b"+escapeRegExp(term)+"\\b","gi");}
+    let m;while((m=re.exec(text))!==null){matches.push({start:m.index,end:m.index+m[0].length,item,match:m[0]});if(!m[0].length)re.lastIndex++;}
+   }
+   if(!matches.length)continue;matches.sort((a,b)=>a.start-b.start||(b.end-b.start)-(a.end-a.start));
+   const chosen=[];let end=-1;for(const m of matches){if(m.start>=end){chosen.push(m);end=m.end;}}
+   if(!chosen.length)continue;const frag=document.createDocumentFragment();let pos=0;
+   for(const m of chosen){frag.appendChild(document.createTextNode(text.slice(pos,m.start)));const btn=document.createElement("button");btn.type="button";btn.className="jml-lex-term";btn.textContent=m.match;btn.setAttribute("aria-label","Expliquer : "+m.item.title);btn.title="Cliquer pour comprendre « "+m.item.title+" »";btn.addEventListener("click",()=>open(m.item,btn));frag.appendChild(btn);pos=m.end;count++;}
+   frag.appendChild(document.createTextNode(text.slice(pos)));node.parentNode.replaceChild(frag,node);
+  }
+ }
+ fetch("/api/encyclopedia?limit=100",{headers:{Accept:"application/json"}}).then(r=>{if(!r.ok)throw new Error("Lexique indisponible");return r.json();})
+  .then(data=>{if(!data||!Array.isArray(data.items))return;const root=document.querySelector(".seller-space")||document.querySelector("main")||document.body;decorate(root,data.items);})
+  .catch(()=>{/* Aucun changement visuel si le service de lexique est indisponible. */});
+})();
+</script>
 </body>
 </html>
