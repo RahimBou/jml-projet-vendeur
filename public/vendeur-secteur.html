@@ -1867,7 +1867,7 @@ function renderCharacteristicAnalysis(analysis){
  '<div class="agent-adjustment-head"><span>🤖 AGENT CARACTÉRISTIQUES</span><b>Le DVF reste la base · les écarts sont mesurés localement</b></div>'+
  '<div class="agent-adjustment-grid">'+
  '<div><small>REPÈRE DVF</small><strong>'+esc(eur(base.value))+'</strong><span>'+esc(Number.isFinite(Number(base.m2))?Math.round(Number(base.m2)).toLocaleString("fr-FR")+" €/m²":"—")+'</span></div>'+
- '<div><small>POSITIONNEMENT INDICATIF</small><strong>'+esc(value)+'</strong><span>Fourchette '+esc(low)+' → '+esc(high)+'</span></div>'+
+ '<div><small>POSITIONNEMENT INDICATIF</small><strong>'+esc(value)+'</strong><span>Fourchette du positionnement indicatif : '+esc(low)+' → '+esc(high)+'</span><small class="agent-adjustment-range-note">Intervalle indicatif autour du prix de positionnement. Il est distinct de la dispersion réelle des ventes comparables et ne garantit pas le prix de vente final.</small></div>'+
  '</div>'+
  '<div class="agent-adjustment-rows">'+rowHtml+'</div>'+
  evidenceScopeNote+
