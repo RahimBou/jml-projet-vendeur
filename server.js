@@ -46,8 +46,8 @@ process.on("unhandledRejection",(reason)=>{
 });
 
 const PORT = Number(process.env.PORT || 10000);
-const VERSION = "3.14.7";
-const BUILD_MARKER = "seller-positioning-v2-dpe-local-comparables-only-core-fields";
+const VERSION = "3.14.8";
+const BUILD_MARKER = "seller-positioning-v3-dpe-dvf-vendrebien-reference";
 const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
@@ -4496,27 +4496,65 @@ async function createSellerSpace(data, prospectId, transactionClient = null){
 
 function medianNumber(values){const a=(values||[]).map(Number).filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return null;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2;}
 function sellerAdjustment(factor,pct,count,confidence,note,baseline){return {factor,effectPct:Number(pct.toFixed(1)),effectEur:Math.round(baseline?baseline*pct/100:0),evidenceCount:count||0,confidence,note};}
+function getVendreBienDpeReference(city,propertyType,dpe){
+ try{
+  const file=path.join(__dirname,"data","vendrebien-dpe-reference.json");
+  if(!fs.existsSync(file))return null;
+  const dataset=JSON.parse(fs.readFileSync(file,"utf8"));
+  const norm=value=>String(value||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  if(norm(city)!==norm(dataset.commune))return null;
+  const type=String(propertyType||"").toLowerCase().includes("appartement")?"Appartement":String(propertyType||"").toLowerCase().includes("maison")?"Maison":null;
+  if(!type||!/^[A-G]$/.test(String(dpe||"").toUpperCase()))return null;
+  const rows=dataset.rows.filter(row=>row.type===type);
+  const target=rows.find(row=>row.dpe===String(dpe).toUpperCase());
+  const reference=rows.find(row=>row.dpe==="D");
+  if(!target||!reference||target.sales<5||reference.sales<5||reference.median_m2<=0)return null;
+  return {source:dataset.source,period:dataset.period,commune:dataset.commune,type,dpe:target.dpe,referenceDpe:"D",targetMedianM2:target.median_m2,referenceMedianM2:reference.median_m2,targetSales:target.sales,referenceSales:reference.sales,observedPct:(target.median_m2/reference.median_m2-1)*100,caveat:dataset.caveat};
+ }catch(error){console.warn("JML VendreBien DPE reference:",String(error?.message||error));return null;}
+}
 function buildSellerCharacteristicAnalysis(space,comp){
  const surface=Number(space?.surface),baseM2=Number(comp?.weightedPriceM2),baseline=Number.isFinite(surface)&&surface>0&&Number.isFinite(baseM2)&&baseM2>0?Math.round(surface*baseM2):null;
  const sales=Array.isArray(comp?.valuationSales)&&comp.valuationSales.length?comp.valuationSales:(Array.isArray(comp?.sales)?comp.sales:[]),adjustments=[],dpe=String(space?.dpe||"").toUpperCase().trim();
  const dpeRows=sales.filter(x=>/^[A-G]$/.test(String(x.dpe||"").toUpperCase())&&Number.isFinite(Number(x.pricePerM2)));
- let total=0;
- if(dpe&&dpe!=="JE NE SAIS PAS"){
+ let total=0,dpeEvidence=null;
+ if(dpe&&dpe!=="JE NE SAIS PAS"&&/^[A-G]$/.test(dpe)){
+  const target=dpeRows.filter(x=>String(x.dpe).toUpperCase()===dpe).map(x=>Number(x.pricePerM2));
+  const reference=dpeRows.filter(x=>String(x.dpe).toUpperCase()==="D").map(x=>Number(x.pricePerM2));
+  let localPct=null;
   if(dpe==="D"){
-   adjustments.push(sellerAdjustment("DPE",0,dpeRows.length,"Référence","La classe D sert de référence ; aucun ajustement énergétique supplémentaire.",baseline));
-  }else{
-   const target=dpeRows.filter(x=>String(x.dpe).toUpperCase()===dpe).map(x=>Number(x.pricePerM2));
-   const reference=dpeRows.filter(x=>String(x.dpe).toUpperCase()==="D").map(x=>Number(x.pricePerM2));
-   if(target.length>=3&&reference.length>=3&&medianNumber(reference)>0){
-    // Comparaison de médianes des ventes proches, après les filtres DVF du moteur.
-    // Plafond prudent : évite qu'un petit échantillon produise une correction extrême.
-    const observed=((medianNumber(target)/medianNumber(reference))-1)*100;
-    const pct=Math.max(-15,Math.min(15,observed));
-    total+=pct;
-    adjustments.push(sellerAdjustment("DPE",pct,target.length+reference.length,"Mesuré localement","Écart médian observé entre ventes comparables de cette classe et de classe D ; correction plafonnée à ±15 % par prudence.",baseline));
-   }else{
-    adjustments.push(sellerAdjustment("DPE",0,target.length+reference.length,"Non mesurable","Moins de 3 ventes comparables avec ce DPE et 3 en classe D : aucun pourcentage n'est inventé.",baseline));
+   adjustments.push(sellerAdjustment("DPE — ventes comparables locales",0,dpeRows.length,"Référence","La classe D sert de référence pour l'effet énergétique ; aucun ajustement DPE n'est appliqué à une classe D.",baseline));
+  }else if(target.length>=3&&reference.length>=3&&medianNumber(reference)>0){
+   localPct=((medianNumber(target)/medianNumber(reference))-1)*100;
+   dpeEvidence={method:"comparables locaux DVF avec DPE",targetSales:target.length,referenceSales:reference.length,observedPct:Number(localPct.toFixed(1))};
+  }
+  const cityRef=dpe==="D"?null:getVendreBienDpeReference(space?.city,space?.propertyType,dpe);
+  if(dpe!=="D"&&localPct!==null){
+   // La donnée communale brute n'est pas une décote causale. Elle sert à réduire
+   // l'amplitude de l'effet local si elle ne va pas dans le même sens.
+   let pct=localPct;
+   let method="Ventes comparables locales";
+   if(cityRef){
+    const cityPct=cityRef.observedPct;
+    if(Math.sign(localPct)===Math.sign(cityPct)||Math.abs(localPct)<0.5){
+     pct=localPct*0.8+Math.max(-8,Math.min(8,cityPct))*0.2;
+     method="Comparables locaux, corroborés par le repère communal VendreBien";
+    }else{
+     pct=localPct*0.75;
+     method="Comparables locaux ; repère communal divergent, effet réduit";
+    }
    }
+   pct=Math.max(-15,Math.min(15,pct));
+   total+=pct;
+   adjustments.push(sellerAdjustment("DPE",pct,target.length+reference.length,"Mesuré localement",method+" ; correction finale plafonnée à ±15 %. La statistique communale brute n'est pas interprétée comme une décote causale.",baseline));
+  }else if(dpe!=="D"&&cityRef){
+   // Repli limité à la commune et fortement réduit : échantillons de ventes
+   // suffisants mais sans contrôle de la micro-localisation ni des surfaces.
+   const pct=Math.max(-8,Math.min(8,cityRef.observedPct*0.35));
+   total+=pct;
+   adjustments.push(sellerAdjustment("DPE — repère communal VendreBien",pct,cityRef.targetSales+cityRef.referenceSales,"Indicatif — confiance limitée","Ajustement de repli réduit et plafonné à ±8 %, issu des médianes communales "+cityRef.period+" ; ces écarts mêlent le DPE, la localisation et la composition des biens. À confirmer par les ventes locales comparables.",baseline));
+   dpeEvidence={method:"repère communal VendreBien",source:cityRef.source,period:cityRef.period,commune:cityRef.commune,observedPct:Number(cityRef.observedPct.toFixed(1)),targetMedianM2:cityRef.targetMedianM2,referenceMedianM2:cityRef.referenceMedianM2,targetSales:cityRef.targetSales,referenceSales:cityRef.referenceSales,caveat:cityRef.caveat};
+  }else if(dpe!=="D"){
+   adjustments.push(sellerAdjustment("DPE",0,target.length+reference.length,"Non mesurable","Pas assez de ventes locales avec DPE comparable et aucun repère communal VendreBien disponible : aucun pourcentage n'est inventé.",baseline));
   }
  }
  // Surface, pièces et terrain sont déjà utilisés pour sélectionner/pondérer les ventes.
@@ -4526,7 +4564,7 @@ function buildSellerCharacteristicAnalysis(space,comp){
  const low=value&&Number(comp?.rangeLow)?Math.round(Number(comp.rangeLow)*surface*(1+total/100)):null;
  const high=value&&Number(comp?.rangeHigh)?Math.round(Number(comp.rangeHigh)*surface*(1+total/100)):null;
  const measured=adjustments.some(x=>x.factor==="DPE"&&x.effectPct!==0);
- return {version:"seller-characteristics-v2-dpe",generatedAt:new Date().toISOString(),baseline:{value,m2:Number.isFinite(baseM2)?Math.round(baseM2):null,source:"DVF comparables"},adjustments,positioning:{value,low,high,adjustmentPct:Number(total.toFixed(1)),confidence:baseline?(measured&&comp?.confidence==="Bonne"?"Bonne":comp?.confidence||"Faible"):"Faible"},evidence:{dvfComparables:sales.length,sameStreet:Array.isArray(comp?.sameStreet)?comp.sameStreet.length:0,dpeComparableCount:dpeRows.length},explanation:baseline?(measured?"Le positionnement tient compte d'un écart DPE mesuré sur les ventes comparables locales, avec un plafonnement prudent.":"Le repère DVF est conservé : les ventes comparables avec DPE vérifié sont insuffisantes pour chiffrer un effet énergétique."):"Pas assez de comparables DVF pour produire une valeur ajustée."};
+ return {version:"seller-characteristics-v3-dpe-dvf-vendrebien",generatedAt:new Date().toISOString(),baseline:{value:baseline,m2:Number.isFinite(baseM2)?Math.round(baseM2):null,source:"DVF comparables — repère principal"},adjustments,positioning:{value,low,high,adjustmentPct:Number(total.toFixed(1)),confidence:baseline?(measured&&comp?.confidence==="Bonne"?"Bonne":comp?.confidence||"Faible"):"Faible"},evidence:{dvfComparables:sales.length,sameStreet:Array.isArray(comp?.sameStreet)?comp.sameStreet.length:0,dpeComparableCount:dpeRows.length,dpe:dpeEvidence},explanation:baseline?(measured?"Le prix de positionnement combine le repère principal DVF et un ajustement DPE documenté. Le repère communal VendreBien, lorsqu'il est utilisé, est réduit et plafonné car il ne contrôle pas la micro-localisation.":"Le repère DVF est conservé : les ventes comparables avec DPE vérifié et le repère communal disponible ne permettent pas de chiffrer un effet énergétique fiable."):"Pas assez de comparables DVF pour produire une valeur ajustée."};
 }
 async function refreshSellerValuationAnalysis(accessToken){if(!accessToken)return;try{let row=null;if(pool){const q=await db("SELECT * FROM jml_seller_spaces WHERE access_token=$1 LIMIT 1",[accessToken]);if(!q.rowCount)return;row=q.rows[0];}else row=memory.sellerSpaces.get(accessToken);if(!row)return;const space=sellerSpacePublic(row),city=clean(space.city,100);const comp=await buildComparableSales({city,recentSales:[]},{city,address:space.address,propertyType:space.propertyType,surface:space.surface,rooms:space.rooms,landSurface:space.terrain,terrain:space.terrain,dpe:space.dpe});const analysis=buildSellerCharacteristicAnalysis(space,comp,space.listingResearch),current=row.estimator_agent_data&&typeof row.estimator_agent_data==="object"?row.estimator_agent_data:{},next={...current,valuationAnalysis:analysis};if(pool)await db("UPDATE jml_seller_spaces SET estimator_agent_data=$2::jsonb,updated_at=NOW() WHERE access_token=$1",[accessToken,JSON.stringify(next)]);else if(memory.sellerSpaces.has(accessToken))memory.sellerSpaces.get(accessToken).estimatorAgent=next;}catch(error){console.warn("JML characteristic analysis:",String(error?.message||error));}}
 async function startListingResearchForSpace(space){
