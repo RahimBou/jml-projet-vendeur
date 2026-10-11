@@ -28,7 +28,7 @@ const comparableFn = section(
 const summaryRoute = section(
   server,
   'app.get("/api/territory-summary"',
-  '\napp.get("/api/territory-nearby"',
+  '\nconst nearbyAssetsCache=new Map();',
   "territory-summary"
 );
 const comparableRoute = section(
