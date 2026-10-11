@@ -168,12 +168,13 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
   try{
    const d=await api("/api/prospects");prospects=Array.isArray(d.prospects)?d.prospects:[];
    // Les biens sont chargés séparément : un même contact peut déposer plusieurs demandes.
+   let propertyLoadError=null;
    try{const pd=await api("/api/prospect-properties");sellerProperties=Array.isArray(pd.properties)?pd.properties:[]}
-   catch(propertyError){console.warn("Lecture des biens par prospect indisponible",propertyError);sellerProperties=[]}
+   catch(propertyError){console.warn("Lecture des biens par prospect indisponible",propertyError);sellerProperties=[];propertyLoadError=propertyError}
    set("nProspects",prospects.length);set("nHot",prospects.filter(x=>x.horizon==="0-3"||x.horizon==="3-6").length);set("nRdv",prospects.filter(x=>x.status==="RDV pris").length);set("nMandats",prospects.filter(x=>x.status==="Mandat").length);
    renderFollowups();
-   const box=$("prospectsBox");if(!box)return;
-   if(!prospects.length){box.innerHTML='<div class="prospect-empty">Aucun prospect enregistré.<br>Les nouveaux propriétaires apparaîtront ici.</div>';return}
+   const box=$("prospectsBox");if(!box)return {ok:true,propertiesOk:!propertyLoadError,error:propertyLoadError?String(propertyLoadError.message||propertyLoadError):""};
+   if(!prospects.length){box.innerHTML='<div class="prospect-empty">Aucun prospect enregistré.<br>Les nouveaux propriétaires apparaîtront ici.</div>';if(propertyLoadError)box.insertAdjacentHTML("afterbegin",'<div class="prospect-empty" style="color:#9a6a12"><strong>Biens non actualisés</strong><br><small>'+esc(propertyLoadError.message||propertyLoadError)+'</small></div>');return {ok:true,propertiesOk:!propertyLoadError,error:propertyLoadError?String(propertyLoadError.message||propertyLoadError):""}}
    box.innerHTML=prospects.map(p=>{
     const homes=sellerProperties.filter(x=>String(x.prospectId||"")===String(p.id));
     const homesHtml=homes.length?'<button type="button" class="prospect-btn prospect-properties-toggle" data-action="toggle-properties" data-id="'+esc(p.id)+'" aria-expanded="false">🏠 Voir ses biens ('+homes.length+')</button><div class="prospect-properties" data-properties-for="'+esc(p.id)+'" hidden><div class="prospect-properties-title">🏠 Biens et demandes de ce client · '+homes.length+'</div>'+homes.map((x,i)=>{
@@ -200,7 +201,9 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
       ${homesHtml}
     </div>`;
    }).join("");
-  }catch(e){console.warn(e);$("prospectsBox").innerHTML='<div class="prospect-empty" style="color:#9a3b32"><strong>Erreur chargement prospects</strong><br><small>'+esc(e.message||e)+'</small></div>'}
+   if(propertyLoadError)box.insertAdjacentHTML("afterbegin",'<div class="prospect-empty" style="color:#9a6a12"><strong>Biens non actualisés</strong><br><small>'+esc(propertyLoadError.message||propertyLoadError)+'</small></div>');
+   return {ok:true,propertiesOk:!propertyLoadError,error:propertyLoadError?String(propertyLoadError.message||propertyLoadError):""};
+  }catch(e){console.warn(e);$("prospectsBox").innerHTML='<div class="prospect-empty" style="color:#9a3b32"><strong>Erreur chargement prospects</strong><br><small>'+esc(e.message||e)+'</small></div>';return {ok:false,propertiesOk:false,error:String(e.message||e)}}
  }
 
  function findProspect(id){return prospects.find(p=>String(p.id)===String(id))}
@@ -318,12 +321,14 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
   const box=$("prospectsBox");
   try{
    if(box)box.setAttribute("aria-live","polite");
-   await Promise.all([loadProspects(),loadAppointmentRequests()]);
+   const results=await Promise.all([loadProspects(),loadAppointmentRequests()]);
+   const prospectResult=results[0]||{ok:false,propertiesOk:false,error:"Aucun résultat de chargement."};
    const errorBox=box?.querySelector(".prospect-empty strong");
-   const failed=errorBox&&/Erreur chargement prospects/i.test(errorBox.textContent||"");
-   if(button)button.textContent=failed?"Réessayer":"✓ Actualisé";
-   if(button)button.title=failed?"Le chargement a échoué. Consulte le message affiché dans la liste.":"Liste des prospects rechargée.";
-   if(!failed)setTimeout(()=>{if(button&&button.dataset.loading!=="true")button.textContent=original;},1800);
+   const failed=!prospectResult.ok||(errorBox&&/Erreur chargement prospects/i.test(errorBox.textContent||""));
+   const partial=!failed&&prospectResult.propertiesOk===false;
+   if(button)button.textContent=failed?"Réessayer":partial?"Actualisation partielle":"✓ Actualisé";
+   if(button)button.title=failed?(prospectResult.error||"Le chargement a échoué. Consulte le message affiché dans la liste."):partial?(prospectResult.error||"Les prospects sont chargés, mais la liste des biens est indisponible."):"Prospects, biens et demandes de rendez-vous rechargés depuis le serveur.";
+   if(!failed&&!partial)setTimeout(()=>{if(button&&button.dataset.loading!=="true")button.textContent=original;},1800);
   }catch(e){
    console.error("JML refresh prospects:",e);
    if(box)box.innerHTML='<div class="prospect-empty" style="color:#9a3b32"><strong>Actualisation impossible</strong><br><small>'+esc(e.message||e)+'</small></div>';
