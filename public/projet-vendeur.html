@@ -1242,7 +1242,7 @@ document.getElementById('form').onsubmit=async function(ev){
     email:document.getElementById('email').value.trim(),
     propertyType:typeMap[document.getElementById('type').value] || document.getElementById('type').value,
     horizon:horizonMap[document.getElementById('delai').value] || "unknown",
-    address:(selectedAddress&&document.getElementById('adresse').value.trim()===selectedAddress.label)?selectedAddress.label:document.getElementById('adresse').value.trim(),
+    address:(document.getElementById('adresse').dataset.addressSelected==='true')?document.getElementById('adresse').value.trim():document.getElementById('adresse').value.trim(),
     surface:document.getElementById('surface').value.trim(),
     rooms:document.getElementById('pieces').value.trim(),
     dpe:document.getElementById('dpe').value,
