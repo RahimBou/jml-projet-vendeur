@@ -1,7 +1,7 @@
 "use strict";
 const fs = require("node:fs");
 const { spawnSync } = require("node:child_process");
-const htmlPaths = ["public/vendeur-secteur.html", "public/dvf-audit.html"];
+const htmlPaths = ["public/vendeur-secteur.html", "public/dvf-audit.html", "public/espace-vendeur.html"];
 for (const [index, htmlPath] of htmlPaths.entries()) {
   const html = fs.readFileSync(htmlPath, "utf8");
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)]

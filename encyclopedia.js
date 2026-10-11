@@ -22,7 +22,7 @@ function normalize(value) {
 }
 function searchItems({q="",category="",appliesTo="",limit=20}={}) {
   const query=normalize(q), cat=normalize(category), scope=normalize(appliesTo);
-  const max=Math.max(1,Math.min(50,Number.parseInt(limit,10)||20));
+  const max=Math.max(1,Math.min(100,Number.parseInt(limit,10)||20));
   return loadItems().filter(item=>{
     if(cat && normalize(item.category)!==cat) return false;
     if(scope && scope!=="all" && scope!=="both" && normalize(item.appliesTo)!==scope && normalize(item.appliesTo)!=="both") return false;

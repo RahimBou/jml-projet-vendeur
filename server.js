@@ -14,6 +14,7 @@ const { collectMarketIntelligence } = require("./market-intelligence");
 const { searchRnbBuildings } = require("./rnb-buildings");
 const { runEstimatorAgent } = require("./estimator-agent");
 const { collectComparableListings } = require("./listing-agent");
+const registerEncyclopediaRoutes = require("./encyclopedia");
 
 
 const app = express();
@@ -52,6 +53,9 @@ const DVF_LATEST_YEAR = Number(process.env.CURRENT_DATA_YEAR || 2025);
 const GOOGLE_STREETVIEW_API_KEY = String(process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_STREETVIEW_API_KEY || "").trim();
 
 app.disable("x-powered-by");
+
+// Lexique contextuel en lecture seule ; aucune incidence sur le moteur DVF/DVF+ ou le DPE.
+registerEncyclopediaRoutes(app);
 
 // Durcissement HTTP pour l'espace professionnel et ses données commerciales.
 app.use((req,res,next)=>{
