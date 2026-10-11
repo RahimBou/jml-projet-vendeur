@@ -307,7 +307,6 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
   }
  }
  $("refreshProspects")?.addEventListener("click",refreshProspectsFromButton);
- $("refreshProspects")?.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();refreshProspectsFromButton();}});
  try{await loadDvfMarket()}catch(e){console.warn(e)}
  try{await loadProspects()}catch(e){console.warn(e)}
  try{await loadAppointmentRequests()}catch(e){console.warn(e)}
