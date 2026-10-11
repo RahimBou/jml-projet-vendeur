@@ -187,10 +187,55 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
    (p.phone?'<a class="prospect-btn primary" href="tel:'+esc(p.phone)+'">📞 Appeler</a>':'')+
    (p.phone?'<a class="prospect-btn" href="sms:'+esc(p.phone)+'">💬 SMS</a>':'')+
    (p.email?'<a class="prospect-btn" href="mailto:'+esc(p.email)+'">✉ Email</a>':'')+
-   '<button type="button" class="prospect-btn" data-modal-action="activity" data-id="'+esc(p.id)+'">+ Enregistrer une action</button><button type="button" class="prospect-btn" data-modal-action="followup" data-id="'+esc(p.id)+'">📅 Programmer relance</button><button type="button" class="prospect-btn" data-modal-action="edit" data-id="'+esc(p.id)+'">✏ Modifier</button><button type="button" class="prospect-btn" data-modal-action="qualify" data-id="'+esc(p.id)+'">🎯 Qualifier</button>'+
-   '</div><h4 style="margin:18px 0 5px">Historique</h4><div id="activityList" class="activity-list"><div class="activity-item">Chargement…</div></div>';
+   '<button type="button" class="prospect-btn" data-modal-action="activity" data-id="'+esc(p.id)+'">+ Enregistrer une action</button><button type="button" class="prospect-btn" data-modal-action="followup" data-id="'+esc(p.id)+'">📅 Programmer relance</button><button type="button" class="prospect-btn" data-modal-action="edit" data-id="'+esc(p.id)+'">✏ Modifier</button><button type="button" class="prospect-btn" data-modal-action="qualify" data-id="'+esc(p.id)+'">🎯 Qualifier</button><button type="button" class="prospect-btn primary" data-modal-action="properties" data-id="'+esc(p.id)+'">🏠 Gérer ses biens</button>'+
+   '</div><section id="prospectProperties" style="margin-top:18px"><h4>🏠 Biens de ce propriétaire</h4><div class="activity-item">Chargement des biens…</div></section><h4 style="margin:18px 0 5px">Historique</h4><div id="activityList" class="activity-list"><div class="activity-item">Chargement…</div></div>';
   try{const d=await api("/api/prospects/"+enc(p.id)+"/activities");const a=Array.isArray(d.activities)?d.activities:[];const list=$("activityList");list.innerHTML=a.length?a.map(x=>'<div class="activity-item"><strong>'+esc(x.type||"Action")+(x.outcome?" · "+esc(x.outcome):"")+'</strong><small>'+fmtDate(x.created_at)+(x.appointment_at?" · RDV "+fmtDate(x.appointment_at):"")+'</small><small>'+esc(x.note||"")+'</small></div>').join(""):'<div class="activity-item">Aucune action enregistrée.</div>'}catch(e){$("activityList").innerHTML='<div class="activity-item">Historique indisponible.</div>'}
  }
+ async function loadProspectProperties(id){
+  const box=$("prospectProperties");if(!box)return;
+  try{
+   const d=await api("/api/prospects/"+enc(id)+"/properties");
+   const items=Array.isArray(d.properties)?d.properties:[];
+   box.innerHTML='<h4>🏠 Biens de ce propriétaire ('+items.length+')</h4><div class="activity-list">'+(items.length?items.map(b=>{
+    const size=b.surface_m2==null?"Surface à préciser":esc(b.surface_m2)+" m²";
+    const rooms=b.rooms==null?"Pièces à préciser":esc(b.rooms)+" pièces";
+    return '<div class="activity-item"><strong>'+esc(b.address||"Adresse à préciser")+'</strong><small>'+esc(b.city||"Ville non précisée")+' · '+esc(b.property_type||"Bien")+' · '+size+' · '+rooms+'</small><small>'+(b.lot_reference?'Lot / référence : '+esc(b.lot_reference)+' · ':'')+(b.dpe?'DPE '+esc(b.dpe):'')+'</small>'+(b.notes?'<small>'+esc(b.notes)+'</small>':'')+'<div style="margin-top:6px"><button type="button" class="prospect-btn danger" data-property-delete="'+esc(b.id)+'" data-owner-id="'+esc(id)+'">Supprimer ce bien</button></div></div>';
+   }).join(""):'<div class="activity-item">Aucun bien enregistré pour ce propriétaire.</div>')+'</div><div style="margin-top:10px"><button type="button" class="prospect-btn primary" data-property-add="'+esc(id)+'">＋ Ajouter un bien distinct</button></div>';
+  }catch(e){box.innerHTML='<div class="activity-item" style="color:#9a3b32">Impossible de charger les biens : '+esc(e.message||e)+'</div>'}
+ }
+ function propertyForm(id){
+  const box=$("prospectProperties");if(!box)return;
+  box.insertAdjacentHTML("beforeend",'<form id="propertyForm" style="margin-top:12px;padding:14px;border:1px solid #dfd5c3;border-radius:12px"><h4>Ajouter un bien distinct</h4><p style="font-size:12px;color:#68716a">Même propriétaire, même téléphone ou même email : chaque logement est enregistré séparément.</p><div class="form-grid">'+
+   '<label class="form-full">Adresse complète *<input name="address" required placeholder="Ex. 15 rue Payer Guillemain"></label>'+
+   '<label>Ville<input name="city" value="'+esc(findProspect(id)?.city||"")+'" placeholder="Charleville-Mézières"></label>'+
+   '<label>Type de bien<select name="property_type"><option>Appartement</option><option>Maison</option><option>Studio</option><option>Immeuble</option><option>Local commercial</option><option>Terrain</option><option>Autre</option></select></label>'+
+   '<label>Surface habitable (m²)<input name="surface_m2" type="number" min="1" max="10000" step="0.1" placeholder="Ex. 72"></label>'+
+   '<label>Nombre de pièces<input name="rooms" type="number" min="1" max="100" step="1" placeholder="Ex. 3"></label>'+
+   '<label>Lot / référence du logement<input name="lot_reference" placeholder="Ex. Appartement 2e étage, lot 5"></label>'+
+   '<label>DPE<input name="dpe" placeholder="Ex. D"></label>'+
+   '<label class="form-full">Notes sur ce bien<textarea name="notes" placeholder="Étage, particularités, travaux…"></textarea></label></div><div class="modal-actions"><button class="prospect-btn primary" type="submit">💾 Enregistrer ce bien</button><button class="prospect-btn" type="button" id="cancelProperty">Annuler</button></div></form>');
+  $("cancelProperty").onclick=()=>loadProspectProperties(id);
+  $("propertyForm").onsubmit=async e=>{
+   e.preventDefault();
+   const submit=e.currentTarget.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent="Enregistrement…";}
+   const data=Object.fromEntries(new FormData(e.currentTarget).entries());
+   try{
+    await api("/api/prospects/"+enc(id)+"/properties",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)});
+    await loadProspectProperties(id);
+    alert("Bien enregistré séparément pour ce propriétaire.");
+   }catch(err){alert(err.message||"Enregistrement du bien impossible.");if(submit){submit.disabled=false;submit.textContent="💾 Enregistrer ce bien";}}
+  };
+ }
+ $("prospectProperties")?.addEventListener("click",async e=>{
+  const add=e.target.closest("[data-property-add]");
+  if(add){propertyForm(add.dataset.propertyAdd);return;}
+  const del=e.target.closest("[data-property-delete]");
+  if(del){
+   if(!confirm("Supprimer uniquement ce bien ? Le propriétaire et ses autres biens seront conservés."))return;
+   try{await api("/api/prospects/"+enc(del.dataset.ownerId)+"/properties/"+enc(del.dataset.propertyDelete),{method:"DELETE"});await loadProspectProperties(del.dataset.ownerId);}
+   catch(err){alert(err.message||"Suppression impossible.");}
+  }
+ });
  function editProspect(id){
   const p=findProspect(id);if(!p)return;openModal();$("modalTitle").textContent="Modifier · "+(p.name||"Prospect");
   $("modalBody").innerHTML='<form id="editForm"><div class="form-grid">'+
@@ -222,7 +267,7 @@ body{margin:0;background:#f5f1e8;color:#173b31}.pro-app{min-height:100vh}.pro-to
 
  $("prospectsBox")?.addEventListener("click",e=>{const b=e.target.closest("[data-action]");if(!b)return;const id=b.dataset.id;const a=b.dataset.action;if(a==="detail")showDetail(id);if(a==="edit")editProspect(id);if(a==="activity")activityForm(id);if(a==="delete")removeProspect(id)});
  $("prospectsBox")?.addEventListener("change",async e=>{const s=e.target.closest("[data-action='status']");if(!s)return;try{await api("/api/prospects/"+enc(s.dataset.id)+"/status",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({status:s.value})});await loadProspects()}catch(err){alert(err.message);await loadProspects()}});
- $("modalBody")?.addEventListener("click",e=>{const b=e.target.closest("[data-modal-action]");if(!b)return;const id=b.dataset.id;const a=b.dataset.modalAction;if(a==="activity")activityForm(id);if(a==="followup")followupForm(id);if(a==="edit")editProspect(id);if(a==="qualify")qualify(id)});
+ $("modalBody")?.addEventListener("click",e=>{const b=e.target.closest("[data-modal-action]");if(!b)return;const id=b.dataset.id;const a=b.dataset.modalAction;if(a==="activity")activityForm(id);if(a==="followup")followupForm(id);if(a==="edit")editProspect(id);if(a==="qualify")qualify(id);if(a==="properties")loadProspectProperties(id)});
 
  async function loadDvfMarket(){
   const status=$("dvfMarketStatus"),results=$("dvfMarketResults"),historyBox=$("dvfMarketHistory");
