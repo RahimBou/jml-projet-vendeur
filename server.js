@@ -4390,6 +4390,11 @@ app.post("/api/appointment-requests/:id/reject", async (req,res) => {
   }catch(e){return unexpected(res,"JML-A020","Traitement de la demande indisponible.",e);}
 });
 
+async function getBookedAppointmentTimes(){
+  if(!pool) return [];
+  const q=await db("SELECT requested_at FROM jml_appointment_requests WHERE status='À traiter' UNION ALL SELECT appointment_at AS requested_at FROM jml_activities WHERE outcome='RDV pris' AND appointment_at IS NOT NULL");
+  return q.rows.map(r=>new Date(r.requested_at).getTime()).filter(Number.isFinite);
+}
 let appointmentCalendarCache={until:0,busy:[]};
 async function getLiveAppointmentSlots(){
   const booked=await getBookedAppointmentTimes();
