@@ -218,6 +218,7 @@ function getGeminiInteractionText(payload){
 
 const geminiDiagnosticAttempts = new Map();
 app.get("/api/admin/diagnostics/gemini", async (req,res) => {
+  if(!requireAdminOr401(req,res)) return;
   // Diagnostic fixe et limité : aucun prompt fourni par le visiteur, aucun secret renvoyé.
   const clientKey=String(req.ip||req.socket?.remoteAddress||"unknown").slice(0,240);
   const now=Date.now();
@@ -4000,12 +4001,14 @@ app.get("/api/dpe/import", async (req,res) => {
 });
 app.get("/api/health", async (_req,res) => {
   let database = "memory";
-  let databaseError = null;
+  let databaseReady = false;
   if(pool){
-    try { await db("SELECT 1"); database = "postgres"; }
-    catch(e){ database = "postgres-error"; databaseError = e.message; }
+    try { await db("SELECT 1"); database = "postgres"; databaseReady = dbReady; }
+    catch(_error){ database = "postgres-error"; }
   }
-  res.json({ok:true,app:"JML Projet Vendeur",version:VERSION,database,databaseReady:dbReady,databaseError,adminConfigured:!!ADMIN_PASSWORD,region:"Ardennes",sector:"Charleville-Mézières"});
+  // Health check minimal : ne divulgue ni message SQL, ni configuration d’administration.
+  res.setHeader("Cache-Control","no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.json({ok:true,app:"JML Projet Vendeur",version:VERSION,database,databaseReady});
 });
 
 app.get("/api/diagnostic", async (req,res) => {
