@@ -43,7 +43,7 @@ test("password policy rejects short and oversized values", async () => {
 
 
 function makeAuthHarness() {
-  const state = { session: null, revoked: false, userActive: true, lastQuery: null };
+  const state = { session: null, revoked: false, userActive: true, role: "seller", sellerId: "seller-A", lastQuery: null };
   const pool = {
     async query(sql, params = []) {
       state.lastQuery = sql;
@@ -56,7 +56,7 @@ function makeAuthHarness() {
           return { rows: [], rowCount: 0 };
         }
         return { rows: [{
-          id: state.session.userId, email: "vendeur@example.test", role: "seller", seller_id: "seller-A",
+          id: state.session.userId, email: "vendeur@example.test", role: state.role, seller_id: state.role === "seller" ? state.sellerId : null,
           session_id: "session-A", created_at: new Date(), last_seen_at: new Date(),
           expires_at: state.session.expiresAt
         }], rowCount: 1 };
@@ -93,12 +93,11 @@ test("resolveSession returns verified role and seller scope from PostgreSQL", as
   const { createAuth } = require("../auth");
   const { pool, state } = makeAuthHarness();
   const auth = createAuth({ pool });
-  const res = { setHeader() {} };
+  const res = { _cookie: "", setHeader(name, value) { if (name === "Set-Cookie") this._cookie = value; } };
   await auth.issueSession({ id: "user-A", role: "seller", seller_id: "seller-A", email: "vendeur@example.test" },
     { headers: {}, ip: "127.0.0.1" }, res);
-  const token = decodeURIComponent(res.cookie || "");
   // Read the actual cookie through the response stub, without trusting client-supplied role data.
-  const cookie = (res._cookie || "");
+  const cookie = res._cookie;
   assert.ok(state.session);
   const issuedToken = cookie.match(/jml_session=([^;]*)/)?.[1];
   assert.ok(issuedToken);
@@ -120,16 +119,19 @@ test("requireRole rejects missing sessions and forbids the wrong role", async ()
 });
 
 
-test("requireRole refuses a seller session for professional-only routes", async () => {
+test("requireRole returns 403 when an authenticated seller tries a professional-only route", async () => {
   const { createAuth } = require("../auth");
   const { pool } = makeAuthHarness();
   const auth = createAuth({ pool });
+  const issued = { _cookie: "", setHeader(name, value) { if (name === "Set-Cookie") this._cookie = value; } };
+  await auth.issueSession({ id: "user-A", role: "seller", seller_id: "seller-A", email: "vendeur@example.test" },
+    { headers: {}, ip: "127.0.0.1" }, issued);
+  const token = issued._cookie.match(/jml_session=([^;]*)/)?.[1];
   const res = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
-  const req = { headers: { cookie: "jml_session=valid-test-token" } };
+  const req = { headers: { cookie: "jml_session=" + token } };
   await auth.requireRole("professional")(req, res, () => { throw new Error("next ne doit pas être appelé"); });
-  // La session simulée n'existe pas : l'accès doit être refusé avant tout handler métier.
-  assert.equal(res.statusCode, 401);
-  assert.equal(res.body.code, "AUTH_REQUIRED");
+  assert.equal(res.statusCode, 403);
+  assert.equal(res.body.code, "AUTH_FORBIDDEN");
 });
 
 test("requireRole permits the authenticated role and attaches only server-resolved identity", async () => {
