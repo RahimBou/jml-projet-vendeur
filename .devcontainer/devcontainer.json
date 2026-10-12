@@ -1,0 +1,30 @@
+{
+  "name": "JML Projet Vendeur",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [10000],
+  "portsAttributes": {
+    "10000": {
+      "label": "JML Projet Vendeur (test local)",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "npm install --ignore-scripts",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "GitHub.vscode-pull-request-github"
+      ],
+      "settings": {
+        "files.autoSave": "afterDelay",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "remoteEnv": {
+    "NODE_ENV": "development"
+  }
+}
