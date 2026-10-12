@@ -3782,9 +3782,6 @@ async function initDb() {
       UNIQUE(year,commune_code,type_code,name,latitude,longitude)
     );
     CREATE INDEX IF NOT EXISTS idx_jml_bpe_commune ON jml_bpe_assets(commune_code);
-    CREATE INDEX IF NOT EXISTS idx_jml_dvf_geo_date ON jml_dvf_sales(latitude,longitude,sale_date DESC);
-    CREATE INDEX IF NOT EXISTS idx_jml_dvf_type_geo_date ON jml_dvf_sales(property_type,latitude,longitude,sale_date DESC);
-    CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_type_date ON jml_dvf_sales(commune_code,property_type,sale_date DESC);
     CREATE INDEX IF NOT EXISTS idx_jml_bpe_geo ON jml_bpe_assets(latitude,longitude);
 
     CREATE TABLE IF NOT EXISTS jml_dvf_sales (
@@ -3796,6 +3793,9 @@ async function initDb() {
       imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(mutation_id,property_type,price,surface,address,parcel_id)
     );
+    CREATE INDEX IF NOT EXISTS idx_jml_dvf_geo_date ON jml_dvf_sales(latitude,longitude,sale_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_jml_dvf_type_geo_date ON jml_dvf_sales(property_type,latitude,longitude,sale_date DESC);
+    CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_type_date ON jml_dvf_sales(commune_code,property_type,sale_date DESC);
 
     CREATE TABLE IF NOT EXISTS jml_dpe (
       numero_dpe TEXT PRIMARY KEY,
