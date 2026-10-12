@@ -2,7 +2,9 @@ name: Vérification code
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - integration/jml-immobilier-unifie
   pull_request:
 
 jobs:
