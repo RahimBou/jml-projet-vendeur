@@ -118,3 +118,34 @@ test("requireRole rejects missing sessions and forbids the wrong role", async ()
   assert.equal(response.statusCode, 401);
   assert.equal(nextCalled, false);
 });
+
+
+test("requireRole refuses a seller session for professional-only routes", async () => {
+  const { createAuth } = require("../auth");
+  const { pool } = makeAuthHarness();
+  const auth = createAuth({ pool });
+  const res = { statusCode: 200, body: null, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  const req = { headers: { cookie: "jml_session=valid-test-token" } };
+  await auth.requireRole("professional")(req, res, () => { throw new Error("next ne doit pas être appelé"); });
+  // La session simulée n'existe pas : l'accès doit être refusé avant tout handler métier.
+  assert.equal(res.statusCode, 401);
+  assert.equal(res.body.code, "AUTH_REQUIRED");
+});
+
+test("requireRole permits the authenticated role and attaches only server-resolved identity", async () => {
+  const { createAuth } = require("../auth");
+  const { pool } = makeAuthHarness();
+  const auth = createAuth({ pool });
+  const resCookie = { _cookie: "", setHeader(name, value) { if (name === "Set-Cookie") this._cookie = value; } };
+  await auth.issueSession({ id: "user-A", role: "seller", seller_id: "seller-A", email: "vendeur@example.test" },
+    { headers: {}, ip: "127.0.0.1" }, resCookie);
+  const token = resCookie._cookie.match(/jml_session=([^;]*)/)?.[1];
+  const req = { headers: { cookie: "jml_session=" + token }, body: { role: "professional", sellerId: "seller-B" } };
+  const res = { statusCode: 200, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; return this; } };
+  let nextCalled = false;
+  await auth.requireRole("seller")(req, res, () => { nextCalled = true; });
+  assert.equal(nextCalled, true);
+  assert.equal(req.auth.role, "seller");
+  assert.equal(req.auth.sellerId, "seller-A");
+  assert.equal(req.auth.role === req.body.role, false);
+});
