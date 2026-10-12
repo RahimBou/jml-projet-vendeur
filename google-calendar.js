@@ -1,4 +1,5 @@
 const crypto = require("crypto");
+const { availableSlotList } = require("./calendar-slots");
 
 const AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
@@ -234,6 +235,12 @@ async function sendResendMail(to, subject, text, html) {
   return true;
 }
 
+async function getBookedAppointmentTimes(pool) {
+  if (!pool) return [];
+  const q = await pool.query(`SELECT requested_at FROM jml_appointment_requests WHERE status='À traiter' UNION ALL SELECT appointment_at AS requested_at FROM jml_activities WHERE outcome='RDV pris' AND appointment_at IS NOT NULL`);
+  return q.rows.map(r => new Date(r.requested_at).getTime()).filter(Number.isFinite);
+}
+
 async function syncConfirmedAppointments(pool) {
   if (!pool) return;
   try {
@@ -250,7 +257,7 @@ async function syncConfirmedAppointments(pool) {
 
     const rejected=await pool.query("SELECT id,name,email,response_token FROM jml_appointment_requests WHERE status='À revoir' AND email IS NOT NULL AND response_token IS NOT NULL AND (proposed_slots IS NULL OR jsonb_array_length(proposed_slots)=0) ORDER BY created_at LIMIT 5");
     for(const r of rejected.rows){
-      const slots=availableSlotList(await getBookedAppointmentTimes(),await getGoogleCalendarBusy(pool,new Date(),new Date(Date.now()+31*24*60*60*1000))).slice(0,4);
+      const slots=availableSlotList(await getBookedAppointmentTimes(pool),await getGoogleCalendarBusy(pool,new Date(),new Date(Date.now()+31*24*60*60*1000))).slice(0,4);
       if(!slots.length) continue;
       await pool.query("UPDATE jml_appointment_requests SET status='Proposée',proposed_slots=$2 WHERE id=$1",[r.id,JSON.stringify(slots)]);
       const base=(process.env.PUBLIC_APP_URL||"").replace(/\/$/,"");
