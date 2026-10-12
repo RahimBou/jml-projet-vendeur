@@ -91,3 +91,16 @@ Ces constats proviennent de la lecture de `server.js` sur la branche d'intégrat
 4. Ajouter les tests d'isolation vendeur A/vendeur B, de révocation, d'expiration, d'absence de base et de CSRF avant d'activer la migration.
 5. Déployer uniquement après résultats CI verts et revue des routes/modules ; aucun déploiement n'est effectué par ce changement.
 
+
+
+## Correctifs appliqués après cette inspection
+
+- `GET /api/admin/diagnostics/gemini` vérifie désormais `requireAdminOr401` avant de lancer un diagnostic externe. Une personne non authentifiée ne peut plus utiliser cette route comme endpoint de diagnostic public.
+- `GET /api/health` ne renvoie plus le message brut d'erreur PostgreSQL, ni l'indicateur de configuration du mot de passe administrateur, ni les détails de secteur. La réponse est minimale et marquée `Cache-Control: no-store`.
+- Le workflow CI est déclenché sur les push de `main` et de `integration/jml-immobilier-unifie`, en plus des événements de pull request, pour que les prochains commits de la branche de fusion puissent être contrôlés directement.
+
+Ces changements sont sur la branche d'intégration uniquement. Le dernier run CI confirmé vert a exécuté `npm install`, les vérifications de syntaxe et `npm test` sur le commit `193a3f4`. Les correctifs de sécurité postérieurs doivent encore obtenir leur propre résultat CI avant d'être considérés comme validés.
+
+## Prochaine étape de migration
+
+Le correctif du diagnostic Gemini ne remplace pas la migration d'authentification. Les routes d'espace vendeur restent basées sur le jeton de lien existant afin de ne pas casser les liens envoyés aux propriétaires. Il faut donc migrer explicitement le parcours utilisateur (création/activation de compte, connexion, lien de récupération, accès aux pages et appels API) avant d'exiger partout une session vendeur. Le module `auth.js` reste non raccordé au serveur et ne doit pas être décrit comme actif.
