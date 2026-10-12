@@ -2,7 +2,9 @@ name: Vérification code
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - integration/jml-immobilier-unifie
   pull_request:
 
 jobs:
@@ -15,6 +17,8 @@ jobs:
           node-version: 20
       - run: npm install --no-audit --no-fund
       - run: node --check server.js
+      - run: node --check auth.js
+      - run: npm test
       - run: node --check market-intelligence.js
       - run: node --check external-estimators.js
       - run: node --check scripts/import-dvf.js

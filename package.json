@@ -7,12 +7,14 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "test": "node --test tests/*.test.js",
     "postinstall": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium chromium-headless-shell"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "argon2": "^0.41.1",
     "express": "^4.21.2",
     "google-auth-library": "^10.3.0",
     "pg": "^8.16.3",
