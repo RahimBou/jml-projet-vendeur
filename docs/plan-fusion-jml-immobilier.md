@@ -156,6 +156,62 @@ Chaque module doit être intégré et testé isolément avant le suivant.
 9. Tests existants encore insuffisants pour certifier tous les parcours et boutons.
 10. L'accès réel au VPS et l'état de la commande ne sont pas encore confirmés.
 
+## Décisions confirmées par le propriétaire — 12 octobre 2026
+
+### Données et identité visuelle
+- Les enregistrements existants sont des données de test : aucune migration de ces données n'est requise.
+- Les référentiels DVF/DVF+, ADEME/DPE, BPE et autres pourront être re-téléchargés depuis les sources officielles. Conserver les scripts et les règles d'import, pas les fichiers de test comme dépendance de l'application.
+- Garder la disposition, les couleurs, le HTML/CSS et les composants des pages existantes. Pas de refonte graphique : créer une navigation commune et réutiliser les pages telles quelles, en ne modifiant que ce qui est nécessaire au routage et à la sécurité.
+- La simplicité doit venir de l'architecture et du menu, pas de la suppression des fonctions métier.
+
+### Connexion et cloisonnement — exigences obligatoires
+Deux espaces séparés :
+1. **Espace professionnel JML** : réservé au compte professionnel autorisé, avec accès aux prospects, biens, estimations, outils et réglages.
+2. **Espace prospect/vendeur** : compte ou lien individuel sécurisé, limité au seul dossier, aux biens, documents et rendez-vous de ce vendeur.
+
+Règles de sécurité :
+- Chaque route API privée doit vérifier l'authentification et le rôle côté serveur. Cacher un bouton ou une page ne protège pas une API.
+- Refuser par défaut les accès non authentifiés et attribuer les rôles exclusivement côté serveur.
+- Les requêtes vendeur utilisent l'identité tirée de la session vérifiée, jamais un identifiant libre envoyé par le navigateur. Un vendeur A ne doit jamais pouvoir lire, modifier ou supprimer les données du vendeur B en changeant un ID ou un jeton.
+- Sessions opaques cryptographiquement aléatoires, rotation à la connexion, expiration et révocation côté serveur. Ne pas dériver un jeton de session du seul mot de passe et d'une date.
+- Cookies `HttpOnly`, `Secure` sur HTTPS, `SameSite=Strict` sauf justification documentée, durée limitée et pages privées en `Cache-Control: no-store`.
+- Mots de passe hachés avec Argon2id (ou bcrypt avec paramètres sûrs documentés). Pas de création publique de comptes professionnels ; initialisation professionnelle par configuration ou commande d'administration sécurisée.
+- Limitation des tentatives par compte/IP, réponses de connexion génériques, protection CSRF des opérations mutantes basées sur cookie, validation des entrées, CORS limité à l'origine requise, journaux sans secrets.
+- Les jetons d'accès vendeur sont aléatoires, stockés hachés, limités dans le temps et révocables. Pas de jeton permanent réutilisable dans une URL.
+- Les pages de l'espace vendeur ne doivent jamais afficher le menu professionnel ; les routes d'administration/pro ne doivent pas être accessibles au rôle vendeur.
+- Routes publiques (estimation d'entrée, demande de rendez-vous, connexion) explicitement autorisées ; toutes les autres sont privées par défaut.
+- Prévoir récupération de compte vérifiée et déconnexion qui révoque effectivement la session.
+
+### Architecture la plus simple retenue
+- Un dépôt applicatif canonique : `jml-projet-vendeur`.
+- Un serveur Node.js/Express, une API modulaire, une base PostgreSQL.
+- Un seul système de sessions avec rôles serveur `professional` et `seller`, plus routes publiques explicites.
+- Un menu professionnel unique ; l'espace vendeur garde son parcours et son style propre.
+- Les modules Prospection (radar, veille, tournée, scoring) sont réintégrés progressivement derrière des contrats API stables.
+- Un seul moteur d'estimation appelé par les pages ; annonces actives et ventes DVF restent séparées.
+- Les imports de données publiques sont des scripts/jobs relançables, idempotents et journalisés, pas une étape obligatoire du démarrage serveur.
+- Ne supprimer aucune ancienne page ou version avant que les fonctions requises soient intégrées et testées.
+
+### Tests de sécurité avant hébergement
+- Non connecté : les API privées refusent l'accès.
+- Vendeur A : son dossier est accessible, celui de B est refusé même avec un ID/URL deviné.
+- Vendeur : accès pro/admin refusé.
+- Professionnel : espace pro autorisé, routes vendeur limitées selon les règles.
+- Tentatives répétées limitées ; session expirée, révoquée ou cookie falsifié refusés.
+- Déconnexion : l'ancienne session ne fonctionne plus.
+- Contrôles CSRF, CORS, validation des entrées et cache des pages privées.
+- Régression visuelle des pages existantes : disposition et couleurs conservées.
+
+## Ordre d'exécution mis à jour
+1. Cartographier les routes et les classer publiques, vendeur, professionnelles ou administration.
+2. Définir les sessions et les tests d'accès avant de déplacer les routes.
+3. Créer le menu unifié en réutilisant les pages et styles existants.
+4. Implémenter le cloisonnement des API et les sessions sécurisées.
+5. Réintégrer les modules un par un, sans reprendre les données de test.
+6. Ajouter les imports relançables des référentiels publics.
+7. Tester boutons, parcours, calculs, sécurité et rendu visuel.
+8. Déployer sur OVHcloud avec CI bloquante, health-check et rollback.
+
 ## Prochaine action précise
 
 Finir la cartographie exhaustive des routes, tables, variables d'environnement et tests ; publier le rapport sur cette branche. Ensuite, créer les tests de caractérisation et seulement après commencer le shell de navigation unifié.
