@@ -61,3 +61,33 @@ Une nouvelle architecture doit remplacer progressivement ce mécanisme par :
 ## Limites de cette première passe
 
 Ce document n'affirme pas que toutes les routes ont déjà été recensées ni que l'authentification est corrigée. Les fonctions enregistrées dans `events.js`, `google-calendar.js`, `encyclopedia.js` et les autres modules doivent être auditées séparément. Aucune modification de production n'a été faite.
+
+## Constats supplémentaires après inspection du serveur
+
+Ces constats proviennent de la lecture de `server.js` sur la branche d'intégration. Ils ne signifient pas qu'un correctif est déjà actif.
+
+### Priorité critique — accès vendeur
+
+- Les routes `GET /api/seller-space/:token`, `PATCH /api/seller-space/:token` et `POST /api/seller-space/:token/estimator-agent` recherchent directement l'espace à partir du jeton présent dans l'URL. Elles ne vérifient pas la session vendeur `jml_seller_session`.
+- Le jeton d'espace vendeur sert donc à la fois d'identifiant et de capacité d'accès. Il est aléatoire, mais il reste durable et n'est pas révocable par une vraie gestion de sessions centralisée dans le flux inspecté.
+- Les sessions vendeur actuelles sont stockées dans une `Map` du processus Node.js, expirent après 30 jours et ne survivent ni au redémarrage ni au changement d'instance. Elles ne sont pas les sessions PostgreSQL du nouveau module `auth.js`.
+- L'inscription d'un compte vendeur associe l'adresse e-mail au prospect lié, mais le compte ne protège pas encore les routes d'accès à l'espace. La connexion établit une session en mémoire, sans que les routes espace la contrôlent.
+- Les routes d'inscription, de connexion et Google doivent être revues pour éviter les abus, la création de comptes non autorisée et les sessions non persistantes.
+
+**Conséquence :** le nouveau module `auth.js` ne doit pas être activé seul ni présenté comme une protection effective. Il faut concevoir et tester une migration des liens vendeur vers des sessions vérifiées, avec une période de transition maîtrisée pour ne pas casser les parcours existants.
+
+### Priorité élevée — accès professionnel
+
+- L'espace professionnel utilise encore `jml_admin_session`, un jeton HMAC dérivé du mot de passe administrateur et d'une expiration. Il n'est pas stocké côté serveur et ne peut pas être révoqué individuellement.
+- Les protections professionnelles sont répétées dans les handlers avec `requireAdminOr401`. Il faut recenser toutes les routes et modules avant de remplacer ce contrôle, afin de ne pas laisser de route oubliée ni bloquer les fonctions publiques légitimes.
+- `GET /api/admin/diagnostics/gemini` applique une limite de tentatives, mais l'extrait inspecté ne montre pas de contrôle professionnel explicite au début de ce handler : il doit être confirmé et classé avant le déploiement.
+- Le serveur accepte un mode sans PostgreSQL et plusieurs fonctions utilisent alors des cartes en mémoire. Le nouveau système d'authentification persistant doit refuser les accès privés si la base n'est pas disponible, et non retomber silencieusement sur une session mémoire.
+
+### Ordre de correction proposé
+
+1. Ajouter une protection de connexion persistante pour l'espace professionnel sans modifier la page de connexion.
+2. Introduire des tests d'autorisation pour toutes les routes professionnelles et les routes publiques conservées.
+3. Mettre en place l'association entre une session vendeur vérifiée et l'espace autorisé côté serveur ; supprimer progressivement l'accès direct par jeton durable.
+4. Ajouter les tests d'isolation vendeur A/vendeur B, de révocation, d'expiration, d'absence de base et de CSRF avant d'activer la migration.
+5. Déployer uniquement après résultats CI verts et revue des routes/modules ; aucun déploiement n'est effectué par ce changement.
+
