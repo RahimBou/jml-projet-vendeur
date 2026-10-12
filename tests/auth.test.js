@@ -43,7 +43,7 @@ test("password policy rejects short and oversized values", async () => {
 
 
 function makeAuthHarness() {
-  const state = { session: null, active: true, revoked: false, userActive: true, lastQuery: null };
+  const state = { session: null, revoked: false, userActive: true, lastQuery: null };
   const pool = {
     async query(sql, params = []) {
       state.lastQuery = sql;
