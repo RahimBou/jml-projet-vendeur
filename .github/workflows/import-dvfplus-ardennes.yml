@@ -34,9 +34,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Le runner peut ne pas avoir les droits de lecture du .env ; sudo est non interactif.
-          sudo -n python3 - <<'PY'
-          import os
+          # Lire le .env avec sudo, sans imprimer l'URL dans les journaux.
+          DATABASE_URL="$(sudo -n python3 - <<'PY'
           from pathlib import Path
           from urllib.parse import urlparse
           env_path = Path("/opt/jml-projet-vendeur/.env")
@@ -52,18 +51,22 @@ jobs:
           host = (u.hostname or "").lower()
           if u.scheme not in ("postgres", "postgresql") or not host or not u.path.strip("/"):
               raise SystemExit("DATABASE_URL invalide ; import annulé.")
-          if host.endswith("render.com") or "render.com" in host:
+          if "render.com" in host:
               raise SystemExit("ARRÊT DE SÉCURITÉ : le .env de Contabo pointe encore vers Render. Aucune importation exécutée.")
           allowed_hosts = {"localhost", "127.0.0.1", "::1", "169.58.150.129"}
           if host not in allowed_hosts:
               raise SystemExit("ARRÊT DE SÉCURITÉ : l'hôte PostgreSQL n'est pas reconnu comme local au VPS Contabo. Aucun import exécuté.")
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
-              f.write("DATABASE_URL=" + raw + "\n")
-              f.write("DATABASE_SSL=false\n")
-              f.write("DVF_PLUS_CSV_PATH=" + os.environ["RUNNER_TEMP"] + "/jml-dvfplus/dvf_plus.csv\n")
-          print("Connexion locale Contabo validée ; hôte et identifiants masqués.")
-          print("::add-mask::" + raw)
+          print(raw)
           PY
+          )"
+          test -n "$DATABASE_URL"
+          echo "::add-mask::$DATABASE_URL"
+          {
+            printf 'DATABASE_URL=%s\n' "$DATABASE_URL"
+            printf 'DATABASE_SSL=false\n'
+            printf 'DVF_PLUS_CSV_PATH=%s/jml-dvfplus/dvf_plus.csv\n' "$RUNNER_TEMP"
+          } >> "$GITHUB_ENV"
+          echo "Connexion locale Contabo validée ; hôte et identifiants masqués."
 
       - name: Installer les dépendances
         run: npm install --ignore-scripts --no-audit --no-fund
