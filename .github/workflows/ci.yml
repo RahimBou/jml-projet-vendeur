@@ -1,4 +1,4 @@
-name: Vérification code
+name: Vérification code et schéma PostgreSQL
 
 on:
   push:
@@ -8,17 +8,48 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: jml_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d jml_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: npm install --no-audit --no-fund
-      - run: node --check server.js
-      - run: node --check market-intelligence.js
-      - run: node --check external-estimators.js
-      - run: node --check scripts/import-dvf.js
-      - run: node --check scripts/import-dvfplus.js
+      - name: Installer les dépendances Node
+        run: npm install --no-audit --no-fund
+      - name: Vérifier la syntaxe JavaScript
+        run: |
+          node --check server.js
+          node --check market-intelligence.js
+          node --check external-estimators.js
+          node --check listing-agent.js
+          node --check estimator-agent.js
+          node --check scripts/import-dvf.js
+          node --check scripts/import-dvfplus.js
+          node --check scripts/import-bpe.js
+      - name: Tester la création du schéma PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          psql -h 127.0.0.1 -U postgres -d jml_test -v ON_ERROR_STOP=1 -f db/schema.sql
+      - name: Vérifier que le schéma est idempotent
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -d jml_test -v ON_ERROR_STOP=1 -f db/schema.sql
       - run: node scripts/check-weighted-median-order.js
       - run: node scripts/check-estimation-sensitivity.js
       - run: node scripts/check-inline-html.js
