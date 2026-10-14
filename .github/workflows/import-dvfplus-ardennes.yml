@@ -56,6 +56,7 @@ jobs:
               raise SystemExit("Identifiants PostgreSQL incomplets ; import annulé.")
           local_hosts = {"localhost", "127.0.0.1", "::1"}
           ssl = "false" if u.hostname in local_hosts else "true"
+          print("::add-mask::" + raw)
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
               f.write("DATABASE_URL=" + raw + "\n")
               f.write("DATABASE_SSL=" + ssl + "\n")
@@ -63,7 +64,6 @@ jobs:
           print("Connexion PostgreSQL préparée ; hôte :", u.hostname, "; base :", u.path.strip("/"), "; TLS :", ssl)
           print("La valeur de DATABASE_URL n'est pas affichée.")
           PY
-          echo "::add-mask::$DATABASE_URL"
 
       - name: Installer les dépendances
         run: npm install --ignore-scripts --no-audit --no-fund
