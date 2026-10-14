@@ -1,24 +1,24 @@
-name: DVF+ Ardennes - import maisons et appartements
+name: DVF+ Ardennes - import Contabo uniquement
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/import-dvfplus-ardennes.yml"
 
 permissions:
   contents: read
 
+concurrency:
+  group: import-dvfplus-contabo
+  cancel-in-progress: false
+
 jobs:
-  import-dvfplus-ardennes:
-    # Le fichier DVF+ est déjà sur le serveur Contabo ; l'import tourne donc sur son runner.
+  import-dvfplus-contabo:
+    # Exécution sur le runner installé sur le VPS Contabo.
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - name: Vérifier et décompresser le fichier DVF+ présent sur Contabo
+      - name: Vérifier le fichier DVF+ local
         shell: bash
         run: |
           set -euo pipefail
@@ -30,53 +30,69 @@ jobs:
           test -s "$RUNNER_TEMP/jml-dvfplus/dvf_plus.csv"
           echo "Fichier DVF+ vérifié ; lignes CSV : $(wc -l < "$RUNNER_TEMP/jml-dvfplus/dvf_plus.csv")"
 
-      - name: Vérifier la configuration PostgreSQL sans afficher les identifiants
+      - name: Charger la connexion de l'application Contabo sans afficher le secret
         shell: bash
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_SSL: "true"
-          DVF_PLUS_CSV_PATH: ${{ runner.temp }}/jml-dvfplus/dvf_plus.csv
         run: |
           set -euo pipefail
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "Le secret GitHub DATABASE_URL est absent ; import annulé."
-            exit 1
-          fi
-          echo "::add-mask::$DATABASE_URL"
-          echo "URL PostgreSQL configurée ; valeur masquée."
-          node -e 'const u=new URL(process.env.DATABASE_URL); if (!["postgres:","postgresql:"].includes(u.protocol) || !u.hostname || !u.pathname.slice(1)) process.exit(1); console.log("Hôte PostgreSQL :",u.hostname,"; base :",u.pathname.slice(1))'
+          # Le runner peut ne pas avoir les droits de lecture du .env ; sudo est non interactif.
+          sudo -n python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from urllib.parse import urlparse
+          env_path = Path("/opt/jml-projet-vendeur/.env")
+          raw = ""
+          for line in env_path.read_text(encoding="utf-8").splitlines():
+              s = line.strip()
+              if s.startswith("DATABASE_URL="):
+                  raw = s.split("=", 1)[1].strip().strip("'").strip('"')
+                  break
+          if not raw:
+              raise SystemExit("DATABASE_URL absente du .env de Contabo ; import annulé.")
+          u = urlparse(raw)
+          host = (u.hostname or "").lower()
+          if u.scheme not in ("postgres", "postgresql") or not host or not u.path.strip("/"):
+              raise SystemExit("DATABASE_URL invalide ; import annulé.")
+          if host.endswith("render.com") or "render.com" in host:
+              raise SystemExit("ARRÊT DE SÉCURITÉ : le .env de Contabo pointe encore vers Render. Aucune importation exécutée.")
+          allowed_hosts = {"localhost", "127.0.0.1", "::1", "169.58.150.129"}
+          if host not in allowed_hosts:
+              raise SystemExit("ARRÊT DE SÉCURITÉ : l'hôte PostgreSQL n'est pas reconnu comme local au VPS Contabo. Aucun import exécuté.")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+              f.write("DATABASE_URL=" + raw + "\n")
+              f.write("DATABASE_SSL=false\n")
+              f.write("DVF_PLUS_CSV_PATH=" + os.environ["RUNNER_TEMP"] + "/jml-dvfplus/dvf_plus.csv\n")
+          print("Connexion locale Contabo validée ; hôte et identifiants masqués.")
+          print("::add-mask::" + raw)
+          PY
 
       - name: Installer les dépendances
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Tester la connexion PostgreSQL
+      - name: Confirmer que PostgreSQL est bien sur Contabo
         shell: bash
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_SSL: "true"
         run: |
           set -euo pipefail
           node - <<'NODE'
           const { Pool } = require("pg");
           const pool = new Pool({
             connectionString: process.env.DATABASE_URL,
-            ssl: { rejectUnauthorized: false },
+            ssl: false,
             max: 1,
-            connectionTimeoutMillis: 15000
+            connectionTimeoutMillis: 10000
           });
           (async () => {
             try {
-              const r = await pool.query("SELECT current_database() AS db, current_user AS usr");
-              console.log("Connexion PostgreSQL OK ; base :", r.rows[0].db, "; utilisateur :", r.rows[0].usr);
+              const r = await pool.query("SELECT current_database() AS db, current_user AS usr, inet_server_addr()::text AS addr");
+              const addr = r.rows[0].addr;
+              if (addr && !["127.0.0.1", "::1"].includes(addr)) {
+                throw new Error("PostgreSQL n'écoute pas sur une adresse locale ; import annulé.");
+              }
+              console.log("PostgreSQL local confirmé ; base et utilisateur :", r.rows[0].db, r.rows[0].usr);
             } finally {
               await pool.end();
             }
-          })().catch(e => { console.error("Connexion PostgreSQL impossible :", e.message); process.exit(1); });
+          })().catch(e => { console.error("Contrôle PostgreSQL échoué :", e.message); process.exit(1); });
           NODE
 
-      - name: Importer DVF+ Ardennes dans PostgreSQL
+      - name: Importer DVF+ dans PostgreSQL local Contabo
         run: node scripts/import-dvfplus.js
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_SSL: "true"
-          DVF_PLUS_CSV_PATH: ${{ runner.temp }}/jml-dvfplus/dvf_plus.csv
