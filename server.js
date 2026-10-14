@@ -3815,7 +3815,125 @@ async function initDb() {
       address_norm TEXT,
       street_norm TEXT,
       number_norm TEXT,
+      energy_consumption NUMERIC,
+      ghg_emissions NUMERIC,
+      heating_type TEXT,
+      property_type TEXT,
+      construction_year INTEGER,
+      source_updated_at TIMESTAMPTZ,
       imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS jml_dvfplus_sales (
+      id BIGSERIAL PRIMARY KEY,
+      mutation_id TEXT NOT NULL,
+      sale_date DATE,
+      source_year INTEGER NOT NULL,
+      property_type TEXT NOT NULL CHECK (property_type IN ('Maison','Appartement')),
+      price NUMERIC NOT NULL CHECK (price > 0),
+      surface NUMERIC NOT NULL CHECK (surface > 0),
+      price_per_m2 NUMERIC NOT NULL CHECK (price_per_m2 > 0),
+      rooms NUMERIC,
+      land_surface NUMERIC,
+      latitude DOUBLE PRECISION NOT NULL,
+      longitude DOUBLE PRECISION NOT NULL,
+      commune_code TEXT,
+      parcel_ids TEXT,
+      comparable_eligible BOOLEAN NOT NULL DEFAULT TRUE,
+      exclusion_reason TEXT,
+      source TEXT NOT NULL DEFAULT 'DVF+ Cerema',
+      imported_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(mutation_id, source_year)
+    );
+
+    CREATE TABLE IF NOT EXISTS jml_properties (
+      id TEXT PRIMARY KEY,
+      prospect_id TEXT REFERENCES jml_prospects(id) ON DELETE SET NULL,
+      seller_space_id TEXT REFERENCES jml_seller_spaces(id) ON DELETE SET NULL,
+      property_type TEXT NOT NULL,
+      address TEXT,
+      address_norm TEXT,
+      postal_code TEXT,
+      commune_code TEXT,
+      commune_name TEXT,
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      habitable_surface NUMERIC,
+      built_surface NUMERIC,
+      land_surface NUMERIC,
+      rooms NUMERIC,
+      dpe TEXT,
+      ges TEXT,
+      cadastral_parcel_id TEXT,
+      source TEXT NOT NULL DEFAULT 'JML',
+      source_record_id TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS jml_property_listings (
+      id BIGSERIAL PRIMARY KEY,
+      source TEXT NOT NULL,
+      source_listing_id TEXT,
+      source_url TEXT NOT NULL,
+      title TEXT,
+      property_type TEXT,
+      listing_status TEXT NOT NULL DEFAULT 'active',
+      price NUMERIC,
+      habitable_surface NUMERIC,
+      built_surface NUMERIC,
+      land_surface NUMERIC,
+      rooms NUMERIC,
+      bedrooms NUMERIC,
+      address TEXT,
+      address_norm TEXT,
+      postal_code TEXT,
+      commune_code TEXT,
+      commune_name TEXT,
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      description TEXT,
+      first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      published_at TIMESTAMPTZ,
+      removed_at TIMESTAMPTZ,
+      extraction_status TEXT NOT NULL DEFAULT 'pending',
+      extraction_confidence NUMERIC CHECK (extraction_confidence IS NULL OR extraction_confidence BETWEEN 0 AND 1),
+      content_hash TEXT,
+      raw_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(source, source_listing_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS jml_import_runs (
+      id BIGSERIAL PRIMARY KEY,
+      source TEXT NOT NULL,
+      dataset_version TEXT,
+      department_code TEXT,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      finished_at TIMESTAMPTZ,
+      status TEXT NOT NULL DEFAULT 'running',
+      rows_seen BIGINT NOT NULL DEFAULT 0,
+      rows_inserted BIGINT NOT NULL DEFAULT 0,
+      rows_updated BIGINT NOT NULL DEFAULT 0,
+      rows_rejected BIGINT NOT NULL DEFAULT 0,
+      error_summary TEXT,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+    );
+
+    CREATE TABLE IF NOT EXISTS jml_estimation_runs (
+      id BIGSERIAL PRIMARY KEY,
+      property_id TEXT REFERENCES jml_properties(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      algorithm_version TEXT NOT NULL,
+      department_code TEXT,
+      property_type TEXT,
+      input_features JSONB NOT NULL,
+      result JSONB NOT NULL,
+      comparable_count INTEGER NOT NULL DEFAULT 0,
+      reliability TEXT,
+      sources JSONB NOT NULL DEFAULT '[]'::jsonb
     );
   `);
 
@@ -3895,6 +4013,25 @@ async function initDb() {
   // Ne jamais supprimer automatiquement des fiches partageant un téléphone ou un email :
   // un même propriétaire peut avoir plusieurs biens. Le regroupement se fait via le contact
   // et les biens restent enregistrés séparément dans jml_seller_spaces.
+
+  // Champs complémentaires pour les imports ADEME/DPE, ajoutés sans supprimer de données.
+  await db("ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS energy_consumption NUMERIC");
+  await db("ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS ghg_emissions NUMERIC");
+  await db("ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS heating_type TEXT");
+  await db("ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS property_type TEXT");
+  await db("ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS construction_year INTEGER");
+  await db("ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMPTZ");
+
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_geo_date ON jml_dvfplus_sales(latitude,longitude,sale_date DESC)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_type_surface ON jml_dvfplus_sales(property_type,surface)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_commune_date ON jml_dvfplus_sales(commune_code,sale_date DESC)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_properties_commune_type ON jml_properties(commune_code,property_type)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_properties_geo ON jml_properties(latitude,longitude)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_listings_source_status ON jml_property_listings(source,listing_status)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_listings_commune_type ON jml_property_listings(commune_code,property_type)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_listings_geo_seen ON jml_property_listings(latitude,longitude,last_seen_at DESC)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_import_runs_source_started ON jml_import_runs(source,started_at DESC)");
+  await db("CREATE INDEX IF NOT EXISTS idx_jml_estimation_runs_property_created ON jml_estimation_runs(property_id,created_at DESC)");
 
   await db("CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_date ON jml_dvf_sales(commune_code,sale_date DESC)");
   await db("CREATE INDEX IF NOT EXISTS idx_jml_dpe_address ON jml_dpe(postal_code,street_norm,number_norm)");
