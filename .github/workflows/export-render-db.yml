@@ -86,11 +86,22 @@ jobs:
           PY
           mkdir -p "$RUNNER_TEMP/jml-db-export"
 
-      - name: Tester l'accès en lecture seule
+      - name: Diagnostiquer puis tester l'accès en lecture seule
         shell: bash
         run: |
           set -euo pipefail
-          pg_dump --schema-only --no-owner --no-acl --no-password \
+          echo "Version du client PostgreSQL :"
+          pg_dump --version
+          echo "Vérification DNS du serveur :"
+          getent ahosts "$PGHOST" | awk '!seen[$1]++ {print $1}' | head -n 3 || true
+          echo "Vérification de disponibilité PostgreSQL (aucun secret affiché) :"
+          if command -v pg_isready >/dev/null 2>&1; then
+            pg_isready --timeout=8 --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" --dbname="$PGDATABASE" || true
+          else
+            echo "pg_isready absent"
+          fi
+          echo "Test de connexion et lecture du schéma avec TLS obligatoire :"
+          PGCONNECT_TIMEOUT=10 pg_dump --verbose --schema-only --no-owner --no-acl --no-password \
             --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
             --dbname="$PGDATABASE" --file="$RUNNER_TEMP/jml-db-export/schema-check.sql"
           echo "Connexion et lecture du schéma confirmées."
