@@ -1,0 +1,76 @@
+name: Diagnostic Contabo JML
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnostic-contabo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnostic-contabo
+  cancel-in-progress: false
+
+jobs:
+  diagnostic:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    steps:
+      - name: Diagnostic non destructif du serveur
+        shell: bash
+        run: |
+          set -u
+          echo "=== Runner ==="
+          id
+          uname -a
+
+          echo "=== Ressources ==="
+          df -h /
+          free -h
+
+          echo "=== Services JML actifs ou installés ==="
+          systemctl list-units --type=service --all --no-legend 2>/dev/null | grep -i jml || true
+          systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -i jml || true
+
+          echo "=== Processus du service, sans arguments sensibles ==="
+          for unit in $(systemctl list-units --type=service --all --no-legend 2>/dev/null | awk 'tolower($1) ~ /jml/ {print $1}'); do
+            echo "--- $unit ---"
+            systemctl show "$unit" --no-pager \
+              -p Id -p ActiveState -p SubState -p MainPID \
+              -p WorkingDirectory -p FragmentPath 2>/dev/null || true
+            pid=$(systemctl show "$unit" -p MainPID --value 2>/dev/null || echo 0)
+            case "$pid" in
+              ''|0) ;;
+              *)
+                if [ -r "/proc/$pid/cwd" ]; then
+                  printf 'Répertoire du processus: '
+                  readlink "/proc/$pid/cwd" || true
+                fi
+                ;;
+            esac
+          done
+
+          echo "=== Dépôts Git accessibles dans les emplacements habituels ==="
+          for root in /opt /srv /var/www /home; do
+            if [ -d "$root" ]; then
+              find "$root" -maxdepth 5 -type d -name .git -print 2>/dev/null | head -50
+            fi
+          done
+
+          echo "=== Fichiers applicatifs candidats ==="
+          for root in /opt /srv /var/www; do
+            if [ -d "$root" ]; then
+              find "$root" -maxdepth 4 -type f \( -name package.json -o -name server.js \) -print 2>/dev/null | head -80
+            fi
+          done
+
+          echo "=== Contrôles HTTP local (ports connus uniquement) ==="
+          for url in http://127.0.0.1/ http://127.0.0.1/health http://127.0.0.1:3000/health http://127.0.0.1:3000/; do
+            code=$(curl --max-time 3 -sS -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)
+            [ -n "$code" ] && echo "$url -> HTTP $code"
+          done
+
+          echo "Diagnostic terminé. Aucun secret ni contenu de configuration n'a été affiché.";
