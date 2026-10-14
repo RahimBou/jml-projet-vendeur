@@ -27,6 +27,19 @@ jobs:
           free -h || true
           echo "=== Service JML ==="
           systemctl is-active jml-projet-vendeur || true
-          echo "=== Réponse locale du site ==="
-          curl --max-time 5 -sS -o /dev/null -w "HTTP %{http_code}\n" http://127.0.0.1:10000/ || true
-          echo "Diagnostic terminé. Aucun fichier ni paramètre secret n'a été affiché.";
+          echo "=== Commit du dossier déployé ==="
+          if git -C /opt/jml-projet-vendeur rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            git -C /opt/jml-projet-vendeur rev-parse HEAD
+            git -C /opt/jml-projet-vendeur log -1 --format="%h %s"
+            echo "=== Modifications locales (noms seulement) ==="
+            git -C /opt/jml-projet-vendeur status --short || true
+          else
+            echo "Dossier applicatif introuvable ou sans métadonnées Git lisibles."
+          fi
+          echo "=== Réponse HTTP locale ==="
+          curl --max-time 5 -sS -o /dev/null -w "Accueil local: HTTP %{http_code}\n" http://127.0.0.1:10000/ || true
+          curl --max-time 5 -sS -o /dev/null -w "Santé locale: HTTP %{http_code}\n" http://127.0.0.1:10000/health || true
+          echo "=== Réponse HTTP publique ==="
+          curl --max-time 10 -sS -o /dev/null -w "Accueil public: HTTP %{http_code}\n" https://jml.immo/ || true
+          curl --max-time 10 -sS -o /dev/null -w "Santé publique: HTTP %{http_code}\n" https://jml.immo/health || true
+          echo "Diagnostic terminé. Aucun secret ni contenu de fichier de configuration n'a été affiché.";
