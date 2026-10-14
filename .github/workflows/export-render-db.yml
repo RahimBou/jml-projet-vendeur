@@ -36,6 +36,8 @@ jobs:
           from pathlib import Path
 
           raw = os.environ.get("RENDER_DATABASE_URL", "").strip()
+          if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+              raw = raw[1:-1].strip()
           if not raw:
               # Repli : lire uniquement DATABASE_URL dans le fichier .env déjà utilisé
               # par l'application sur Contabo. Ne jamais afficher sa valeur.
@@ -58,7 +60,9 @@ jobs:
           user = unquote(u.username or "")
           password = unquote(u.password or "")
           if not host.endswith("render.com"):
-              raise SystemExit("Hôte refusé : l'URL ne cible pas un hôte Render.")
+              safe_host = host if host and all(ch.isalnum() or ch in ".-" for ch in host) else "(hôte absent ou format invalide)"
+              scheme = u.scheme if u.scheme in ("postgres", "postgresql") else "(schéma absent ou invalide)"
+              raise SystemExit(f"URL refusée : schéma détecté={scheme}, hôte détecté={safe_host}. Le secret doit contenir l'URL PostgreSQL complète, pas seulement le nom du serveur.")
           if db != "jml_coach_immo_db":
               raise SystemExit("Base refusée : le nom ne correspond pas à jml_coach_immo_db.")
           if not user or not password:
