@@ -1,0 +1,103 @@
+name: Export sécurisé PostgreSQL Render
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: export-render-db
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    steps:
+      - name: Vérifier les outils et préparer la connexion
+        shell: bash
+        env:
+          RENDER_DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RENDER_DATABASE_URL:-}" ]; then
+            echo "::error::Le secret RENDER_DATABASE_URL n'est pas configuré dans GitHub Actions."
+            exit 1
+          fi
+          if ! command -v pg_dump >/dev/null 2>&1; then
+            echo "::error::pg_dump n'est pas installé sur le runner Contabo. Aucun changement n'a été effectué sur la base."
+            exit 1
+          fi
+          if ! command -v pg_restore >/dev/null 2>&1; then
+            echo "::error::pg_restore n'est pas installé sur le runner Contabo. Aucun changement n'a été effectué sur la base."
+            exit 1
+          fi
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlparse, unquote
+          from pathlib import Path
+
+          raw = os.environ["RENDER_DATABASE_URL"]
+          u = urlparse(raw)
+          host = u.hostname or ""
+          db = unquote((u.path or "").lstrip("/"))
+          user = unquote(u.username or "")
+          password = unquote(u.password or "")
+          if not host.endswith("render.com"):
+              raise SystemExit("Hôte refusé : l'URL ne cible pas un hôte Render.")
+          if db != "jml_coach_immo_db":
+              raise SystemExit("Base refusée : le nom ne correspond pas à jml_coach_immo_db.")
+          if not user or not password:
+              raise SystemExit("Identifiants PostgreSQL incomplets.")
+          vals = {
+              "PGHOST": host,
+              "PGPORT": str(u.port or 5432),
+              "PGDATABASE": db,
+              "PGUSER": user,
+              "PGPASSWORD": password,
+              "PGSSLMODE": "require",
+          }
+          envfile = os.environ["GITHUB_ENV"]
+          with open(envfile, "a", encoding="utf-8") as f:
+              for k, v in vals.items():
+                  f.write(f"{k}={v}\n")
+          for v in vals.values():
+              if v:
+                  print(f"::add-mask::{v}")
+          print("Connexion préparée pour la base attendue ; aucune valeur sensible affichée.")
+          PY
+          mkdir -p "$RUNNER_TEMP/jml-db-export"
+
+      - name: Tester l'accès en lecture seule
+        shell: bash
+        run: |
+          set -euo pipefail
+          pg_dump --schema-only --no-owner --no-acl --no-password \
+            --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
+            --dbname="$PGDATABASE" --file="$RUNNER_TEMP/jml-db-export/schema-check.sql"
+          echo "Connexion et lecture du schéma confirmées."
+
+      - name: Exporter la base
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="$RUNNER_TEMP/jml-db-export/jml-coach-immo-db.dump"
+          pg_dump --format=custom --compress=6 --no-owner --no-acl --no-password \
+            --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
+            --dbname="$PGDATABASE" --file="$output"
+          test -s "$output"
+          pg_restore --list "$output" > "$RUNNER_TEMP/jml-db-export/archive-list.txt"
+          entries=$(wc -l < "$RUNNER_TEMP/jml-db-export/archive-list.txt")
+          size=$(du -h "$output" | cut -f1)
+          echo "Archive créée et vérifiée. Entrées d'archive : $entries. Taille : $size."
+          rm -f "$RUNNER_TEMP/jml-db-export/schema-check.sql" "$RUNNER_TEMP/jml-db-export/archive-list.txt"
+
+      - name: Publier l'archive temporaire
+        uses: actions/upload-artifact@v4
+        with:
+          name: jml-coach-immo-db-export
+          path: ${{ runner.temp }}/jml-db-export/jml-coach-immo-db.dump
+          if-no-files-found: error
+          retention-days: 1
