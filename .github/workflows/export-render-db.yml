@@ -1,130 +1,19 @@
-name: Export sécurisé PostgreSQL Render
+name: Ancien export externe désactivé
 
+# Workflow archivé volontairement : JML est désormais administré sur Contabo.
+# Aucune connexion ni export vers une base externe n'est autorisé ici.
 on:
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: write
-
-concurrency:
-  group: export-render-db
-  cancel-in-progress: false
 
 jobs:
-  export:
-    runs-on: [self-hosted, Linux, X64]
-    timeout-minutes: 30
+  retired:
+    runs-on: ubuntu-latest
     steps:
-      - name: Vérifier les outils et préparer la connexion
-        shell: bash
-        env:
-          RENDER_DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
+      - name: Arrêt volontaire
         run: |
-          set -euo pipefail
-          if ! command -v pg_dump >/dev/null 2>&1; then
-            echo "::error::pg_dump n'est pas installé sur le runner Contabo. Aucun changement n'a été effectué sur la base."
-            exit 1
-          fi
-          if ! command -v pg_restore >/dev/null 2>&1; then
-            echo "::error::pg_restore n'est pas installé sur le runner Contabo. Aucun changement n'a été effectué sur la base."
-            exit 1
-          fi
-          python3 - <<'PY'
-          import os
-          from urllib.parse import urlparse, unquote
-          from pathlib import Path
-
-          raw = os.environ.get("RENDER_DATABASE_URL", "").strip()
-          if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
-              raw = raw[1:-1].strip()
-          if not raw:
-              # Repli : lire uniquement DATABASE_URL dans le fichier .env déjà utilisé
-              # par l'application sur Contabo. Ne jamais afficher sa valeur.
-              env_path = Path("/opt/jml-projet-vendeur/.env")
-              try:
-                  for line in env_path.read_text(encoding="utf-8").splitlines():
-                      stripped = line.strip()
-                      if stripped.startswith("DATABASE_URL="):
-                          raw = stripped.split("=", 1)[1].strip()
-                          if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
-                              raw = raw[1:-1]
-                          break
-              except (OSError, UnicodeError):
-                  pass
-          if not raw:
-              raise SystemExit("Aucune URL trouvée dans le secret GitHub ni dans le .env local lisible ; aucun export effectué.")
-          u = urlparse(raw)
-          host = u.hostname or ""
-          db = unquote((u.path or "").lstrip("/"))
-          user = unquote(u.username or "")
-          password = unquote(u.password or "")
-          if not host.endswith("render.com"):
-              safe_host = host if host and all(ch.isalnum() or ch in ".-" for ch in host) else "(hôte absent ou format invalide)"
-              scheme = u.scheme if u.scheme in ("postgres", "postgresql") else "(schéma absent ou invalide)"
-              raise SystemExit(f"URL refusée : schéma détecté={scheme}, hôte détecté={safe_host}. Le secret doit contenir l'URL PostgreSQL complète, pas seulement le nom du serveur.")
-          if db != "jml_coach_immo_db":
-              raise SystemExit("Base refusée : le nom ne correspond pas à jml_coach_immo_db.")
-          if not user or not password:
-              raise SystemExit("Identifiants PostgreSQL incomplets.")
-          vals = {
-              "PGHOST": host,
-              "PGPORT": str(u.port or 5432),
-              "PGDATABASE": db,
-              "PGUSER": user,
-              "PGPASSWORD": password,
-              "PGSSLMODE": "require",
-          }
-          envfile = os.environ["GITHUB_ENV"]
-          with open(envfile, "a", encoding="utf-8") as f:
-              for k, v in vals.items():
-                  f.write(f"{k}={v}\n")
-          for v in vals.values():
-              if v:
-                  print(f"::add-mask::{v}")
-          print("Connexion préparée pour la base attendue ; aucune valeur sensible affichée.")
-          PY
-          mkdir -p "$RUNNER_TEMP/jml-db-export"
-
-      - name: Diagnostiquer puis tester l'accès en lecture seule
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "Version du client PostgreSQL :"
-          pg_dump --version
-          echo "Vérification DNS du serveur :"
-          getent ahosts "$PGHOST" | awk '!seen[$1]++ {print $1}' | head -n 3 || true
-          echo "Vérification de disponibilité PostgreSQL (aucun secret affiché) :"
-          if command -v pg_isready >/dev/null 2>&1; then
-            pg_isready --timeout=8 --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" --dbname="$PGDATABASE" || true
-          else
-            echo "pg_isready absent"
-          fi
-          echo "Test de connexion et lecture du schéma avec TLS obligatoire :"
-          PGCONNECT_TIMEOUT=10 pg_dump --verbose --schema-only --no-owner --no-acl --no-password \
-            --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
-            --dbname="$PGDATABASE" --file="$RUNNER_TEMP/jml-db-export/schema-check.sql"
-          echo "Connexion et lecture du schéma confirmées."
-
-      - name: Exporter la base
-        shell: bash
-        run: |
-          set -euo pipefail
-          output="$RUNNER_TEMP/jml-db-export/jml-coach-immo-db.dump"
-          pg_dump --format=custom --compress=6 --no-owner --no-acl --no-password \
-            --host="$PGHOST" --port="$PGPORT" --username="$PGUSER" \
-            --dbname="$PGDATABASE" --file="$output"
-          test -s "$output"
-          pg_restore --list "$output" > "$RUNNER_TEMP/jml-db-export/archive-list.txt"
-          entries=$(wc -l < "$RUNNER_TEMP/jml-db-export/archive-list.txt")
-          size=$(du -h "$output" | cut -f1)
-          echo "Archive créée et vérifiée. Entrées d'archive : $entries. Taille : $size."
-          rm -f "$RUNNER_TEMP/jml-db-export/schema-check.sql" "$RUNNER_TEMP/jml-db-export/archive-list.txt"
-
-      - name: Publier l'archive temporaire
-        uses: actions/upload-artifact@v4
-        with:
-          name: jml-coach-immo-db-export
-          path: ${{ runner.temp }}/jml-db-export/jml-coach-immo-db.dump
-          if-no-files-found: error
-          retention-days: 1
+          echo "Cet ancien workflow d'export externe est désactivé."
+          echo "Utiliser exclusivement le serveur et la base PostgreSQL Contabo."
+          exit 1
