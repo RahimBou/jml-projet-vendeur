@@ -22,10 +22,6 @@ jobs:
           RENDER_DATABASE_URL: ${{ secrets.RENDER_DATABASE_URL }}
         run: |
           set -euo pipefail
-          if [ -z "${RENDER_DATABASE_URL:-}" ]; then
-            echo "::error::Le secret RENDER_DATABASE_URL n'est pas configuré dans GitHub Actions."
-            exit 1
-          fi
           if ! command -v pg_dump >/dev/null 2>&1; then
             echo "::error::pg_dump n'est pas installé sur le runner Contabo. Aucun changement n'a été effectué sur la base."
             exit 1
@@ -39,7 +35,23 @@ jobs:
           from urllib.parse import urlparse, unquote
           from pathlib import Path
 
-          raw = os.environ["RENDER_DATABASE_URL"]
+          raw = os.environ.get("RENDER_DATABASE_URL", "").strip()
+          if not raw:
+              # Repli : lire uniquement DATABASE_URL dans le fichier .env déjà utilisé
+              # par l'application sur Contabo. Ne jamais afficher sa valeur.
+              env_path = Path("/opt/jml-projet-vendeur/.env")
+              try:
+                  for line in env_path.read_text(encoding="utf-8").splitlines():
+                      stripped = line.strip()
+                      if stripped.startswith("DATABASE_URL="):
+                          raw = stripped.split("=", 1)[1].strip()
+                          if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+                              raw = raw[1:-1]
+                          break
+              except (OSError, UnicodeError):
+                  pass
+          if not raw:
+              raise SystemExit("Aucune URL trouvée dans le secret GitHub ni dans le .env local lisible ; aucun export effectué.")
           u = urlparse(raw)
           host = u.hostname or ""
           db = unquote((u.path or "").lstrip("/"))
