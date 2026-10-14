@@ -35,42 +35,56 @@ jobs:
           systemctl list-units --type=service --all --no-legend 2>/dev/null | grep -i jml || true
           systemctl list-unit-files --type=service --no-legend 2>/dev/null | grep -i jml || true
 
-          echo "=== Processus du service, sans arguments sensibles ==="
-          for unit in $(systemctl list-units --type=service --all --no-legend 2>/dev/null | awk 'tolower($1) ~ /jml/ {print $1}'); do
-            echo "--- $unit ---"
-            systemctl show "$unit" --no-pager \
-              -p Id -p ActiveState -p SubState -p MainPID \
-              -p WorkingDirectory -p FragmentPath 2>/dev/null || true
-            pid=$(systemctl show "$unit" -p MainPID --value 2>/dev/null || echo 0)
-            case "$pid" in
-              ''|0) ;;
-              *)
-                if [ -r "/proc/$pid/cwd" ]; then
-                  printf 'Répertoire du processus: '
-                  readlink "/proc/$pid/cwd" || true
-                fi
-                ;;
-            esac
-          done
+          echo "=== Répertoire et commit du service JML ==="
+          app_dir="/opt/jml-projet-vendeur"
+          if [ -d "$app_dir" ]; then
+            echo "Répertoire applicatif: $app_dir"
+            if git -C "$app_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+              echo "Commit installé:"
+              git -C "$app_dir" log -1 --format='%H %cI %s' 2>/dev/null || echo "Impossible de lire le commit"
+              echo "Branche locale:"
+              git -C "$app_dir" branch --show-current 2>/dev/null || true
+              echo "État des modifications (résumé):"
+              git -C "$app_dir" status --short 2>/dev/null | head -n 30 || true
+            else
+              echo "Le dossier existe mais Git ne le reconnaît pas."
+            fi
+          else
+            echo "Répertoire applicatif non trouvé: $app_dir"
+          fi
+
+          echo "=== Informations systemd du service JML ==="
+          systemctl show jml-projet-vendeur.service --no-pager \
+            -p Id -p ActiveState -p SubState -p MainPID -p WorkingDirectory -p FragmentPath 2>/dev/null || true
+          pid=$(systemctl show jml-projet-vendeur.service -p MainPID --value 2>/dev/null || echo 0)
+          case "$pid" in
+            ''|0) ;;
+            *)
+              if [ -r "/proc/$pid/cwd" ]; then
+                printf 'Répertoire courant du processus: '
+                readlink "/proc/$pid/cwd" || true
+              fi
+              ;;
+          esac
 
           echo "=== Dépôts Git accessibles dans les emplacements habituels ==="
           for root in /opt /srv /var/www /home; do
             if [ -d "$root" ]; then
-              find "$root" -maxdepth 5 -type d -name .git -print 2>/dev/null | head -50
+              find "$root" -maxdepth 5 -type d -name .git -print 2>/dev/null || true
             fi
           done
 
           echo "=== Fichiers applicatifs candidats ==="
           for root in /opt /srv /var/www; do
             if [ -d "$root" ]; then
-              find "$root" -maxdepth 4 -type f \( -name package.json -o -name server.js \) -print 2>/dev/null | head -80
+              find "$root" -maxdepth 4 -type f \( -name package.json -o -name server.js \) -print 2>/dev/null || true
             fi
           done
 
           echo "=== Contrôles HTTP local (ports connus uniquement) ==="
           for url in http://127.0.0.1/ http://127.0.0.1/health http://127.0.0.1:3000/health http://127.0.0.1:3000/; do
             code=$(curl --max-time 3 -sS -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)
-            [ -n "$code" ] && echo "$url -> HTTP $code"
+            if [ -n "$code" ]; then echo "$url -> HTTP $code"; fi
           done
 
-          echo "Diagnostic terminé. Aucun secret ni contenu de configuration n'a été affiché.";
+          echo "Diagnostic terminé. Aucun secret ni contenu de configuration n'a été affiché."
