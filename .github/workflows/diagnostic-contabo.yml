@@ -39,6 +39,26 @@ jobs:
           app_dir="/opt/jml-projet-vendeur"
           if [ -d "$app_dir" ]; then
             echo "Répertoire applicatif: $app_dir"
+            echo "Permissions du dossier applicatif:"
+            ls -ld "$app_dir" "$app_dir/.git" 2>&1 || true
+            if [ -d "$app_dir/.git" ]; then
+              for f in HEAD config; do
+                if [ -r "$app_dir/.git/$f" ]; then
+                  echo ".git/$f: présent et lisible"
+                elif [ -e "$app_dir/.git/$f" ]; then
+                  echo ".git/$f: présent mais non lisible"
+                else
+                  echo ".git/$f: absent"
+                fi
+              done
+            elif [ -f "$app_dir/.git" ]; then
+              echo ".git est un fichier de pointeur:"
+              sed -n '1p' "$app_dir/.git" 2>&1 || true
+            else
+              echo "Aucun dossier/fichier .git standard détecté."
+            fi
+            echo "Diagnostic Git (erreur éventuelle, sans configuration ni secrets):"
+            git -C "$app_dir" rev-parse --is-inside-work-tree 2>&1 || true
             if git -C "$app_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
               echo "Commit installé:"
               git -C "$app_dir" log -1 --format='%H %cI %s' 2>/dev/null || echo "Impossible de lire le commit"
