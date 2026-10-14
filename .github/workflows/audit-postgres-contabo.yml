@@ -1,0 +1,166 @@
+name: Audit PostgreSQL Contabo - lecture seule
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-postgres-contabo:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier la connexion à la base locale Contabo sans afficher de secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          DATABASE_URL="$(sudo -n python3 - <<'PY'
+          from pathlib import Path
+          from urllib.parse import urlparse
+          raw = ""
+          for line in Path("/opt/jml-projet-vendeur/.env").read_text(encoding="utf-8").splitlines():
+              s = line.strip()
+              if s.startswith("DATABASE_URL="):
+                  raw = s.split("=", 1)[1].strip().strip("'").strip('"')
+                  break
+          if not raw:
+              raise SystemExit("DATABASE_URL absente du .env Contabo.")
+          u = urlparse(raw)
+          host = (u.hostname or "").lower()
+          if u.scheme not in ("postgres", "postgresql") or not host or not u.path.strip("/"):
+              raise SystemExit("DATABASE_URL invalide.")
+          if "render.com" in host:
+              raise SystemExit("ARRÊT : la configuration pointe vers Render, pas Contabo.")
+          if host not in {"localhost", "127.0.0.1", "::1", "169.58.150.129"}:
+              raise SystemExit("ARRÊT : l'hôte PostgreSQL n'est pas reconnu comme local à Contabo.")
+          print(raw)
+          PY
+          )"
+          test -n "$DATABASE_URL"
+          echo "::add-mask::$DATABASE_URL"
+          printf 'DATABASE_URL=%s\n' "$DATABASE_URL" >> "$GITHUB_ENV"
+
+      - name: Installer les dépendances nécessaires
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Inventaire PostgreSQL strictement en lecture seule
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=commonjs <<'NODE'
+          const { Pool } = require("pg");
+          const pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: false,
+            max: 1,
+            connectionTimeoutMillis: 10000,
+            statement_timeout: 60000,
+            application_name: "jml_readonly_database_audit"
+          });
+          const quote = s => '"' + s.replace(/"/g, '""') + '"';
+          (async () => {
+            try {
+              const client = await pool.connect();
+              try {
+                await client.query("BEGIN READ ONLY");
+                const identity = await client.query(
+                  "SELECT current_database() AS database, current_user AS username, inet_server_addr()::text AS server_address, version() AS postgres_version"
+                );
+                const id = identity.rows[0];
+                console.log("=== CONNEXION ===");
+                console.log(JSON.stringify({
+                  database: id.database,
+                  username: id.username,
+                  server_address: id.server_address,
+                  postgres_version: id.postgres_version.split(" ").slice(0, 2).join(" ")
+                }, null, 2));
+
+                const tables = await client.query(`
+                  SELECT n.nspname AS schema_name, c.relname AS table_name,
+                         c.relkind,
+                         CASE WHEN c.relkind IN ('r','m') THEN c.reltuples::bigint ELSE NULL END AS estimated_rows,
+                         pg_total_relation_size(c.oid) AS bytes
+                  FROM pg_class c
+                  JOIN pg_namespace n ON n.oid = c.relnamespace
+                  WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+                    AND c.relkind IN ('r','p','v','m','f')
+                  ORDER BY n.nspname, c.relname
+                `);
+                console.log("=== TABLES ET VUES (estimation PostgreSQL) ===");
+                console.log(JSON.stringify(tables.rows.map(t => ({
+                  schema: t.schema_name, table: t.table_name, kind: t.relkind,
+                  estimated_rows: t.estimated_rows === null ? null : Number(t.estimated_rows),
+                  size_bytes: Number(t.bytes)
+                })), null, 2));
+
+                console.log("=== COLONNES DES TABLES MÉTIER ===");
+                const cols = await client.query(`
+                  SELECT table_schema, table_name, ordinal_position, column_name, data_type, is_nullable
+                  FROM information_schema.columns
+                  WHERE table_schema NOT IN ('pg_catalog','information_schema')
+                  ORDER BY table_schema, table_name, ordinal_position
+                `);
+                console.log(JSON.stringify(cols.rows, null, 2));
+
+                console.log("=== COMPTAGES EXACTS DES TABLES MÉTIER IMPORTANTES ===");
+                const candidates = [
+                  "jml_dvfplus_sales", "jml_dvf_sales", "jml_dpe", "jml_bpe_assets",
+                  "jml_import_runs", "prospects", "properties", "estimations"
+                ];
+                const existing = new Set(tables.rows.map(t => t.schema_name + "." + t.table_name));
+                const counts = [];
+                for (const name of candidates) {
+                  const found = tables.rows.find(t => t.table_name === name && ["r","p"].includes(t.relkind));
+                  if (!found) {
+                    counts.push({table: name, status: "absente ou nom différent"});
+                    continue;
+                  }
+                  const result = await client.query(
+                    "SELECT count(*)::bigint AS exact_rows FROM " +
+                    quote(found.schema_name) + "." + quote(found.table_name)
+                  );
+                  counts.push({table: found.schema_name + "." + name, exact_rows: Number(result.rows[0].exact_rows)});
+                }
+                console.log(JSON.stringify(counts, null, 2));
+
+                console.log("=== DATES ET ANNÉES DES TABLES DVF+ / DVF / DPE ===");
+                for (const name of ["jml_dvfplus_sales", "jml_dvf_sales", "jml_dpe"]) {
+                  const found = tables.rows.find(t => t.table_name === name && ["r","p"].includes(t.relkind));
+                  if (!found) continue;
+                  const colResult = await client.query(
+                    "SELECT column_name, data_type FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2",
+                    [found.schema_name, found.table_name]
+                  );
+                  const names = new Set(colResult.rows.map(c => c.column_name));
+                  const dateCol = ["date_mutation", "date_vente", "date", "date_etablissement_dpe", "date_visite"]
+                    .find(c => names.has(c));
+                  const yearCol = ["source_year", "annee", "year"].find(c => names.has(c));
+                  const parts = [];
+                  if (dateCol) parts.push("min(" + quote(dateCol) + "::text) AS earliest_date, max(" + quote(dateCol) + "::text) AS latest_date");
+                  if (yearCol) parts.push("min(" + quote(yearCol) + "::text) AS earliest_year, max(" + quote(yearCol) + "::text) AS latest_year");
+                  if (!parts.length) {
+                    console.log(JSON.stringify({table: found.schema_name + "." + name, note: "Aucune colonne de date/année reconnue automatiquement"}));
+                    continue;
+                  }
+                  const result = await client.query(
+                    "SELECT " + parts.join(", ") + " FROM " + quote(found.schema_name) + "." + quote(found.table_name)
+                  );
+                  console.log(JSON.stringify({table: found.schema_name + "." + name, ...result.rows[0]}));
+                }
+
+                await client.query("ROLLBACK");
+                console.log("=== FIN : aucune donnée modifiée ===");
+              } finally {
+                client.release();
+              }
+            } finally {
+              await pool.end();
+            }
+          })().catch(e => {
+            console.error("ÉCHEC DE L'AUDIT :", e.message);
+            process.exit(1);
+          });
+          NODE
