@@ -37,11 +37,12 @@
 - [x] Relever les commits récents sur la branche par défaut : feuille de route créée au commit `4faf1f563185930202cd4cfc9e64e0654d3c825e`; les corrections précédentes incluent dédoublonnage (`bd96c0a...`), trace médiane (`1f95991...`) et audit/sensibilité (`703d83f...`).
 - [x] Vérifier PR #12 : fusionnée dans `main` au commit `703d83f67027eb974a9b184c7b7924b36af4984b`.
 - [x] Vérifier PR #13 : encore ouverte, non fusionnée; sa CI « Vérification code » est passée sur le commit `92f459230793d5b8f7d297c96db7ab2bacbc079d`.
-- [ ] Résoudre la PR #13 : GitHub indique `mergeable=false`; inspecter les conflits et ne pas fusionner tant que la base n'est pas réconciliée.
-- [ ] Vérifier le commit réellement servi par Render et la version/build marker exposée par l'application. L'accès GitHub seul ne permet pas de certifier le déploiement Render.
-- [ ] Après résolution de PR #13, relancer les tests et vérifier les contrats JSON avant fusion/déploiement.
+- [x] Résoudre la PR #13 : fermée le 14/10/2026 comme remplacée. La correction de la médiane est déjà présente dans `main`; les contrôles et constats utiles ont été réintégrés dans les PR #28 et #29.
+- [x] Relancer les contrôles CI : PR #28 et PR #29 fusionnées; les tests de syntaxe, `check-weighted-median-order.js`, `check-estimation-sensitivity.js` et `check-inline-html.js` sont verts.
+- [ ] Vérifier le commit réellement servi par Contabo et la version/build marker exposée par l'application. Le diagnostic déjà exécuté confirme le service `active` et une réponse locale HTTP 200, mais n'a pas encore relevé le SHA Git du dossier déployé ni testé le domaine public.
+- [ ] Après identification du commit déployé, comparer les pages/routes de production au `main` et vérifier les contrats JSON avant toute correction métier.
 
-**État au 11/10/2026 : P0.1 PARTIELLEMENT VALIDÉ.** PR #12 est fusionnée et la CI de PR #13 réussit, mais la PR #13 est non fusionnée et signalée non fusionnable; le commit Render reste à confirmer.
+**État au 14/10/2026 : P0.1 PARTIELLEMENT VALIDÉ.** Le code principal et les tests sont validés par CI; le service Contabo est actif et répond localement HTTP 200. Le SHA réellement déployé et la réponse publique doivent encore être relevés.
 
 ### P0.2 — Reproduire l'estimation réelle du 6 rue Payer-Guillemain
 Bien de référence : maison, 150 m² saisis, 6 pièces, DPE D. Le repère affiché dans les captures est de **1 669 €/m², soit 250 350 €**.
@@ -152,8 +153,12 @@ Ne passer à la phase suivante que lorsque P0.1 à P0.6 sont documentés. À ce 
 |---|---|---|---|
 | 2026-10-11 | Création de la feuille de route | Point de départ commun; aucune modification du moteur déclenchée par ce document | En cours |
 | 2026-10-11 | Contrat d'exécution | Responsabilité de suivi, recontrôle et mise à jour explicitement attribuée à l'assistant | Validé |
-| 2026-10-11 | P0.1 — état GitHub/CI | PR #12 fusionnée; CI de PR #13 réussie, mais PR #13 ouverte et `mergeable=false`; déploiement Render non vérifié | En cours / bloqué sur conflit et preuve Render |
+| 2026-10-11 | P0.1 — état GitHub/CI | PR #12 fusionnée; correction de médiane ensuite vérifiée dans `main` | En cours |
+| 2026-10-14 | Runner Contabo | Workflow manuel réussi sur `JML-Contabo`; service `jml-projet-vendeur` actif, réponse locale HTTP 200, disque 91 Go libres, mémoire disponible 7,1 GiB | Validé pour le diagnostic de base |
+| 2026-10-14 | Régression estimation | PR #28 fusionnée; contrôle de l'ordre d'initialisation ajouté à la CI | Validé |
+| 2026-10-14 | Garde-fous et rapport runtime | PR #29 fusionnée; contrôles statiques/sensibilité et constats de modes dégradés ajoutés à la CI/doc | Validé par CI; pas un test sur données réelles |
+| 2026-10-14 | PR #13 | Fermée comme remplacée; correction déjà présente dans `main`, tests et rapport repris dans #28/#29 | Validé |
 
 **Statuts autorisés :** À faire · En cours · Bloqué · Validé · Non applicable.
 
-**Prochaine action unique :** P0.1 — vérifier le commit actif, l'état des PR #12/#13, les contrôles CI et le build réellement servi par Render. Ne pas commencer une nouvelle modification métier avant cette vérification.
+**Prochaine action unique :** P0.1 — relancer le diagnostic manuel Contabo enrichi pour relever le SHA réellement déployé, l'état Git local et les réponses HTTP locales/publiques. Ensuite, reprendre P0.2 sur les routes d'estimation réelles. Ne pas modifier les coefficients avant d'avoir cette preuve.
