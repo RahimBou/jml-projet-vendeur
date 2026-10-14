@@ -286,6 +286,54 @@ CREATE TABLE IF NOT EXISTS jml_estimation_runs (
   sources JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
+-- Migrations non destructives pour les installations plus anciennes.
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS property_type TEXT NOT NULL DEFAULT 'Maison';
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS horizon TEXT NOT NULL DEFAULT 'unknown';
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'Autre';
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'À qualifier';
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS contact_basis TEXT NOT NULL DEFAULT 'À vérifier';
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS contact_consent BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS consent_at TIMESTAMPTZ;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS score INTEGER;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS priority TEXT;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS reasons JSONB;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS next_action TEXT;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS next_action_at TIMESTAMPTZ;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS last_contact_at TIMESTAMPTZ;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS contact_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE jml_prospects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS property_type TEXT;
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS horizon TEXT;
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'Lead Magnet';
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS consent BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE jml_leads ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS access_token TEXT;
+ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS prospect_id TEXT;
+ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS owner_data JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS estimator_agent_data JSONB;
+ALTER TABLE jml_seller_spaces ADD COLUMN IF NOT EXISTS condition_data JSONB;
+ALTER TABLE jml_seller_accounts ADD COLUMN IF NOT EXISTS google_sub TEXT;
+ALTER TABLE jml_activities ADD COLUMN IF NOT EXISTS outcome TEXT;
+ALTER TABLE jml_activities ADD COLUMN IF NOT EXISTS appointment_at TIMESTAMPTZ;
+ALTER TABLE jml_activities ADD COLUMN IF NOT EXISTS appointment_location TEXT;
+ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS energy_consumption NUMERIC;
+ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS ghg_emissions NUMERIC;
+ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS heating_type TEXT;
+ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS property_type TEXT;
+ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS construction_year INTEGER;
+ALTER TABLE jml_dpe ADD COLUMN IF NOT EXISTS source_updated_at TIMESTAMPTZ;
+ALTER TABLE jml_dvfplus_sales ADD COLUMN IF NOT EXISTS comparable_eligible BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE jml_dvfplus_sales ADD COLUMN IF NOT EXISTS exclusion_reason TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_jml_bpe_commune ON jml_bpe_assets(commune_code);
 CREATE INDEX IF NOT EXISTS idx_jml_bpe_geo ON jml_bpe_assets(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_jml_dvf_geo_date ON jml_dvf_sales(latitude, longitude, sale_date DESC);
