@@ -2,33 +2,93 @@ name: DVF+ Ardennes - import maisons et appartements
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/import-dvfplus-ardennes.yml"
 
 permissions:
   contents: read
 
 jobs:
   import-dvfplus-ardennes:
-    runs-on: ubuntu-latest
+    # Le fichier DVF+ et le .env sont déjà sur le serveur Contabo.
+    runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - name: Vérifier et décompresser le fichier DVF+
+
+      - name: Vérifier le fichier DVF+ présent sur Contabo
+        shell: bash
         run: |
           set -euo pipefail
-          test -s dvfplus_ardennes_residential.csv.gz
-          gzip -t dvfplus_ardennes_residential.csv.gz
-          mkdir -p /tmp/jml-dvfplus
-          gzip -dc dvfplus_ardennes_residential.csv.gz > /tmp/jml-dvfplus/dvf_plus.csv
-          test -s /tmp/jml-dvfplus/dvf_plus.csv
-          echo "CSV décompressé : $(wc -l < /tmp/jml-dvfplus/dvf_plus.csv) lignes"
+          SOURCE="/opt/jml-projet-vendeur/dvfplus_ardennes_residential.csv.gz"
+          test -s "$SOURCE"
+          gzip -t "$SOURCE"
+          mkdir -p "$RUNNER_TEMP/jml-dvfplus"
+          gzip -dc "$SOURCE" > "$RUNNER_TEMP/jml-dvfplus/dvf_plus.csv"
+          test -s "$RUNNER_TEMP/jml-dvfplus/dvf_plus.csv"
+          echo "Fichier DVF+ vérifié ; lignes CSV : $(wc -l < "$RUNNER_TEMP/jml-dvfplus/dvf_plus.csv")"
+
+      - name: Préparer la connexion PostgreSQL depuis le .env local sans afficher de secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from urllib.parse import urlparse
+          path = Path("/opt/jml-projet-vendeur/.env")
+          raw = ""
+          for line in path.read_text(encoding="utf-8").splitlines():
+              stripped = line.strip()
+              if stripped.startswith("DATABASE_URL="):
+                  raw = stripped.split("=", 1)[1].strip()
+                  if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in ("'", '"'):
+                      raw = raw[1:-1]
+                  break
+          if not raw:
+              raise SystemExit("DATABASE_URL introuvable dans le .env local ; import annulé.")
+          u = urlparse(raw)
+          if u.scheme not in ("postgres", "postgresql") or not u.hostname or not u.path.strip("/"):
+              raise SystemExit("DATABASE_URL invalide ; import annulé.")
+          if not u.username or not u.password:
+              raise SystemExit("Identifiants PostgreSQL incomplets ; import annulé.")
+          local_hosts = {"localhost", "127.0.0.1", "::1"}
+          ssl = "false" if u.hostname in local_hosts else "true"
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as f:
+              f.write("DATABASE_URL=" + raw + "\n")
+              f.write("DATABASE_SSL=" + ssl + "\n")
+              f.write("DVF_PLUS_CSV_PATH=" + os.environ["RUNNER_TEMP"] + "/jml-dvfplus/dvf_plus.csv\n")
+          print("Connexion PostgreSQL préparée ; hôte :", u.hostname, "; base :", u.path.strip("/"), "; TLS :", ssl)
+          print("La valeur de DATABASE_URL n'est pas affichée.")
+          PY
+          echo "::add-mask::$DATABASE_URL"
+
       - name: Installer les dépendances
         run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Tester la connexion PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const { Pool } = require("pg");
+          const pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
+            max: 1,
+            connectionTimeoutMillis: 15000
+          });
+          (async () => {
+            try {
+              const r = await pool.query("SELECT current_database() AS db, current_user AS usr");
+              console.log("Connexion PostgreSQL OK ; base :", r.rows[0].db, "; utilisateur :", r.rows[0].usr);
+            } finally {
+              await pool.end();
+            }
+          })().catch(e => { console.error("Connexion PostgreSQL impossible :", e.message); process.exit(1); });
+          NODE
+
       - name: Importer DVF+ Ardennes dans PostgreSQL
         run: node scripts/import-dvfplus.js
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_SSL: "true"
-          DVF_PLUS_CSV_PATH: /tmp/jml-dvfplus/dvf_plus.csv
