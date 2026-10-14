@@ -75,7 +75,24 @@ jobs:
 
           echo "=== Informations systemd du service JML ==="
           systemctl show jml-projet-vendeur.service --no-pager \
-            -p Id -p ActiveState -p SubState -p MainPID -p WorkingDirectory -p FragmentPath 2>/dev/null || true
+            -p Id -p ActiveState -p SubState -p MainPID -p WorkingDirectory -p FragmentPath -p EnvironmentFiles 2>/dev/null || true
+          echo "=== Outil de sauvegarde PostgreSQL ==="
+          if command -v pg_dump >/dev/null 2>&1; then
+            pg_dump --version
+          else
+            echo "pg_dump non installé"
+          fi
+          echo "=== Présence des variables PostgreSQL dans le processus (valeurs masquées) ==="
+          pid_check=$(systemctl show jml-projet-vendeur.service -p MainPID --value 2>/dev/null || echo 0)
+          if [ "$pid_check" != "0" ] && [ -r "/proc/$pid_check/environ" ]; then
+            if tr '\\0' '\\n' < "/proc/$pid_check/environ" 2>/dev/null | grep -qE '^(DATABASE_URL|PGHOST|PGDATABASE)='; then
+              echo "Variables de connexion PostgreSQL détectées dans l'environnement du processus (valeurs non affichées)."
+            else
+              echo "Aucune variable PostgreSQL standard détectée dans l'environnement lisible du processus."
+            fi
+          else
+            echo "Environnement du processus non lisible par le runner."
+          fi
           pid=$(systemctl show jml-projet-vendeur.service -p MainPID --value 2>/dev/null || echo 0)
           case "$pid" in
             ''|0) ;;
