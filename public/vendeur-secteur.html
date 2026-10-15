@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<meta name="jml-version" content="2026-10-10-dvf-confidence-range-v1">
+<meta name="jml-version" content="2026-10-15-page-audit-fix-v1">
 <title>JML Immobilier — Mon secteur</title>
 <style id="vendeur-final-css">
 /* JML — CSS vendeur simplifié
@@ -1068,7 +1068,7 @@ async function loadServerSpace(){
 }
 
 const pageData={market:null,reference:null,assets:null,comparables:null,space:null};
-const PAGE_BUILD="2026-10-10-rnb-diagnostics-v1";
+const PAGE_BUILD="2026-10-15-page-audit-fix-v1";
 const diagnostics=[];
 function addDiag(source,code,detail){
  diagnostics.push({source,code,detail:String(detail||"")});
@@ -1081,6 +1081,11 @@ function addDiag(source,code,detail){
 function renderMarket(data){
  const market=data||{};
  pageData.market=market;
+ const propertyType=String(pageData.space?.propertyType||"").toLowerCase();
+ const isApartment=/appartement|studio|duplex|loft/.test(propertyType);
+ const isHouse=/maison/.test(propertyType);
+ const typeLabel=isApartment?"appartement":isHouse?"maison":/terrain/.test(propertyType)?"terrain":"bien";
+ const propertyMarketPrice=isApartment?market.apartmentPrice:isHouse?market.housePrice:market.communalPrice;
  const h=Array.isArray(market.history)?market.history.filter(x=>n(x.value)!=null):[];
  const years=h.map(x=>Number(x.year)).filter(Number.isFinite);
  const period=years.length?(Math.min(...years)+"–"+Math.max(...years)):"période disponible";
@@ -1094,9 +1099,9 @@ function renderMarket(data){
  ].map(x=>'<div class="metric"><label>'+esc(x[0])+'</label><strong>'+esc(x[1])+'</strong><small>'+esc(x[2])+'</small></div>').join("");
 
  $("#types").innerHTML=
- '<div class="type"><b>Maison</b><strong>'+esc(m2(market.housePrice))+'</strong><small>prix médian signé dans la commune</small></div>'+
- '<div class="type"><b>Appartement</b><strong>'+esc(m2(market.apartmentPrice))+'</strong><small>repère distinct, à ne pas mélanger avec une maison</small></div>'+
- '<div class="type"><b>Lecture pour votre bien</b><strong>'+esc(m2(market.housePrice))+'</strong><small>le repère maison est privilégié car votre bien est une maison</small></div>';
+ '<div class="type"><b>Maison</b><strong>'+esc(m2(market.housePrice))+'</strong><small>repère distinct pour les maisons</small></div>'+
+ '<div class="type"><b>Appartement</b><strong>'+esc(m2(market.apartmentPrice))+'</strong><small>repère distinct pour les appartements</small></div>'+
+ '<div class="type"><b>Lecture pour votre bien ('+esc(typeLabel)+')</b><strong>'+esc(m2(propertyMarketPrice))+'</strong><small>'+(isHouse?'repère communal des maisons':isApartment?'repère communal des appartements':'repère communal général, à confirmer par les ventes comparables')+'</small></div>';
 
  $("#marketMessage").textContent=market.message||("Ces chiffres décrivent le marché communal ; ils ne constituent pas à eux seuls une estimation du bien.");
 
@@ -1884,10 +1889,10 @@ async function pollListingResearch(token){
  modal.addEventListener("click",e=>{if(e.target.closest("[data-close-property]"))close();});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&modal.classList.contains("open"))close()});
  save.addEventListener("click",async()=>{
-   const d=pageData.space||getSpace(), oldCd=d.conditionData&&typeof d.conditionData==="object"?d.conditionData:{};
-   const conditionData={};
-   const overrides={propertyType:get("PropertyType"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData};
-   try{localStorage.setItem(getSellerOverrideKey(),JSON.stringify(overrides));}catch(e){}
+   const d=pageData.space||getSpace();
+   // Le formulaire ne modifie pas les critères d'état du bien : on conserve donc
+   // les données existantes au lieu de les écraser avec un objet vide.
+   const conditionData=d.conditionData&&typeof d.conditionData==="object"?d.conditionData:{};
    save.disabled=true;save.textContent="Enregistrement…";
    try{
      const token=new URLSearchParams(location.search).get("token")||d.token;
@@ -1897,7 +1902,7 @@ async function pollListingResearch(token){
        body:JSON.stringify({city:d.city,address:d.address,propertyType:get("PropertyType"),surface:get("Surface"),rooms:get("Rooms"),terrain:get("Terrain"),dpe:get("Dpe"),conditionData})
      });
      const data=await response.json().catch(()=>({}));
-     if(!response.ok)throw new Error(data.error||"Impossible d’enregistrer les modifications.");
+     if(!response.ok||data.ok===false)throw new Error(data.error||"Impossible d’enregistrer les modifications.");
      pageData.space=data.space||pageData.space;
      try{localStorage.removeItem(getSellerOverrideKey());}catch(_e){}
      close();
