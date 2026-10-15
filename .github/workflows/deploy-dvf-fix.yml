@@ -1,0 +1,60 @@
+name: Déployer le correctif DVF sur Contabo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy-dvf-fix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jml-contabo-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    steps:
+      - name: Récupérer le code validé
+        uses: actions/checkout@v4
+
+      - name: Vérifier puis déployer server.js avec sauvegarde et retour arrière
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          APP_DIR="/opt/jml-projet-vendeur"
+          SERVICE="jml-projet-vendeur.service"
+          SOURCE="$GITHUB_WORKSPACE/server.js"
+          TARGET="$APP_DIR/server.js"
+          BACKUP="$APP_DIR/server.js.pre-dvf-fix.$(date +%Y%m%d%H%M%S)"
+          HEALTH_URL="http://127.0.0.1:10000/health"
+
+          test -f "$SOURCE"
+          test -f "$TARGET"
+          node --check "$SOURCE"
+          test "$(systemctl is-active "$SERVICE")" = "active"
+
+          echo "Sauvegarde du server.js actuellement en production."
+          sudo cp -p "$TARGET" "$BACKUP"
+          rollback() {
+            echo "Échec du déploiement : restauration du server.js précédent."
+            sudo cp -p "$BACKUP" "$TARGET"
+            sudo systemctl restart "$SERVICE" || true
+            sleep 3
+            curl --max-time 5 -fsS "$HEALTH_URL" >/dev/null || true
+          }
+          trap rollback ERR
+
+          sudo install -m "$(stat -c '%a' "$TARGET")" "$SOURCE" "$TARGET"
+          node --check "$TARGET"
+          sudo systemctl restart "$SERVICE"
+          sleep 3
+          curl --max-time 8 -fsS "$HEALTH_URL" >/dev/null
+
+          trap - ERR
+          echo "Déploiement validé : service actif et endpoint /health répond."
+          echo "Sauvegarde conservée : $BACKUP"
