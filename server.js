@@ -1060,23 +1060,36 @@ async function getCommuneMarketData(city,code){
   if(pool&&/^\d{5}$/.test(communeCode)){
     try{
       const summary=await db(`SELECT COUNT(*)::int AS transactions,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2) AS communal_price,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2) FILTER (WHERE property_type='Maison') AS house_price,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2) FILTER (WHERE property_type='Appartement') AS apartment_price,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) AS communal_price,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Maison') AS house_price,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Appartement') AS apartment_price,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY (price / NULLIF(land_surface,0))) FILTER (WHERE property_type='Terrain' AND land_surface>0) AS terrain_price
         FROM jml_dvf_sales
-        WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '24 months'`,[communeCode]);
+        WHERE commune_code=$1
+          AND (sale_date>=CURRENT_DATE-INTERVAL '24 months'
+            OR NOT EXISTS (
+              SELECT 1 FROM jml_dvf_sales
+              WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '24 months'
+            ))`,[communeCode]);
       const s=summary.rows[0]||{};
       if(Number(s.transactions||0)>0){
         const recent=await db(`SELECT mutation_id AS id,TO_CHAR(sale_date,'YYYY-MM-DD') AS date,property_type AS type,
           price::float8 AS price,surface::float8 AS surface,'surface_batie_dvf' AS "surfaceBasis",rooms::float8 AS rooms,land_surface::float8 AS land,
           latitude AS lat,longitude AS lon,address,street,postal_code AS postal,commune_code AS code,
           commune_name AS city,price_per_m2::float8 AS "pricePerM2",source
-          FROM jml_dvf_sales WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '24 months'
-          ORDER BY sale_date DESC LIMIT 500`,[communeCode]);
-        const history=await db(`SELECT EXTRACT(YEAR FROM sale_date)::int AS year,COUNT(*)::int AS transactions,
-          percentile_cont(0.5) WITHIN GROUP (ORDER BY price_per_m2) AS value
-          FROM jml_dvf_sales WHERE commune_code=$1 GROUP BY EXTRACT(YEAR FROM sale_date) ORDER BY year`,[communeCode]);
+          FROM jml_dvf_sales
+          WHERE commune_code=$1
+            AND (sale_date>=CURRENT_DATE-INTERVAL '24 months'
+              OR NOT EXISTS (
+                SELECT 1 FROM jml_dvf_sales
+                WHERE commune_code=$1 AND sale_date>=CURRENT_DATE-INTERVAL '24 months'
+              ))
+          ORDER BY sale_date DESC NULLS LAST, source_year DESC LIMIT 500`,[communeCode]);
+        const history=await db(`SELECT COALESCE(EXTRACT(YEAR FROM sale_date)::int,source_year)::int AS year,COUNT(*)::int AS transactions,
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2,price/NULLIF(surface,0))) AS value
+          FROM jml_dvf_sales WHERE commune_code=$1
+          GROUP BY COALESCE(EXTRACT(YEAR FROM sale_date)::int,source_year)
+          ORDER BY year`,[communeCode]);
         const data={
           city:cleanCity,found:true,source:"DVF local JML / PostgreSQL",
           sourceUrl:"https://www.data.gouv.fr/fr/datasets/demandes-de-valeurs-foncieres/",
@@ -1088,7 +1101,7 @@ async function getCommuneMarketData(city,code){
           housePrice:s.house_price!=null?Math.round(Number(s.house_price)):null,
           apartmentPrice:s.apartment_price!=null?Math.round(Number(s.apartment_price)):null,
           terrainPrice:s.terrain_price!=null?Math.round(Number(s.terrain_price)):null,
-          period:"DVF importé / 24 derniers mois"
+          period:"DVF importé / période récente ou historique disponible en secours"
         };
         communeMarketCache.set(key,{expiresAt:Date.now()+6*60*60*1000,data});
         return {...data,cache:false};
