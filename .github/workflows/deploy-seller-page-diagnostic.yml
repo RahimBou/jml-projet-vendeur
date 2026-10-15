@@ -1,0 +1,47 @@
+name: Déployer le diagnostic de la page vendeur sur Contabo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "public/vendeur-secteur.html"
+      - ".github/workflows/deploy-seller-page-diagnostic.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jml-contabo-page-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-page:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 3
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Sauvegarder puis déployer la page
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          APP_DIR="/opt/jml-projet-vendeur"
+          SOURCE="$GITHUB_WORKSPACE/public/vendeur-secteur.html"
+          TARGET="$APP_DIR/public/vendeur-secteur.html"
+          BACKUP="$APP_DIR/public/vendeur-secteur.html.pre-diagnostic.$(date +%Y%m%d%H%M%S)"
+          test -s "$SOURCE"
+          test -s "$TARGET"
+          grep -q 'jml-page-diagnostic-v1' "$SOURCE"
+          sudo cp -p "$TARGET" "$BACKUP"
+          rollback() {
+            echo "Échec : restauration de la page précédente."
+            sudo cp -p "$BACKUP" "$TARGET"
+          }
+          trap rollback ERR
+          sudo install -m "$(stat -c '%a' "$TARGET")" "$SOURCE" "$TARGET"
+          grep -q 'jml-page-diagnostic-v1' "$TARGET"
+          trap - ERR
+          echo "Déploiement de la page validé."
+          echo "Sauvegarde conservée : $BACKUP"
