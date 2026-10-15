@@ -2201,5 +2201,41 @@ run();
 .reading-comps-link:hover{background:#f2e6d0}
 </style>
 
+
+<!-- jml-page-diagnostic-v1 -->
+<style id="jml-page-diagnostic-v1-style">
+#jmlDiagFab{position:fixed;right:14px;bottom:14px;z-index:12000;border:1px solid #c9a85b;border-radius:999px;padding:12px 16px;background:#173b32;color:#fff;font:700 13px Arial,sans-serif;box-shadow:0 5px 20px #0003}
+#jmlDiagPanel{display:none;position:fixed;inset:8px;z-index:12001;overflow:auto;background:#fffdf8;color:#263a32;border:1px solid #c9a85b;border-radius:16px;padding:16px;box-shadow:0 10px 40px #0005;font:13px Arial,sans-serif}
+#jmlDiagPanel.open{display:block}#jmlDiagPanel h2{font:700 23px Georgia,serif;margin:4px 0 8px;color:#173b32}#jmlDiagPanel p{line-height:1.45;color:#56645e}
+#jmlDiagActions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}#jmlDiagPanel button{border:1px solid #c9a85b;border-radius:999px;padding:9px 12px;background:#173b32;color:white;font-weight:700}#jmlDiagClose{float:right;background:#eee!important;color:#173b32!important}
+.jml-diag-result{border:1px solid #e2dacb;border-radius:10px;padding:10px;margin:8px 0;overflow-wrap:anywhere}.jml-diag-result b{display:block;margin-bottom:4px}.jml-diag-result small{display:block;color:#56645e;white-space:pre-wrap;line-height:1.4}.jml-diag-ok{border-left:5px solid #29845b}.jml-diag-warn{border-left:5px solid #c58b25}.jml-diag-fail{border-left:5px solid #b94b40}#jmlDiagSummary{padding:10px;border-radius:10px;background:#f1ede4;font-weight:700}
+</style>
+<button id="jmlDiagFab" type="button">Diagnostic page / DVF</button>
+<section id="jmlDiagPanel" role="dialog" aria-modal="true" aria-labelledby="jmlDiagTitle">
+<button id="jmlDiagClose" type="button">Fermer ✕</button><h2 id="jmlDiagTitle">Diagnostic de la page vendeur</h2>
+<p>Contrôle en lecture seule : serveur, base DVF, DVF+, marché communal et comparables de ce dossier. Aucun prix ni donnée n'est modifié. Le jeton d'accès vendeur n'est jamais affiché.</p>
+<div id="jmlDiagActions"><button id="jmlDiagRun" type="button">Lancer les contrôles</button><button id="jmlDiagCopy" type="button">Copier le rapport</button></div>
+<div id="jmlDiagSummary">Appuyez sur « Lancer les contrôles ».</div><div id="jmlDiagResults"></div></section>
+<script id="jml-page-diagnostic-v1">
+(function(){
+ const $id=id=>document.getElementById(id),fab=$id("jmlDiagFab"),panel=$id("jmlDiagPanel"),close=$id("jmlDiagClose"),run=$id("jmlDiagRun"),copy=$id("jmlDiagCopy"),results=$id("jmlDiagResults"),summary=$id("jmlDiagSummary");let report="";
+ const escD=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ fab.addEventListener("click",()=>panel.classList.add("open"));close.addEventListener("click",()=>panel.classList.remove("open"));
+ async function check(label,url,interpret){const start=Date.now();try{const r=await fetch(url,{cache:"no-store",headers:{Accept:"application/json"},signal:AbortSignal.timeout(20000)});const raw=await r.text();let d={};try{d=JSON.parse(raw)}catch(_){}return {label,ok:r.ok&&d.ok!==false,status:r.status,ms:Date.now()-start,detail:interpret?interpret(d,r.status):raw.slice(0,300)}}catch(e){return {label,ok:false,status:0,ms:Date.now()-start,detail:e.name==="AbortError"?"Délai dépassé après 20 secondes":String(e.message||e)}}}
+ function draw(items){const failed=items.filter(x=>!x.ok).length;summary.textContent=failed===0?"Contrôles terminés : aucun échec HTTP/API détecté.":failed+" contrôle(s) en échec ou dégradé(s) sur "+items.length+".";results.innerHTML=items.map(x=>'<div class="jml-diag-result '+(x.ok?"jml-diag-ok":x.status===200?"jml-diag-warn":"jml-diag-fail")+'"><b>'+escD(x.ok?"OK":x.status===200?"À vérifier":"ERREUR")+" · "+escD(x.label)+'</b><small>HTTP '+escD(x.status||"indisponible")+' · '+escD(x.ms)+' ms\n'+escD(x.detail)+'</small></div>').join("");report="Diagnostic JML — "+new Date().toISOString()+"\n"+items.map(x=>(x.ok?"OK":x.status===200?"A VERIFIER":"ERREUR")+" | "+x.label+" | HTTP "+(x.status||"indisponible")+" | "+x.ms+" ms | "+x.detail).join("\n")}
+ run.addEventListener("click",async()=>{run.disabled=true;run.textContent="Contrôles en cours…";summary.textContent="Interrogation des API…";results.innerHTML="";try{
+ const d=typeof getSpace==="function"?getSpace():{},city=String(d.city||"Charleville-Mézières"),p=new URLSearchParams({city});
+ if(d.address)p.set("address",d.address);if(d.propertyType)p.set("propertyType",d.propertyType);if(d.surface)p.set("surface",d.surface);if(d.rooms)p.set("rooms",d.rooms);if(d.terrain)p.set("landSurface",d.terrain);
+ const items=await Promise.all([
+ check("Santé du serveur","/health",(x,s)=>"HTTP "+s+" · service="+(x.service||"?")+" · version="+(x.version||"?")+" · build="+(x.build||"?")),
+ check("Qualité et contenu DVF","/api/dvf-quality",x=>"Prêt="+x.ready+" · ventes="+(x.totals?.retained_sales??"?")+" · années="+(x.years||[]).map(y=>y.year+":"+y.retained_sales).join(", ")+" · "+(x.error||x.reason||"")),
+ check("DVF+ — commune 08105","/api/dvfplus-market-summary?commune=08105",x=>"OK="+x.ok+" · séries="+(x.history?.length??0)+" · "+(x.error||"")),
+ check("Marché communal","/api/commune-market?"+new URLSearchParams({city}),x=>"Commune="+(x.city||city)+" · transactions="+(x.transactions??"?")+" · maison €/m²="+(x.housePrice??"?")+" · source="+(x.source||"?")+" · "+(x.message||x.error||"")),
+ check("Comparables DVF du dossier","/api/territory-comparables?"+p,x=>{const c=x.comparables||{};return "OK="+x.ok+" · candidats="+(c.totalCandidates??"?")+" · retenues="+(c.matchCount??c.sales?.length??"?")+" · prix pondéré €/m²="+(c.weightedPriceM2??"?")+" · origine="+(c.originSource||c.origin||"?")+" · portée="+(c.searchScope||"?")+" · "+(c.message||x.error||x.detail||"")})
+ ]);draw(items)}catch(e){draw([{label:"Diagnostic navigateur",ok:false,status:0,ms:0,detail:String(e.message||e)}])}finally{run.disabled=false;run.textContent="Relancer les contrôles"}});
+ copy.addEventListener("click",async()=>{if(!report){summary.textContent="Lancez d’abord les contrôles.";return}try{await navigator.clipboard.writeText(report);summary.textContent="Rapport copié. Collez-le dans la conversation."}catch(_){const t=document.createElement("textarea");t.value=report;panel.appendChild(t);t.select();try{document.execCommand("copy");summary.textContent="Rapport copié. Collez-le dans la conversation."}catch(e){summary.textContent="Copie impossible : sélectionnez le rapport affiché."}t.remove()}});
+})();
+</script>
+
 </body>
 </html>
