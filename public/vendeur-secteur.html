@@ -1172,6 +1172,21 @@ function renderSellerReading(r){
  let readingGrid=el.querySelector(".seller-reading-grid");
  if(!readingGrid){readingGrid=document.createElement("div");readingGrid.className="seller-reading-grid";el.appendChild(readingGrid);}
  const d=pageData.space||{}, c=pageData.comparables||{}, m=pageData.market||{};
+ // Correctif anti-ReferenceError : ces variables doivent exister dans cette portée.
+ const typeText=String(d.propertyType||"").toLowerCase();
+ const isHouse=/maison/.test(typeText);
+ const isApartment=/appartement|studio|duplex|loft/.test(typeText);
+ const communalTypeLabel=isHouse?"maison":isApartment?"appartement":"biens";
+ const communalRaw=isHouse?m.housePrice:isApartment?m.apartmentPrice:m.communalPrice;
+ const communalM2=communalRaw==null?null:Number(communalRaw);
+ const baseRaw=c.weightedPriceM2??c.median??r.basePriceM2;
+ const base=baseRaw==null?null:Number(baseRaw);
+ const surface=Number(d.surface);
+ const baseText=Number.isFinite(base)&&base>0?Math.round(base).toLocaleString("fr-FR")+" €/m²":"prix au m² indisponible";
+ const calcText=Number.isFinite(base)&&base>0&&Number.isFinite(surface)&&surface>0?eur(Math.round(base*surface)):"valeur en cours de calcul";
+ const count=Number(c.valuationCount??c.valuationSales?.length??c.matchCount??c.totalCandidates??0);
+ const temporal=c.temporalRevaluation||{available:false};
+ const floor=r.referenceValue!=null&&Number(r.referenceValue)>0?Number(r.referenceValue):null;
  const evolution=Number.isFinite(communalM2)&&communalM2>0&&Number.isFinite(base)&&base>0
    ?"Le repère communal des "+communalTypeLabel+" est de "+Math.round(communalM2).toLocaleString("fr-FR")+" €/m². Le repère des comparables est de "+baseText+" : cet écart est un indicateur de marché, pas une correction automatique du prix."
    :"Le repère communal sert de contexte général et ne remplace pas les ventes comparables.";
