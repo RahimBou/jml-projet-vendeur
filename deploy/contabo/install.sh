@@ -56,6 +56,15 @@ systemctl enable --now postgresql
 if ! id jml >/dev/null 2>&1; then
   useradd --system --home-dir "$APP_DIR" --shell /usr/sbin/nologin jml
 fi
+if runuser -u postgres -- psql -X -At -c "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" | grep -qx 1; then
+  echo "ERREUR: le rôle PostgreSQL $DB_USER existe déjà; arrêt pour éviter une incohérence de mot de passe." >&2
+  exit 1
+fi
+if runuser -u postgres -- psql -X -At -c "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" | grep -qx 1; then
+  echo "ERREUR: la base $DB_NAME existe déjà; arrêt sans modification." >&2
+  exit 1
+fi
+
 DB_PASSWORD="$(openssl rand -hex 32)"
 ADMIN_PASSWORD="$(openssl rand -hex 24)"
 printf '%s\n' "$DB_PASSWORD" > "$DB_PASSWORD_FILE"
@@ -64,14 +73,8 @@ chmod 0600 "$DB_PASSWORD_FILE" "$ADMIN_PASSWORD_FILE"
 
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 \
   --set=db_password="$DB_PASSWORD" --set=db_user="$DB_USER" <<'SQL'
-SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'db_user', :'db_password')
-WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'db_user') \gexec
+SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'db_user', :'db_password') \gexec
 SQL
-
-if runuser -u postgres -- psql -X -At -c "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" | grep -qx 1; then
-  echo "ERREUR: la base $DB_NAME existe déjà; refus de la réutiliser automatiquement." >&2
-  exit 1
-fi
 runuser -u postgres -- createdb --owner="$DB_USER" "$DB_NAME"
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -c \
   "ALTER DATABASE $DB_NAME OWNER TO $DB_USER;"
