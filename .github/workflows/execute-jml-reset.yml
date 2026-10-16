@@ -1,0 +1,73 @@
+name: Remise à zéro JML Contabo
+
+on:
+  push:
+    branches: [maintenance/contabo-clean-reset-audit]
+    paths:
+      - ".github/workflows/execute-jml-reset.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jml-contabo-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - name: Réinitialiser uniquement l'application et ses bases JML
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          APP_DIR="/opt/jml-projet-vendeur"
+          SERVICE="jml-projet-vendeur.service"
+          STAMP="$(date +%Y%m%d-%H%M%S)"
+          PRESERVE="/root/jml-reset-config-${STAMP}"
+
+          echo "=== Préconditions ==="
+          test "$(hostname)" = "vmi3658305" || { echo "Hôte inattendu; arrêt."; exit 1; }
+          test -d "$APP_DIR" || { echo "Répertoire applicatif absent; arrêt."; exit 1; }
+          command -v psql >/dev/null
+          command -v dropdb >/dev/null
+          sudo -n -v
+          sudo -n -u postgres psql -X -At -c "SELECT 1" | grep -qx 1
+
+          echo "=== Préserver uniquement la configuration nécessaire à la reconstruction ==="
+          sudo install -d -m 700 "$PRESERVE"
+          if [ -f "$APP_DIR/.env" ]; then sudo install -m 600 "$APP_DIR/.env" "$PRESERVE/.env"; fi
+          if [ -f "/etc/systemd/system/$SERVICE" ]; then sudo install -m 600 "/etc/systemd/system/$SERVICE" "$PRESERVE/$SERVICE"; fi
+          echo "Configuration conservée dans $PRESERVE (valeurs secrètes non affichées)."
+
+          echo "=== Arrêt du service JML ==="
+          sudo systemctl stop "$SERVICE" || true
+          if [ "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" = "active" ]; then
+            echo "Le service JML est toujours actif; arrêt de la procédure."
+            exit 1
+          fi
+
+          echo "=== Suppression des bases de données JML ciblées uniquement ==="
+          for db in jml_projet_vendeur jml_render_import; do
+            if sudo -n -u postgres psql -X -At -c "SELECT 1 FROM pg_database WHERE datname = '$db'" | grep -qx 1; then
+              echo "Suppression de la base: $db"
+              sudo -n -u postgres dropdb --if-exists --force "$db"
+            else
+              echo "Base absente: $db"
+            fi
+          done
+
+          echo "=== Suppression du répertoire applicatif JML ==="
+          sudo rm -rf --one-file-system -- "$APP_DIR"
+          test ! -e "$APP_DIR"
+
+          echo "=== Vérification finale des éléments JML ciblés ==="
+          sudo -n -u postgres psql -X -At -c "SELECT datname FROM pg_database WHERE datname IN ('jml_projet_vendeur','jml_render_import') ORDER BY datname;" | (! grep .)
+          test ! -e "$APP_DIR"
+          if systemctl list-unit-files "$SERVICE" --no-legend 2>/dev/null | grep -q "^$SERVICE"; then
+            sudo systemctl disable "$SERVICE" || true
+          fi
+          echo "RESET TERMINÉ: bases JML ciblées supprimées, répertoire applicatif supprimé, service arrêté/désactivé."
+          echo "Les autres bases, le serveur PostgreSQL, les autres applications et les données DVF externes à ces deux bases n'ont pas été touchés."
+          echo "Configuration sauvegardée (secrets masqués): $PRESERVE"
