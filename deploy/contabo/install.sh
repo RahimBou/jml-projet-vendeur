@@ -22,7 +22,15 @@ ADMIN_PASSWORD_FILE="/root/jml-projet-vendeur-admin-password.txt"
 
 [[ -f "$SOURCE_DIR/server.js" ]] || { echo "ERREUR: server.js absent; archive source incomplète."; exit 1; }
 [[ -f "$SOURCE_DIR/db/schema.sql" ]] || { echo "ERREUR: db/schema.sql absent."; exit 1; }
-[[ ! -e "$APP_DIR" ]] || { echo "ERREUR: $APP_DIR existe déjà. Aucun fichier n'a été remplacé."; exit 1; }
+[[ -f "$SOURCE_DIR/package.json" ]] || { echo "ERREUR: package.json absent."; exit 1; }
+if [[ -e "$APP_DIR" ]]; then
+  echo "ERREUR: $APP_DIR existe déjà. Aucun fichier n'a été remplacé; inspecter l'installation précédente avant de relancer." >&2
+  exit 1
+fi
+if [[ -e "$ENV_FILE" || -e "$SERVICE_FILE" || -e "$NGINX_FILE" ]]; then
+  echo "ERREUR: une configuration JML existe déjà (/etc). Arrêt sans écrasement." >&2
+  exit 1
+fi
 
 echo "== 1/8 Installation des dépendances système =="
 export DEBIAN_FRONTEND=noninteractive
@@ -60,12 +68,11 @@ SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', :'db_user', :'db_password')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'db_user') \gexec
 SQL
 
-if ! runuser -u postgres -- psql -X -At -c "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" | grep -qx 1; then
-  runuser -u postgres -- createdb --owner="$DB_USER" "$DB_NAME"
-else
+if runuser -u postgres -- psql -X -At -c "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" | grep -qx 1; then
   echo "ERREUR: la base $DB_NAME existe déjà; refus de la réutiliser automatiquement." >&2
   exit 1
 fi
+runuser -u postgres -- createdb --owner="$DB_USER" "$DB_NAME"
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 -c \
   "ALTER DATABASE $DB_NAME OWNER TO $DB_USER;"
 
@@ -87,6 +94,8 @@ if [[ -f package-lock.json ]]; then
 else
   runuser -u jml -- npm install --omit=dev --ignore-scripts
 fi
+node --check "$APP_DIR/server.js"
+node -e 'for (const p of ["express","pg","google-auth-library"]) require.resolve(p); console.log("Dépendances Node critiques présentes.")'
 
 echo "== 6/8 Configuration privée et schéma PostgreSQL =="
 cat > "$ENV_FILE" <<EOF
@@ -159,18 +168,28 @@ fi
 nginx -t
 systemctl enable --now nginx
 systemctl daemon-reload
-systemctl enable --now jml-projet-vendeur.service
+systemctl enable jml-projet-vendeur.service
+systemctl start jml-projet-vendeur.service
 
 echo "== 8/8 Vérifications locales =="
-for attempt in $(seq 1 20); do
-  if curl --fail --silent --show-error http://127.0.0.1:10000/health >/tmp/jml-health.json; then
+HEALTH_OK=0
+for attempt in $(seq 1 30); do
+  if curl --fail --silent --show-error --max-time 3 http://127.0.0.1:10000/health -o /tmp/jml-health.json \
+    && node -e 'const fs=require("fs"); const x=JSON.parse(fs.readFileSync("/tmp/jml-health.json","utf8")); if(x.ok!==true || x.service!=="jml-projet-vendeur") process.exit(1)' ; then
+    HEALTH_OK=1
     break
   fi
   sleep 2
 done
+if [[ "$HEALTH_OK" -ne 1 ]]; then
+  echo "ERREUR: le contrôle /health a échoué. L'installation n'est PAS déclarée réussie." >&2
+  systemctl --no-pager --full status jml-projet-vendeur.service || true
+  journalctl -u jml-projet-vendeur.service -n 100 --no-pager || true
+  exit 1
+fi
 cat /tmp/jml-health.json
 echo
-echo "INSTALLATION LOCALE TERMINÉE."
+echo "INSTALLATION LOCALE VALIDÉE: le service répond et /health confirme le bon service."
 echo "Base : $DB_NAME"
 echo "Secrets enregistrés dans $DB_PASSWORD_FILE et $ADMIN_PASSWORD_FILE (root uniquement)."
 echo "Variables d'environnement : $ENV_FILE"
