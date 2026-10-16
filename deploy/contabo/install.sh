@@ -103,8 +103,8 @@ chown root:jml "$ENV_FILE"
 
 runuser -u postgres -- psql -X -v ON_ERROR_STOP=1 \
   --dbname="$DB_NAME" --command="GRANT ALL ON SCHEMA public TO $DB_USER;"
-runuser -u jml -- env DATABASE_URL="postgresql://$DB_USER:$DB_PASSWORD@127.0.0.1:5432/$DB_NAME" \
-  psql -X -v ON_ERROR_STOP=1 -f "$APP_DIR/db/schema.sql"
+runuser -u jml -- env PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U "$DB_USER" \
+  -d "$DB_NAME" -X -v ON_ERROR_STOP=1 -f "$APP_DIR/db/schema.sql"
 
 echo "== 7/8 Service systemd et Nginx =="
 cat > "$SERVICE_FILE" <<'UNIT'
