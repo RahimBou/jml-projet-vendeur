@@ -1,0 +1,22 @@
+[Unit]
+Description=JML Immobilier — application locale
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=jml
+Group=jml
+WorkingDirectory=/opt/jml-projet-vendeur
+EnvironmentFile=/etc/jml-projet-vendeur.env
+ExecStart=/usr/bin/node /opt/jml-projet-vendeur/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=60
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/jml-projet-vendeur
+
+[Install]
+WantedBy=multi-user.target
