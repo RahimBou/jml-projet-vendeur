@@ -1,3 +1,26 @@
+// JML cost-control: disable outbound fetch calls to third-party HTTP APIs by default.
+// Set JML_ALLOW_EXTERNAL_CALLS=true only after explicit review.
+const JML_ALLOW_EXTERNAL_CALLS = String(process.env.JML_ALLOW_EXTERNAL_CALLS || "false").toLowerCase() === "true";
+if (!JML_ALLOW_EXTERNAL_CALLS && typeof globalThis.fetch === "function") {
+  const nativeFetch = globalThis.fetch.bind(globalThis);
+  globalThis.fetch = async function jmlExternalCallsDisabled(input, init) {
+    const rawUrl = typeof input === "string" || input instanceof URL ? String(input) : input && input.url;
+    let parsed;
+    try { parsed = new URL(rawUrl); } catch (_) {
+      const error = new Error("JML external HTTP calls are disabled by cost-control policy.");
+      error.code = "JML_EXTERNAL_CALLS_DISABLED";
+      throw error;
+    }
+    const host = parsed.hostname.toLowerCase();
+    const isLoopback = host === "localhost" || host === "127.0.0.1" || host === "::1";
+    if (isLoopback) return nativeFetch(input, init);
+    const error = new Error("JML external HTTP call blocked by cost-control policy: " + host);
+    error.code = "JML_EXTERNAL_CALLS_DISABLED";
+    throw error;
+  };
+  console.info("JML cost-control active: outbound fetch calls are disabled.");
+}
+
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
