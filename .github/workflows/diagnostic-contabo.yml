@@ -19,6 +19,49 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     timeout-minutes: 5
     steps:
+      - name: Récupérer le code de référence GitHub
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Comparer le code installé à GitHub (lecture seule)
+        shell: bash
+        run: |
+          set -u
+          app_dir="/opt/jml-projet-vendeur"
+          ref_dir="$GITHUB_WORKSPACE"
+          echo "=== Référence GitHub ==="
+          git -C "$ref_dir" log -1 --format='Commit GitHub: %H (%cI)'
+          echo "=== Comparaison du code applicatif suivi par Git ==="
+          if [ ! -d "$app_dir" ]; then
+            echo "ERREUR: répertoire applicatif absent: $app_dir"
+            exit 1
+          fi
+          same=0
+          different=0
+          missing=0
+          shown=0
+          while IFS= read -r -d '' f; do
+            ref_file="$ref_dir/$f"
+            app_file="$app_dir/$f"
+            if [ ! -f "$app_file" ]; then
+              missing=$((missing+1))
+              if [ "$shown" -lt 100 ]; then echo "ABSENT SUR CONTABO: $f"; shown=$((shown+1)); fi
+            elif cmp -s -- "$ref_file" "$app_file"; then
+              same=$((same+1))
+            else
+              different=$((different+1))
+              if [ "$shown" -lt 100 ]; then echo "DIFFÉRENT: $f"; shown=$((shown+1)); fi
+            fi
+          done < <(git -C "$ref_dir" ls-files -z)
+          echo "Fichiers identiques: $same"
+          echo "Fichiers différents: $different"
+          echo "Fichiers suivis absents de Contabo: $missing"
+          echo "=== Commit Git local (si lisible) ==="
+          git -c safe.directory="$app_dir" -C "$app_dir" log -1 --format='Commit local: %H (%cI) %s' 2>/dev/null || echo "Commit local illisible; comparaison de contenu effectuée malgré tout."
+          echo "=== Fin comparaison: aucun fichier du site n'a été modifié ==="
+
       - name: Diagnostic non destructif du serveur
         shell: bash
         run: |
