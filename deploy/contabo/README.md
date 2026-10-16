@@ -9,7 +9,7 @@ Cette procédure installe l'application sur le VPS lui-même. Render, GitHub Act
 - L'application copiée sous /opt/jml-projet-vendeur.
 - Un service systemd et un proxy Nginx local vers le port 10000.
 
-Le script refuse d'écraser un répertoire d'application existant ou de réutiliser une base de même nom. Il n'installe pas les données historiques DVF/DVF+ : celles-ci doivent être importées ensuite, avec des contrôles distincts.
+Le script effectue des contrôles préalables, refuse d'écraser un répertoire ou une configuration JML existante, et refuse de réutiliser un rôle ou une base PostgreSQL de même nom. Il vérifie la syntaxe Node.js, la présence des dépendances essentielles, la configuration Nginx, la réponse HTTP de l'application, la connexion PostgreSQL et le message d'initialisation de la base avant d'annoncer le succès. En cas d'échec, il affiche l'état du service et les journaux pour diagnostic; ne pas relancer aveuglément après un échec, car l'installation peut avoir commencé. Il n'installe pas les données historiques DVF/DVF+ : celles-ci doivent être importées ensuite, avec des contrôles distincts.
 
 ## Préparer les fichiers après réinstallation du VPS
 
@@ -21,6 +21,10 @@ Le script refuse d'écraser un répertoire d'application existant ou de réutili
    bash install.sh
 
 L'accès GitHub est utilisé une seule fois pour obtenir le code source initial. Le service en production utilise ensuite sa copie locale et démarre via systemd.
+
+## Contrôle de réussite obligatoire
+
+L'installation n'est considérée réussie que si le script termine sans erreur et affiche « INSTALLATION LOCALE VALIDÉE ». Si le script s'arrête, conserve le message d'erreur complet et inspecte les journaux avant toute nouvelle tentative. Ne supprime aucune base ou aucun dossier pour forcer une relance.
 
 ## Après l'installation
 
