@@ -1,0 +1,70 @@
+name: Audit pré-remise à zéro Contabo (lecture seule)
+
+on:
+  push:
+    branches: [maintenance/contabo-clean-reset-audit]
+    paths:
+      - ".github/workflows/audit-contabo-clean-reset.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contabo-clean-reset-audit
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 5
+    steps:
+      - name: Contrôles strictement non destructifs
+        shell: bash
+        run: |
+          set -u
+          echo "=== Hôte et ressources ==="
+          hostname
+          df -h /
+          free -h
+
+          echo "=== Service applicatif ==="
+          systemctl show jml-projet-vendeur.service --no-pager \
+            -p ActiveState -p SubState -p MainPID -p WorkingDirectory -p FragmentPath 2>&1 || true
+
+          echo "=== Bases PostgreSQL (noms, tailles; aucune donnée affichée) ==="
+          if command -v psql >/dev/null 2>&1; then
+            sudo -n -u postgres psql -X -At -c "SELECT datname || ' | ' || pg_size_pretty(pg_database_size(datname)) FROM pg_database WHERE datistemplate = false ORDER BY datname;" 2>&1 || echo "Lecture PostgreSQL impossible avec sudo non interactif."
+          else
+            echo "psql indisponible"
+          fi
+
+          echo "=== Tables DVF/DPE par base (noms seulement) ==="
+          if command -v psql >/dev/null 2>&1; then
+            for db in jml_projet_vendeur jml_render_import; do
+              echo "-- Base candidate: $db"
+              sudo -n -u postgres psql -X -d "$db" -At -c "SELECT schemaname || '.' || tablename FROM pg_tables WHERE schemaname NOT IN ('pg_catalog','information_schema') AND (tablename ILIKE '%dvf%' OR tablename ILIKE '%dpe%' OR tablename ILIKE '%import%' OR tablename ILIKE '%prospect%' OR tablename ILIKE '%property%' OR tablename ILIKE '%lead%') ORDER BY 1;" 2>&1 || true
+            done
+          fi
+
+          echo "=== Fichiers de données candidats (chemins et tailles uniquement) ==="
+          for root in /opt/jml-projet-vendeur /var/lib/postgresql /srv /var/www; do
+            if [ -d "$root" ]; then
+              find "$root" -maxdepth 4 -type f \( -iname '*dvf*' -o -iname '*dpe*' -o -iname '*bpe*' -o -iname '*import*' -o -iname '*.dump' -o -iname '*.sql.gz' \) -printf '%p | %s octets\n' 2>/dev/null | head -n 100
+            fi
+          done
+
+          echo "=== Configuration: présence seulement, aucune valeur affichée ==="
+          for f in /opt/jml-projet-vendeur/.env /etc/systemd/system/jml-projet-vendeur.service; do
+            if [ -f "$f" ]; then
+              echo "Présent: $f"
+            else
+              echo "Absent: $f"
+            fi
+          done
+
+          echo "=== Contrôles HTTP locaux ==="
+          for url in http://127.0.0.1:10000/health http://127.0.0.1:10000/ http://127.0.0.1:10000/projet-vendeur; do
+            code=$(curl --max-time 4 -sS -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)
+            echo "$url -> HTTP ${code:-inaccessible}"
+          done
+          echo "=== FIN AUDIT: aucune modification, suppression ou redémarrage effectué ==="
