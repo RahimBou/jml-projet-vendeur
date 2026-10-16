@@ -187,6 +187,30 @@ if [[ "$HEALTH_OK" -ne 1 ]]; then
   journalctl -u jml-projet-vendeur.service -n 100 --no-pager || true
   exit 1
 fi
+
+echo "Vérification PostgreSQL et initialisation applicative..."
+if ! runuser -u jml -- env PGPASSWORD="$DB_PASSWORD" psql -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -X -v ON_ERROR_STOP=1 -At -c 'SELECT 1' | grep -qx 1; then
+  echo "ERREUR: PostgreSQL ne répond pas avec les identifiants de l'application." >&2
+  journalctl -u jml-projet-vendeur.service -n 100 --no-pager || true
+  exit 1
+fi
+DB_READY=0
+for attempt in $(seq 1 20); do
+  if journalctl -u jml-projet-vendeur.service -n 250 --no-pager 2>/dev/null | grep -Fq "database ready"; then
+    DB_READY=1
+    break
+  fi
+  if ! systemctl is-active --quiet jml-projet-vendeur.service; then
+    break
+  fi
+  sleep 2
+done
+if [[ "$DB_READY" -ne 1 ]]; then
+  echo "ERREUR: l'application répond en HTTP mais n'a pas confirmé l'initialisation PostgreSQL." >&2
+  systemctl --no-pager --full status jml-projet-vendeur.service || true
+  journalctl -u jml-projet-vendeur.service -n 100 --no-pager || true
+  exit 1
+fi
 cat /tmp/jml-health.json
 echo
 echo "INSTALLATION LOCALE VALIDÉE: le service répond et /health confirme le bon service."
