@@ -1105,7 +1105,14 @@ async function getCommuneMarketData(city,code){
           apartmentPrice:s.apartment_price!=null?Math.round(Number(s.apartment_price)):null,
           terrainPrice:s.terrain_price!=null?Math.round(Number(s.terrain_price)):null,
           period:(()=>{
-            const dateLabel=value=>value?String(value).slice(0,10).split("-").reverse().join("/"):"";
+            const dateLabel=value=>{
+              if(!value)return "";
+              const raw=value instanceof Date?value.toISOString().slice(0,10):String(value).trim();
+              const iso=raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})/);
+              if(iso)return iso[3]+"/"+iso[2]+"/"+iso[1];
+              const parsed=new Date(value);
+              return Number.isFinite(parsed.getTime())?parsed.toISOString().slice(0,10).split("-").reverse().join("/"):"";
+            };
             const first=dateLabel(s.first_sale_date),last=dateLabel(s.last_sale_date);
             return first&&last?"Ventes DVF exploitables du "+first+" au "+last:"Période des ventes DVF non déterminée";
           })()
