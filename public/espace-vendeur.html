@@ -1941,7 +1941,7 @@ function updateSellerProjectSummary(d){
         :[category.communal,category.house];
     cards.innerHTML=[
       [selected.label,fmt(selected.price),selected.note],
-      ...otherCategories,
+      ...otherCategories.map(v=>[v.label,fmt(v.price),v.note]),
       ["Prix du secteur proche",fmt(localM2),localDetail],
       ["Ventes recensées dans la commune",tx?tx.toLocaleString("fr-FR"):"Données insuffisantes","Toutes catégories confondues ; distinct des ventes comparables"]
     ].map((a,i)=>"<div class='seller-metric"+(i===0?" seller-metric-primary":"")+""><span>"+esc(a[0])+"</span><strong>"+esc(a[1])+"</strong><small>"+esc(a[2])+"</small></div>").join("");
