@@ -1270,7 +1270,7 @@ body.guide-modal-open{overflow:hidden}
           <div class="seller-market-context"><span aria-hidden="true">⌖</span><div><strong id="sellerMarketLocation">Votre commune</strong><small>Repères indicatifs · période affichée selon les données disponibles</small></div></div>
         </div>
         <div class="seller-market-tabs" id="sellerMarketTabs" role="group" aria-label="Choisir le type de bien pour les repères de prix"><button type="button" id="marketTabCommunal" class="active" aria-pressed="true"><span aria-hidden="true">▦</span> Tous les biens</button><button type="button" id="marketTabHouse" aria-pressed="false"><span aria-hidden="true">⌂</span> Maison</button><button type="button" id="marketTabApartment" aria-pressed="false"><span aria-hidden="true">▤</span> Appartement</button></div>
-        <div class="seller-market-selection-note"><span aria-hidden="true">↳</span> Sélectionnez une catégorie pour comparer les biens du même type.</div>
+        <div class="seller-market-selection-note"><span aria-hidden="true">↳</span> Les onglets comparent les médianes communales par type. Le prix du secteur proche reste calculé pour le bien renseigné dans votre dossier.</div>
         <div class="seller-market-big" id="sellerMarketMetrics" aria-live="polite">
           <div class="seller-metric"><span>Repère local</span><strong>Chargement…</strong><small>Recherche d’une source datée</small></div>
           <div class="seller-metric"><span>Ventes récentes</span><strong>À vérifier</strong><small>Selon le secteur</small></div>
@@ -1930,11 +1930,13 @@ function updateSellerProjectSummary(d){
     const tx=Number(x.transactions||0);
     const localM2=Number(comparables.weightedPriceM2);
     const matches=Number(comparables.matchCount||0);
-    const localDetail=matches?matches.toLocaleString("fr-FR")+" vente(s) comparable(s)"+(comparables.radiusKm?" · rayon "+String(comparables.radiusKm).replace(".",",")+" km":""):"Adresse ou ventes comparables à préciser";
+    const d=read();
+    const propertyType=String(d.propertyType||"votre bien").trim();
+    const localDetail=matches?matches.toLocaleString("fr-FR")+" vente(s) comparable(s) pour "+propertyType+(comparables.radiusKm?" · rayon "+String(comparables.radiusKm).replace(".",",")+" km":""):"Adresse ou ventes comparables à préciser";
     cards.innerHTML=[
       [selected.label,fmt(selected.price),selected.note],
       ["Médiane communale",fmt(x.communalPrice),"Contexte général de la commune"],
-      ["Prix du secteur proche",fmt(localM2),localDetail],
+      ["Prix du secteur · "+propertyType,fmt(localM2),localDetail],
       ["Ventes recensées",tx?tx.toLocaleString("fr-FR"):"Données insuffisantes","Transactions DVF disponibles dans la commune"]
     ].map(a=>"<div class='seller-metric'><span>"+esc(a[0])+"</span><strong>"+esc(a[1])+"</strong><small>"+esc(a[2])+"</small></div>").join("");
     document.querySelectorAll("#sellerMarketTabs button").forEach(b=>{
