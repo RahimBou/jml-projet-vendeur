@@ -1059,7 +1059,10 @@ async function getCommuneMarketData(city,code){
   // 1. PostgreSQL reste la source principale lorsque les données DVF ont été importées.
   if(pool&&/^\d{5}$/.test(communeCode)){
     try{
-      const summary=await db(`SELECT COUNT(*)::int AS transactions,
+      const summary=await db(`SELECT
+        COUNT(*) FILTER (WHERE COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0)::int AS transactions,
+        MIN(sale_date) FILTER (WHERE COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0)::date AS first_sale_date,
+        MAX(sale_date) FILTER (WHERE COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0)::date AS last_sale_date,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) AS communal_price,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Maison') AS house_price,
         percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Appartement') AS apartment_price,
@@ -1101,7 +1104,11 @@ async function getCommuneMarketData(city,code){
           housePrice:s.house_price!=null?Math.round(Number(s.house_price)):null,
           apartmentPrice:s.apartment_price!=null?Math.round(Number(s.apartment_price)):null,
           terrainPrice:s.terrain_price!=null?Math.round(Number(s.terrain_price)):null,
-          period:"DVF importé / période récente ou historique disponible en secours"
+          period:(()=>{
+            const dateLabel=value=>value?String(value).slice(0,10).split("-").reverse().join("/"):"";
+            const first=dateLabel(s.first_sale_date),last=dateLabel(s.last_sale_date);
+            return first&&last?"Ventes DVF exploitables du "+first+" au "+last:"Période des ventes DVF non déterminée";
+          })()
         };
         communeMarketCache.set(key,{expiresAt:Date.now()+6*60*60*1000,data});
         return {...data,cache:false};
@@ -1131,12 +1138,16 @@ async function getCommuneMarketData(city,code){
       message:"Transactions DVF publiques chargées pour cette commune. Les données détaillées servent de repère de marché et de comparables.",
       recentSales:external.slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,50),
       recentSalesSource:"DVF public / API Cquest",nearby:[],history,
-      transactions:external.length,
+      transactions:values.length,
       communalPrice:median!=null?Math.round(median):null,
       housePrice:medianOf("Maison")!=null?Math.round(medianOf("Maison")):null,
       apartmentPrice:medianOf("Appartement")!=null?Math.round(medianOf("Appartement")):null,
       terrainPrice:terrainMedian!=null?Math.round(terrainMedian):null,
-      period:"DVF public disponible / transactions de la commune"
+      period:(()=>{
+        const dates=external.filter(x=>Number.isFinite(x.pricePerM2)&&x.pricePerM2>0).map(x=>String(x.date||"").slice(0,10)).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x)).sort();
+        const label=value=>value?value.split("-").reverse().join("/"):"";
+        return dates.length?"Ventes DVF publiques exploitables du "+label(dates[0])+" au "+label(dates[dates.length-1]):"Période des ventes DVF publiques non déterminée";
+      })()
     };
     communeMarketCache.set(key,{expiresAt:Date.now()+6*60*60*1000,data});
     return {...data,cache:false};
