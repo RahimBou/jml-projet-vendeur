@@ -1927,7 +1927,8 @@ function updateSellerProjectSummary(d){
     const matches=Number(comparables.matchCount||0);
     const d=read();
     const propertyType=String(d.propertyType||"votre bien").trim();
-    const localDetail=matches?matches.toLocaleString("fr-FR")+" vente(s) comparable(s) pour "+propertyType+(comparables.radiusKm?" · rayon "+String(comparables.radiusKm).replace(".",",")+" km":""):"Adresse ou ventes comparables à préciser";
+    const radiusLabel=comparables.radiusKm?" · rayon "+String(comparables.radiusKm).replace(".",",")+" km":"";
+    const localDetail=matches?matches.toLocaleString("fr-FR")+" ventes comparables pour "+propertyType+radiusLabel+" · jusqu’à 48 mois, communes voisines possibles":"Adresse ou ventes comparables à préciser";
     const category={
       communal:{label:"Tous les biens",price:x.communalPrice,note:x.period||"Médiane des ventes DVF de la commune"},
       house:{label:"Maisons",price:x.housePrice,note:"Médiane DVF des maisons vendues dans la commune"},
@@ -1943,7 +1944,7 @@ function updateSellerProjectSummary(d){
       [selected.label,fmt(selected.price),selected.note],
       ...otherCategories.map(v=>[v.label,fmt(v.price),v.note]),
       ["Prix du secteur proche",fmt(localM2),localDetail],
-      ["Ventes recensées dans la commune",tx?tx.toLocaleString("fr-FR"):"Données insuffisantes","Toutes catégories confondues ; distinct des ventes comparables"]
+      ["Ventes recensées dans la commune",tx?tx.toLocaleString("fr-FR"):"Données insuffisantes","Périmètre communal, période indiquée sur la médiane. Les comparables du secteur couvrent jusqu’à 48 mois et peuvent inclure les communes voisines."]
     ].map((a,i)=>`<div class="seller-metric${i===0?" seller-metric-primary":""}"><span>${esc(a[0])}</span><strong>${esc(a[1])}</strong><small>${esc(a[2])}</small></div>`).join("");
     document.querySelectorAll("#sellerMarketTabs button").forEach(b=>{
       const active=b.id==={communal:"marketTabCommunal",house:"marketTabHouse",apartment:"marketTabApartment"}[selectedMarket];
