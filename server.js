@@ -3717,6 +3717,23 @@ async function initDb() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS jml_prospect_properties (
+      id TEXT PRIMARY KEY,
+      prospect_id TEXT NOT NULL REFERENCES jml_prospects(id) ON DELETE CASCADE,
+      address TEXT NOT NULL,
+      city TEXT,
+      property_type TEXT NOT NULL DEFAULT 'Appartement',
+      surface_m2 NUMERIC,
+      rooms INTEGER,
+      lot_reference TEXT,
+      dpe TEXT,
+      notes TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_jml_prospect_properties_owner
+      ON jml_prospect_properties(prospect_id, updated_at DESC);
+
     CREATE TABLE IF NOT EXISTS jml_activities (
       id TEXT PRIMARY KEY,
       prospect_id TEXT NOT NULL REFERENCES jml_prospects(id) ON DELETE CASCADE,
@@ -4323,6 +4340,75 @@ app.post("/api/prospects", async (req,res) => {
     if(e.code==="23505") return apiError(res,409,"JML-P003","Ce prospect existe déjà dans le CRM.");
     unexpected(res,"JML-P004","Enregistrement du prospect indisponible.",e);
   }
+});
+
+// Un contact peut posséder plusieurs biens. Chaque bien a son propre identifiant;
+ // l'adresse, la surface et le nombre de pièces ne sont jamais utilisés pour fusionner les contacts.
+app.get("/api/prospects/:id/properties", async (req,res) => {
+  if(!requireAdminOr401(req,res)) return;
+  try{
+    if(pool){
+      const owner=await db("SELECT id FROM jml_prospects WHERE id=$1",[req.params.id]);
+      if(!owner.rowCount) return res.status(404).json({ok:false,error:"Prospect introuvable."});
+      const q=await db("SELECT * FROM jml_prospect_properties WHERE prospect_id=$1 ORDER BY created_at DESC",[req.params.id]);
+      return res.json({ok:true,properties:q.rows});
+    }
+    const owner=memory.prospects.get(req.params.id);
+    if(!owner) return res.status(404).json({ok:false,error:"Prospect introuvable."});
+    return res.json({ok:true,properties:(owner.properties||[])});
+  }catch(e){unexpected(res,"JML-PP001","Lecture des biens du prospect indisponible.",e);}
+});
+
+app.post("/api/prospects/:id/properties", async (req,res) => {
+  if(!requireAdminOr401(req,res)) return;
+  const b=req.body||{};
+  const address=clean(b.address,240);
+  const city=clean(b.city,120);
+  const propertyType=clean(b.property_type||b.propertyType||"Appartement",40);
+  const surfaceRaw=String(b.surface_m2??b.surface??"").trim().replace(",",".");
+  const roomsRaw=String(b.rooms??"").trim();
+  const lotReference=clean(b.lot_reference||b.lotReference,100);
+  const dpe=clean(b.dpe,10);
+  const notes=clean(b.notes,2000);
+  const surface=surfaceRaw===""?null:Number(surfaceRaw);
+  const rooms=roomsRaw===""?null:Number(roomsRaw);
+  if(!address) return apiError(res,400,"JML-PP002","Adresse du bien requise.");
+  if(surface!==null&&(!Number.isFinite(surface)||surface<=0||surface>10000)) return apiError(res,400,"JML-PP003","Surface invalide.");
+  if(rooms!==null&&(!Number.isInteger(rooms)||rooms<1||rooms>100)) return apiError(res,400,"JML-PP004","Nombre de pièces invalide.");
+  const id=newId(),t=now();
+  try{
+    if(pool){
+      const owner=await db("SELECT id FROM jml_prospects WHERE id=$1",[req.params.id]);
+      if(!owner.rowCount) return res.status(404).json({ok:false,error:"Prospect introuvable."});
+      const q=await db(`INSERT INTO jml_prospect_properties
+        (id,prospect_id,address,city,property_type,surface_m2,rooms,lot_reference,dpe,notes,created_at,updated_at)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11) RETURNING *`,
+        [id,req.params.id,address,city||null,propertyType,surface,rooms,lotReference||null,dpe||null,notes||null,t]);
+      return res.status(201).json({ok:true,property:q.rows[0]});
+    }
+    const owner=memory.prospects.get(req.params.id);
+    if(!owner) return res.status(404).json({ok:false,error:"Prospect introuvable."});
+    const property={id,prospect_id:req.params.id,address,city:city||null,property_type:propertyType,surface_m2:surface,rooms,lot_reference:lotReference||null,dpe:dpe||null,notes:notes||null,created_at:t,updated_at:t};
+    owner.properties=owner.properties||[];owner.properties.unshift(property);memory.prospects.set(req.params.id,owner);
+    return res.status(201).json({ok:true,property});
+  }catch(e){unexpected(res,"JML-PP005","Enregistrement du bien indisponible.",e);}
+});
+
+app.delete("/api/prospects/:id/properties/:propertyId", async (req,res) => {
+  if(!requireAdminOr401(req,res)) return;
+  try{
+    if(pool){
+      const q=await db("DELETE FROM jml_prospect_properties WHERE id=$1 AND prospect_id=$2 RETURNING id",[req.params.propertyId,req.params.id]);
+      if(!q.rowCount) return res.status(404).json({ok:false,error:"Bien introuvable."});
+      return res.json({ok:true,deleted:true});
+    }
+    const owner=memory.prospects.get(req.params.id);
+    if(!owner) return res.status(404).json({ok:false,error:"Prospect introuvable."});
+    const before=(owner.properties||[]).length;
+    owner.properties=(owner.properties||[]).filter(x=>String(x.id)!==String(req.params.propertyId));
+    if(owner.properties.length===before) return res.status(404).json({ok:false,error:"Bien introuvable."});
+    memory.prospects.set(req.params.id,owner);return res.json({ok:true,deleted:true});
+  }catch(e){unexpected(res,"JML-PP006","Suppression du bien indisponible.",e);}
 });
 
 app.put("/api/prospects/:id/status", async (req,res) => {
@@ -5288,6 +5374,19 @@ app.post("/api/leads", async (req,res) => {
           prospectId,
           client
         );
+        // Chaque soumission conserve les caractéristiques du bien même si le contact existe déjà.
+        const propertyAddress=clean(b.address,240);
+        if(propertyAddress){
+          const propertySurface=String(b.surface??"").trim().replace(",",".");
+          const propertyRooms=String(b.rooms??"").trim();
+          await client.query(`INSERT INTO jml_prospect_properties
+            (id,prospect_id,address,city,property_type,surface_m2,rooms,dpe,created_at,updated_at)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())`,
+            [newId(),prospectId,propertyAddress,lead.city||null,clean(lead.propertyType||"Maison",40),
+             propertySurface!==""&&Number.isFinite(Number(propertySurface))&&Number(propertySurface)>0?Number(propertySurface):null,
+             propertyRooms!==""&&Number.isInteger(Number(propertyRooms))&&Number(propertyRooms)>0?Number(propertyRooms):null,
+             clean(b.dpe,10)||null]);
+        }
         await client.query("COMMIT");
         setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
         setImmediate(()=>startListingResearchForSpace(sellerSpace));
@@ -5337,6 +5436,15 @@ app.post("/api/leads", async (req,res) => {
     // son propre espace vendeur et son propre jeton, avec l'adresse saisie.
     const initialOwnerData=sellerOwnerDataFromLead(lead);
     const sellerSpace=await createSellerSpace({city:lead.city,address:b.address,propertyType:lead.propertyType,horizon:lead.horizon,surface:b.surface,rooms:b.rooms,dpe:b.dpe,terrain:b.terrain,conditionData:b.conditionData,ownerData:initialOwnerData},prospectId);
+    const propertyAddress=clean(b.address,240);
+    if(propertyAddress&&prospectId){
+      const owner=memory.prospects.get(prospectId);
+      if(owner){
+        owner.properties=owner.properties||[];
+        owner.properties.unshift({id:newId(),prospect_id:prospectId,address:propertyAddress,city:lead.city||null,property_type:clean(lead.propertyType||"Maison",40),surface_m2:(b.surface!==""&&Number.isFinite(Number(String(b.surface).replace(",",".")))?Number(String(b.surface).replace(",",".")):null),rooms:(b.rooms!==""&&Number.isInteger(Number(b.rooms))?Number(b.rooms):null),dpe:clean(b.dpe,10)||null,created_at:now(),updated_at:now()});
+        memory.prospects.set(prospectId,owner);
+      }
+    }
     setImmediate(()=>startEstimatorAgentForSpace(sellerSpace));
     setImmediate(()=>startListingResearchForSpace(sellerSpace));
     const sellerSpaceUrl=req.protocol+"://"+req.get("host")+"/espace-vendeur/"+sellerSpace.accessToken;
