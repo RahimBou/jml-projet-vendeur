@@ -1927,7 +1927,7 @@ function updateSellerProjectSummary(d){
     const matches=Number(comparables.matchCount||0);
     const d=read();
     const propertyType=String(d.propertyType||"votre bien").trim();
-    const localDetail=matches?matches.toLocaleString("fr-FR")+" vente(s) comparable(s) pour "+propertyType+(comparables.radiusKm?" · rayon "+String(comparables.radiusKm).replace(".",",")+" km"):"Adresse ou ventes comparables à préciser";
+    const localDetail=matches?matches.toLocaleString("fr-FR")+" vente(s) comparable(s) pour "+propertyType+(comparables.radiusKm?" · rayon "+String(comparables.radiusKm).replace(".",",")+" km":""):"Adresse ou ventes comparables à préciser";
     const category={
       communal:{label:"Tous les biens",price:x.communalPrice,note:x.period||"Médiane des ventes DVF de la commune"},
       house:{label:"Maisons",price:x.housePrice,note:"Médiane DVF des maisons vendues dans la commune"},
