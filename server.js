@@ -1063,10 +1063,10 @@ async function getCommuneMarketData(city,code){
         COUNT(*) FILTER (WHERE COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0)::int AS transactions,
         MIN(sale_date) FILTER (WHERE COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0)::date AS first_sale_date,
         MAX(sale_date) FILTER (WHERE COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0)::date AS last_sale_date,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) AS communal_price,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Maison') AS house_price,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Appartement') AS apartment_price,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY (price / NULLIF(land_surface,0))) FILTER (WHERE property_type='Terrain' AND land_surface>0) AS terrain_price
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0) AS communal_price,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Maison' AND COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0) AS house_price,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2, price / NULLIF(surface,0))) FILTER (WHERE property_type='Appartement' AND COALESCE(price_per_m2, price / NULLIF(surface,0)) > 0) AS apartment_price,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY (price / NULLIF(land_surface,0))) FILTER (WHERE property_type='Terrain' AND land_surface>0 AND price / NULLIF(land_surface,0) > 0) AS terrain_price
         FROM jml_dvf_sales
         WHERE commune_code=$1
           AND (sale_date>=CURRENT_DATE-INTERVAL '24 months'
@@ -1089,7 +1089,7 @@ async function getCommuneMarketData(city,code){
               ))
           ORDER BY sale_date DESC NULLS LAST, source_year DESC LIMIT 500`,[communeCode]);
         const history=await db(`SELECT COALESCE(EXTRACT(YEAR FROM sale_date)::int,source_year)::int AS year,COUNT(*)::int AS transactions,
-          percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2,price/NULLIF(surface,0))) AS value
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY COALESCE(price_per_m2,price/NULLIF(surface,0))) FILTER (WHERE COALESCE(price_per_m2,price/NULLIF(surface,0)) > 0) AS value
           FROM jml_dvf_sales WHERE commune_code=$1
           GROUP BY COALESCE(EXTRACT(YEAR FROM sale_date)::int,source_year)
           ORDER BY year`,[communeCode]);
