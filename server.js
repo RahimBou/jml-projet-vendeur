@@ -1266,7 +1266,9 @@ async function resolveTerritoryCommune(city,address){
       const n=normalizeName(row.nom);
       return n===wanted || n.startsWith(wanted+" ") || wanted.startsWith(n+" ");
     });
-    const selected=exact||starts||list[0];
+    const selected=exact||starts;
+    // Ne jamais attribuer une autre commune simplement parce qu’elle est le premier résultat.
+    if(!selected) return null;
     if(!selected || !/^\d{5}$/.test(String(selected.code||""))) return null;
 
     const centre=selected.centre&&Array.isArray(selected.centre.coordinates)
