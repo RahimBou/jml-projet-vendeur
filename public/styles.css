@@ -156,3 +156,29 @@
 .jml-agency-link span{font-size:8px!important;color:#d3ded9!important}
 .jml-agency-link a{font-weight:900!important;color:#173b32!important;text-decoration:none!important;font-size:9px!important;padding:7px 13px!important;border-radius:999px!important;background:#f0d68e!important;box-shadow:0 3px 8px rgba(0,0,0,.10)!important}
 @media(max-width:520px){.jml-follow-block{width:calc(100% - 20px)!important;margin-top:15px!important;padding:15px 10px 12px!important;column-gap:5px!important}.jml-follow-name{font-size:11.5px!important}.jml-follow-name small{font-size:7px!important}.jml-follow-block>a{min-width:80px!important;padding:8px 7px!important;font-size:7.5px!important}.jml-agency-link{padding-top:8px!important}.jml-agency-link a{padding:6px 11px!important}}
+
+/* Correctif global Render — décorations des bandeaux qui peuvent recouvrir les liens */
+.jml-architecture,
+.ardenne-visual{position:relative;isolation:isolate;overflow:hidden}
+.jml-architecture:after,
+.ardenne-visual:after{display:none!important;content:none!important}
+.jml-architecture .nav,
+.ardenne-visual .nav,
+.jml-architecture nav,
+.ardenne-visual nav{position:relative;z-index:10}
+.jml-architecture .nav a,
+.ardenne-visual .nav a,
+.jml-architecture nav a,
+.ardenne-visual nav a{position:relative;z-index:11;pointer-events:auto}
+@media(max-width:650px){
+  .jml-architecture,
+  .ardenne-visual{background-position:center!important}
+  .jml-architecture .nav,
+  .ardenne-visual .nav,
+  .jml-architecture nav,
+  .ardenne-visual nav{display:flex;flex-wrap:wrap;gap:8px}
+  .jml-architecture .nav a,
+  .ardenne-visual .nav a,
+  .jml-architecture nav a,
+  .ardenne-visual nav a{min-height:40px;max-width:100%;white-space:normal}
+}
