@@ -274,4 +274,8 @@ async function main() {
   console.log(JSON.stringify(report,null,2));
   if (report.errors?.length) process.exitCode=1;
 }
-main().catch(error=>{console.error("DVF reconcile robot failed:",error);process.exitCode=1;});
+if (require.main === module) {
+  main().catch(error=>{console.error("DVF reconcile robot failed:",error);process.exitCode=1;});
+}
+
+module.exports = { parseCsvLine, normalizeDate, buildRow, summarize, fingerprint };
