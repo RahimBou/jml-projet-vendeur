@@ -2,11 +2,8 @@
 "use strict";
 
 /**
- * Inspection sans écriture de la base : découvre le schéma officiel des outils
- * Immo Data via MCP avant de construire l'importateur de transactions.
- *
- * Usage : node scripts/immo-data-inspect.js
- * Variable requise : IMMO_DATA_API_KEY (jamais affichée).
+ * Inspection sans écriture de la base : découvre les outils Immo Data
+ * disponibles via MCP avant de construire l'importateur de transactions.
  */
 const MCP_URL = String(process.env.IMMO_DATA_MCP_URL || "https://mcp.immo-data.fr/mcp").trim();
 const API_KEY = String(process.env.IMMO_DATA_API_KEY || "").trim();
@@ -32,7 +29,6 @@ async function rpc(method, params = {}, id = 1) {
   if (!response.ok) {
     throw new Error("MCP HTTP " + response.status + " — " + body.slice(0, 500));
   }
-  // Certains serveurs MCP renvoient les messages JSON-RPC au format SSE.
   const dataLines = body.split(/\r?\n/)
     .filter(line => line.startsWith("data:"))
     .map(line => line.slice(5).trim())
@@ -64,7 +60,7 @@ async function main() {
     description: tool.description || "",
     inputSchema: tool.inputSchema || {}
   })), null, 2));
-  if (!selected.some(tool => /search_transactions/i.test(String(tool.name || ""))) {
+  if (!selected.some(tool => /search_transactions/i.test(String(tool.name || ""))) ) {
     console.error("ATTENTION : l'outil search_transactions n'est pas exposé par cette clé.");
     process.exitCode = 3;
   }
