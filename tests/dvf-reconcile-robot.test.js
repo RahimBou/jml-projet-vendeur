@@ -1,6 +1,6 @@
 "use strict";
 const assert = require("node:assert/strict");
-const { parseCsvLine, normalizeDate, buildRow, summarize } = require("../scripts/dvf-reconcile-robot");
+const { parseCsvLine, normalizeDate, buildRow, summarize, compareFingerprints } = require("../scripts/dvf-reconcile-robot");
 
 assert.deepEqual(parseCsvLine('a,"b,c","d""e",'), ["a","b,c",'d"e',""]);
 assert.equal(normalizeDate("18/10/2026"), "2026-10-18");
@@ -31,3 +31,9 @@ assert.ok(invalid.rejectionReasons.includes("invalid_built_surface"));
 assert.ok(invalid.rejectionReasons.includes("missing_coordinates"));
 assert.deepEqual(summarize([row,invalid]).validResidential, 1);
 console.log("OK — parsing CSV, dates, empreinte source et motifs de rejet DVF.");
+
+const delta = compareFingerprints(["a","b","c"], ["b","c","d","e"]);
+assert.deepEqual(delta, { previousRows:3, currentRows:4, added:2, unchanged:2, removed:1 });
+const firstPublication = compareFingerprints([], ["a","b"]);
+assert.deepEqual(firstPublication, { previousRows:0, currentRows:2, added:2, unchanged:0, removed:0 });
+console.log("OK — détection des ajouts et retraits entre publications DVF.");
