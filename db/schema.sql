@@ -339,6 +339,8 @@ CREATE INDEX IF NOT EXISTS idx_jml_bpe_geo ON jml_bpe_assets(latitude, longitude
 CREATE INDEX IF NOT EXISTS idx_jml_dvf_geo_date ON jml_dvf_sales(latitude, longitude, sale_date DESC);
 CREATE INDEX IF NOT EXISTS idx_jml_dvf_type_geo_date ON jml_dvf_sales(property_type, latitude, longitude, sale_date DESC);
 CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_type_date ON jml_dvf_sales(commune_code, property_type, sale_date DESC);
+-- Requêtes DVF filtrées par commune sans filtre de type : évite un parcours large.
+CREATE INDEX IF NOT EXISTS idx_jml_dvf_commune_date ON jml_dvf_sales(commune_code, sale_date DESC);
 CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_geo_date ON jml_dvfplus_sales(latitude, longitude, sale_date DESC);
 CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_type_surface ON jml_dvfplus_sales(property_type, surface);
 CREATE INDEX IF NOT EXISTS idx_jml_dvfplus_commune_date ON jml_dvfplus_sales(commune_code, sale_date DESC);
