@@ -173,7 +173,9 @@ async function readYear(year, filePath) {
     const cells=parseCsvLine(line);
     if (cells.length !== headers.length) invalidColumnCount++;
     const row=buildRow(headers,cells,year);
-    // Fingerprint covers the source row content we use; malformed short rows remain auditable.
+    // Fingerprint the complete original CSV row, not only mapped fields: two source
+    // records may share mapped values while differing in other official columns.
+    row.rowFingerprint = fingerprint(JSON.stringify({sourceYear:year,raw:cells}));
     batch.push({ ...row, raw: cells });
     rowCount++;
     if (batch.length >= MAX_BATCH) {
@@ -182,7 +184,11 @@ async function readYear(year, filePath) {
   }
   rows.push(...batch);
   if (!headers || !rowCount) throw new Error(`DVF ${year}: fichier vide/incomplet`);
-  return {headers,rows,rowCount,invalidColumnCount,summary:summarize(rows)};
+  const uniqueFingerprintRows = new Set(rows.map(row => row.rowFingerprint)).size;
+  const summary = summarize(rows);
+  summary.uniqueFingerprintRows = uniqueFingerprintRows;
+  summary.duplicateSourceRows = rowCount - uniqueFingerprintRows;
+  return {headers,rows,rowCount,uniqueFingerprintRows,invalidColumnCount,summary};
 }
 async function insertStaging(client, year, file, parsed) {
   await client.query("BEGIN");
