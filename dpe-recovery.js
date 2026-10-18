@@ -3,7 +3,8 @@
 /**
  * JML — recherche DPE ADEME par adresse (lecture seule).
  *
- * Source officielle ouverte : https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/
+ * Source officielle ouverte : https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/ (DPE depuis juillet 2021).
+ * Le jeu dpe-france concerne les diagnostics antérieurs à juillet 2021 ; il ne remplace pas la source actuelle.
  * Ne se connecte pas à PostgreSQL et n'écrit aucune donnée.
  *
  * IMPORTANT : un résultat trouvé par adresse n'est pas automatiquement attribué au bien.
@@ -44,16 +45,19 @@ function numeric(value) {
 }
 
 function mapDpe(row) {
-  const address = first(row, ["adresse_ban", "adresse_brut", "adresse", "Adresse"]);
-  const number = first(row, ["numero_voie", "numero_voie_ban", "Numero_voie"]);
-  const street = first(row, ["nom_rue", "nom_rue_ban", "Nom_rue"]);
+  const address = first(row, ["adresse_complete_brut", "adresse_ban", "adresse_brut", "adresse", "Adresse"]);
+  const number = first(row, ["numero_voie_ban", "numero_voie", "Numero_voie", "Numero_voie_BAN"]);
+  const street = first(row, ["nom_rue_ban", "nom_rue", "Nom_rue", "Nom_rue_BAN"]);
   const city = first(row, ["nom_commune_ban", "nom_commune", "Commune"]);
   const postalCode = first(row, ["code_postal_ban", "code_postal", "Code_postal"]);
-  const dpeId = first(row, [" numero_dpe", "numero_dpe", "N°DPE", "Numero_DPE"]);
+  const dpeId = first(row, ["numero_dpe", "numero_dpe_logement", "N°DPE", "Numero_DPE"]);
   const surface = numeric(first(row, ["surface_habitable_logement", "surface_habitable", "Surface_habitable_logement"]));
   const energy = first(row, ["etiquette_dpe", "etiquette_dpe_logement", "classe_energie", "Etiquette_DPE"]);
   const ghg = first(row, ["etiquette_ges", "etiquette_ges_logement", "classe_ges", "Etiquette_GES"]);
   const date = first(row, ["date_etablissement_dpe", "date_dpe", "Date_etablissement_DPE"]);
+  const validUntil = first(row, ["date_fin_validite_dpe", "date_fin_validite", "Date_fin_validite_DPE"]);
+  const lastModified = first(row, ["date_derniere_modification_dpe", "date_derniere_modification", "Date_derniere_modification_DPE"]);
+  const floor = first(row, ["numero_etage_appartement", "numero_etage", "etage"]);
   const type = first(row, ["type_batiment", "type_bien", "Type_batiment"]);
   const addressParts = [number, street, postalCode, city].filter(Boolean);
   return {
@@ -67,6 +71,9 @@ function mapDpe(row) {
     energyClass: /^[A-G]$/i.test(String(energy || "").trim()) ? String(energy).trim().toUpperCase() : null,
     ghgClass: /^[A-G]$/i.test(String(ghg || "").trim()) ? String(ghg).trim().toUpperCase() : null,
     date: clean(date, 30) || null,
+    validUntil: clean(validUntil, 30) || null,
+    lastModified: clean(lastModified, 30) || null,
+    floor: clean(floor, 20) || null,
     propertyType: clean(type, 60) || null,
     source: "ADEME — DPE logements existants",
     sourceUrl: "https://data.ademe.fr/datasets/dpe03existant"
@@ -74,7 +81,7 @@ function mapDpe(row) {
 }
 
 function scoreCandidate(dpe, input) {
-  const wantedAddress = normalize([input.number, input.street, input.postalCode, input.city].filter(Boolean).join(" "));
+  const wantedAddress = normalize([input.number, input.street, input.postalCode, input.city, input.address].filter(Boolean).join(" "));
   const foundAddress = normalize([dpe.number, dpe.street, dpe.postalCode, dpe.city, dpe.address].filter(Boolean).join(" "));
   let score = 0;
   const wantedNumber = normalize(input.number);
@@ -82,8 +89,13 @@ function scoreCandidate(dpe, input) {
   const wantedStreet = normalize(input.street || input.address);
   const foundStreet = normalize(dpe.street || dpe.address);
   if (wantedNumber && foundNumber && wantedNumber === foundNumber) score += 35;
-  if (wantedStreet && foundStreet && (foundStreet.includes(wantedStreet) || wantedStreet.includes(foundStreet))) score += 30;
-  if (input.postalCode && dpe.postalCode && String(input.postalCode) === String(dpe.postalCode)) score += 15;
+  // Une adresse complète peut contenir le nom de rue ; éviter les correspondances
+  // par sous-chaîne trop courte, sources fréquentes de faux positifs.
+  if (wantedStreet && foundStreet &&
+      (wantedStreet === foundStreet ||
+       (wantedStreet.length >= 6 && foundStreet.includes(wantedStreet)) ||
+       (foundStreet.length >= 6 && wantedStreet.includes(foundStreet)))) score += 30;
+  if (input.postalCode && dpe.postalCode && String(input.postalCode).trim() === String(dpe.postalCode).trim()) score += 15;
   if (input.city && dpe.city && normalize(input.city) === normalize(dpe.city)) score += 10;
   const wantedSurface = numeric(input.surface);
   if (wantedSurface && dpe.surface) {
@@ -94,6 +106,27 @@ function scoreCandidate(dpe, input) {
   }
   if (!wantedAddress || !foundAddress) score = Math.min(score, 25);
   return Math.min(score, 100);
+}
+
+function canAutoMatch(best, second, input) {
+  // Une proximité textuelle ne suffit pas : exiger une adresse structurée, une
+  // surface du logement cohérente, une classe énergétique valide et un DPE non expiré.
+  const requiredAddressFields = Boolean(
+    clean(input.number, 20) && clean(input.street, 120) &&
+    clean(input.postalCode, 10) && clean(input.city, 100) &&
+    best?.number && best?.street && best?.postalCode && best?.city
+  );
+  const wantedSurface = numeric(input.surface);
+  const foundSurface = numeric(best?.surface);
+  const surfaceMatches = wantedSurface !== null && foundSurface !== null &&
+    Math.abs(wantedSurface - foundSurface) / wantedSurface <= 0.15;
+  const validUntil = best?.validUntil ? new Date(best.validUntil) : null;
+  const isNotExpired = !validUntil || Number.isNaN(validUntil.getTime()) ||
+    validUntil.getTime() >= Date.now();
+  const strongScore = best && best.matchScore >= 85 &&
+    (!second || best.matchScore - second.matchScore >= 10);
+  return Boolean(strongScore && requiredAddressFields && surfaceMatches &&
+    best.energyClass && isNotExpired);
 }
 
 async function fetchCandidates(input, options = {}) {
@@ -136,7 +169,7 @@ async function fetchCandidates(input, options = {}) {
   let status = "not_found";
   let confidence = "none";
   let matched = false;
-  if (best && best.matchScore >= 85 && (!second || best.matchScore - second.matchScore >= 10)) {
+  if (canAutoMatch(best, second, input)) {
     status = "matched";
     confidence = "high";
     matched = true;
@@ -171,4 +204,4 @@ async function fetchCandidates(input, options = {}) {
   return result;
 }
 
-module.exports = { fetchCandidates, scoreCandidate, normalize };
+module.exports = { fetchCandidates, scoreCandidate, canAutoMatch, normalize };
