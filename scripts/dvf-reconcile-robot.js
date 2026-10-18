@@ -59,9 +59,9 @@ function clean(v) { return String(v ?? "").trim() || null; }
 function normalizeDate(value) {
   const raw=String(value ?? "").trim();
   if (!raw) return null;
-  const fr=raw.match(/^(\\d{2})[\\/.-](\\d{2})[\\/.-](\\d{4})$/);
+  const fr=raw.match(/^(\d{2})[\/.-](\d{2})[\/.-](\d{4})$/);
   if (fr) return `${fr[3]}-${fr[2]}-${fr[1]}`;
-  const iso=raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  const iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return iso ? raw : null;
 }
 function num(v) {
