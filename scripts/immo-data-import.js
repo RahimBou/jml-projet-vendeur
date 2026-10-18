@@ -13,8 +13,6 @@
  *   node scripts/immo-data-import.js --write --max-pages 5
  *   IMMO_DATA_GEO_LEVEL=department IMMO_DATA_CODE=08 node scripts/immo-data-import.js --dry-run
  */
-const { Pool } = require("pg");
-
 const MCP_URL = String(process.env.IMMO_DATA_MCP_URL || "https://mcp.immo-data.fr/mcp").trim();
 const API_KEY = String(process.env.IMMO_DATA_API_KEY || "").trim();
 const DATABASE_URL = String(process.env.DATABASE_URL || "").trim();
@@ -43,6 +41,7 @@ if (!["city", "district", "subdistrict", "street", "parcel", "address"].includes
 }
 if (!CODE) throw new Error("IMMO_DATA_CODE manquant.");
 
+const Pool = WRITE ? require("pg").Pool : null;
 const pool = WRITE ? new Pool({
   connectionString: DATABASE_URL,
   ssl: process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false },
