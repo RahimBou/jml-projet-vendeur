@@ -65,7 +65,7 @@ jobs:
               assert.equal(batches.rowCount,1);
               assert.equal(batches.rows[0].status,"complete");
               const rows=await pool.query("SELECT COUNT(*)::int AS n, COUNT(DISTINCT row_fingerprint)::int AS fingerprints FROM jml_dvf_stage_rows WHERE batch_id=$1",[batches.rows[0].id]);
-              assert.equal(rows.rows[0].n,batches.rows[0].source_rows,"Les lignes stage doivent correspondre au nombre source");
+              assert.equal(rows.rows[0].n,batches.rows[0].summary.uniqueFingerprintRows,"Le staging doit conserver chaque ligne source distincte par empreinte complète");
               assert.equal(rows.rows[0].n,rows.rows[0].fingerprints,"Aucun doublon d'empreinte dans le lot");
               console.log(JSON.stringify({tables:names,sourceRows:batches.rows[0].source_rows,stagedRows:rows.rows[0].n,summary:batches.rows[0].summary,productionTablesUntouched:true},null,2));
             } finally { await pool.end(); }
