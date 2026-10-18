@@ -1666,7 +1666,6 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
     const ref=data.sellerReference||{};
     // Source unique partagée avec les onglets : évite qu'un ancien script remplace les cartes.
     window.jmlSellerTerritoryData=data;
-    window.dispatchEvent(new CustomEvent("jml:territory-updated",{detail:data}));
     updateSellerProjectSummary(d);
     const type=String(d.propertyType||"").toLowerCase();
     const typePrice=/appartement|studio|duplex|loft/i.test(type)?m.apartmentPrice:/maison/i.test(type)?m.housePrice:/terrain/i.test(type)?m.terrainPrice:m.communalPrice;
@@ -1704,6 +1703,9 @@ const timelineSteps=[...document.querySelectorAll(".seller-step")];
       if(!matches&&data.market?.comparables?.message)diagnosticText+=" "+String(data.market.comparables.message);
     }
     if(marketSource)marketSource.textContent=source+" · "+period+". "+(matches?matches+" comparable(s) identifié(s).":"Données insuffisantes pour établir un prix de secteur.")+refText+diagnosticText;
+    // Publier une seule réponse complète après le rendu initial : le script des onglets
+    // actualise ensuite les cartes à partir de cette même réponse, sans seconde requête concurrente.
+    window.dispatchEvent(new CustomEvent("jml:territory-updated",{detail:data}));
   }catch(error){
     console.warn("JML seller dashboard territory-summary:",error);
     /* Secours : le bloc marché ne doit pas dépendre du calcul fin des comparables.
@@ -1980,7 +1982,12 @@ function updateSellerProjectSummary(d){
       sectorLink.textContent=count>0?"Voir les ventes comparables et le secteur →":"Affiner l’analyse avec l’adresse et les caractéristiques →";
     }
   }
-  window.addEventListener("jml:territory-updated",event=>renderSellerMarketWatch(event.detail));
+  window.addEventListener("jml:territory-updated",event=>{
+    const updated=event.detail||{};
+    if(updated.market)marketData=updated.market;
+    renderMarket();
+    renderSellerMarketWatch(updated);
+  });
   renderSellerMarketWatch(window.jmlSellerTerritoryData||marketData);
   const marketTabs=document.getElementById("sellerMarketTabs");
   function chooseSellerMarket(button){
@@ -2022,30 +2029,6 @@ function updateSellerProjectSummary(d){
     marketTabs.style.setProperty("z-index","4","important");
     marketTabs.style.setProperty("pointer-events","auto","important");
   }
-  async function refresh(){
-    const d=read(); if(!d.submitted)return;
-    const city=d.city||"";
-    try{
-      const r=await fetch("/api/commune-market?city="+encodeURIComponent(city),{cache:"no-store"}),x=await r.json();
-      const src=document.getElementById("sellerMarketSource");
-      if(x&&x.found){
-        marketData=x;
-        renderMarket();
-        if(src)src.textContent=(x.message||"Repères issus des données de marché disponibles.")+" Source : "+(x.source||"DVF")+". "+(x.period?"Période : "+x.period+". ":"")+"Les données sont indicatives et dépendent des ventes disponibles.";
-      }else{
-        marketData=null;
-        const cards=document.getElementById("sellerMarketMetrics");
-        if(cards)cards.innerHTML="<div class='seller-metric'><span>Repère de marché</span><strong>Données insuffisantes</strong><small>Pas de valeur fiable disponible</small></div>";
-        if(src)src.textContent=(x&&x.message)||"Aucune donnée exploitable n'est disponible pour ce secteur.";
-      }
-    }catch(_e){
-    try{
-      const r=await fetch("/api/seller-advice?city="+encodeURIComponent(city),{cache:"no-store"}),x=await r.json(),i=x.items&&x.items[0],card=document.getElementById("sellerAdviceCard");
-      if(i&&card)card.innerHTML="<div><div class='seller-advice-top'><span class='seller-advice-category'>"+esc(i.category)+"</span><span class='seller-advice-counter'>1 / "+x.items.length+"</span></div><h5>"+esc(i.title)+"</h5><p>"+esc(i.text)+"</p><div class='seller-advice-takeaway'><strong>À retenir :</strong> "+esc(i.takeaway)+"</div></div><div class='seller-advice-foot'><span class='seller-advice-source'>"+esc(i.sourceName)+"<br>"+esc(i.publishedAt)+"</span><a class='seller-advice-link' target='_blank' rel='noopener' href='"+esc(i.sourceUrl)+"'>Voir la source →</a></div>";
-    }catch(_e){}
-  }
-  }
-  refresh();
 })();
 </script>
 
