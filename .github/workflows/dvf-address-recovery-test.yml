@@ -1,0 +1,22 @@
+name: DVF address recovery robot
+
+on:
+  push:
+    branches:
+      - feature/dvf-free-recovery-robot
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  address-recovery-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Test address matching logic
+        run: node tests/dvf-address-recovery-robot.test.js
