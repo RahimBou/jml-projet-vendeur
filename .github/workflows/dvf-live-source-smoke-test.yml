@@ -1,0 +1,48 @@
+name: DVF live source smoke test
+
+on:
+  push:
+    branches:
+      - feature/dvf-free-recovery-robot
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  official-dvf-download-and-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Test live official DVF 2025 download and parse (no database)
+        run: node scripts/dvf-reconcile-robot.js --years=2025 --dry-run --dir=/tmp/jml-dvf-live
+      - name: Validate report and publish metrics
+        run: |
+          node -e '
+          const fs=require("node:fs");
+          const p="/tmp/jml-dvf-live/reconcile-report.json";
+          if(!fs.existsSync(p)) throw new Error("Rapport absent");
+          const r=JSON.parse(fs.readFileSync(p,"utf8"));
+          if(r.databaseTouched!==false || r.productionTablesTouched!==false) throw new Error("Garde-fou dry-run incorrect");
+          const y=r.years.find(x=>x.year===2025);
+          if(!y || y.status!=="audited") throw new Error("Téléchargement ou audit DVF 2025 non réussi: "+JSON.stringify(y));
+          if(!(y.bytes>0) || !(y.sourceRows>0)) throw new Error("Fichier DVF vide ou sans volume de lignes");
+          console.log(JSON.stringify({year:y.year,status:y.status,bytes:y.bytes,sourceRows:y.sourceRows,summary:y.summary,databaseTouched:r.databaseTouched,productionTablesTouched:r.productionTablesTouched},null,2));
+          '
+      - name: Upload DVF smoke-test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jml-dvf-live-audit
+          path: /tmp/jml-dvf-live/reconcile-report.json
+          if-no-files-found: ignore
+          retention-days: 14
