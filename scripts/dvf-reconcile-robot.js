@@ -56,6 +56,14 @@ function parseCsvLine(line) {
   return out;
 }
 function clean(v) { return String(v ?? "").trim() || null; }
+function normalizeDate(value) {
+  const raw=String(value ?? "").trim();
+  if (!raw) return null;
+  const fr=raw.match(/^(\\d{2})[\\/.-](\\d{2})[\\/.-](\\d{4})$/);
+  if (fr) return `${fr[3]}-${fr[2]}-${fr[1]}`;
+  const iso=raw.match(/^(\\d{4})-(\\d{2})-(\\d{2})$/);
+  return iso ? raw : null;
+}
 function num(v) {
   const s=String(v ?? "").trim();
   if (!s) return null;
@@ -75,7 +83,7 @@ function buildRow(headers, cells, year) {
   const row = {
     sourceYear: year,
     mutationId: clean(get("id_mutation")),
-    saleDate: clean(get("date_mutation")),
+    saleDate: normalizeDate(get("date_mutation")),
     mutationType: clean(get("nature_mutation")),
     value: num(get("valeur_fonciere")),
     propertyType: clean(get("type_local")),
@@ -122,13 +130,12 @@ function summarize(rows) {
 async function downloadYear(year) {
   const url = `${BASE_URL}/${year}/departements/${DEPARTMENT}.csv.gz`;
   const dest = path.join(dataDir, `${year}-${DEPARTMENT}.csv.gz`);
-  if (fs.existsSync(dest) && fs.statSync(dest).size > 0 && !force) {
-    // Les fichiers DVF sont remplacés deux fois par an. Réutiliser un cache local
-    // sans comparaison HTTP risquerait de manquer les corrections : forcer par défaut.
+  // Par défaut, télécharger la publication courante à chaque exécution pour
+  // ne jamais rater les corrections semestrielles. --reuse-cache est explicite.
+  if (process.argv.includes("--reuse-cache") && fs.existsSync(dest) &&
+      fs.statSync(dest).size > 0 && !force) {
     const cached = fs.statSync(dest);
-    if (cached.mtimeMs > Date.now() - 12 * 60 * 60 * 1000) {
-      return { path:dest, url, downloaded:false, bytes:cached.size };
-    }
+    return { path:dest, url, downloaded:false, bytes:cached.size };
   }
   const response = await fetch(url, {headers:{Accept:"application/gzip","User-Agent":"JML-DVF-Reconcile-Robot/1.0"},signal:AbortSignal.timeout(180000)});
   if (response.status === 404) return { unavailable:true, year, url, httpStatus:404 };
