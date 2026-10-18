@@ -182,11 +182,17 @@ function canAutoMatch(best, second, input) {
   const surfaceMatches = wantedSurface !== null && foundSurface !== null &&
     Math.abs(wantedSurface - foundSurface) / wantedSurface <= 0.15;
   const validUntilText = clean(best?.validUntil, 30);
-  const validUntil = validUntilText
-    ? (/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(validUntilText)
-      ? new Date(validUntilText.split("/").reverse().join("-") + "T23:59:59Z")
-      : new Date(validUntilText))
-    : null;
+  let validUntil = null;
+  if (validUntilText) {
+    if (validUntilText.includes("/")) {
+      const parts = validUntilText.split("/");
+      if (parts.length === 3 && parts[0].length <= 2 && parts[1].length <= 2 && parts[2].length === 4) {
+        validUntil = new Date(parts[2] + "-" + parts[1].padStart(2, "0") + "-" + parts[0].padStart(2, "0") + "T23:59:59Z");
+      }
+    } else {
+      validUntil = new Date(validUntilText);
+    }
+  }
   // Sans date de fin valide, il est impossible de confirmer l'actualité du diagnostic.
   const isNotExpired = Boolean(validUntil && !Number.isNaN(validUntil.getTime()) &&
     validUntil.getTime() >= Date.now());
