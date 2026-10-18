@@ -192,7 +192,7 @@ async function insertStaging(client, year, file, parsed) {
       [year]
     );
     if (prior.rowCount && prior.rows[0].source_sha256 === file.sha256) {
-      await client.query("UPDATE jml_dvf_stage_batches SET status='unchanged', finished_at=NOW() WHERE id=$1",[prior.rows[0].id]);
+      // A replay is a no-op: keep the original completed batch immutable.
       await client.query("COMMIT");
       return {batchId:prior.rows[0].id,unchanged:true,stagedRows:0,reconciliation:null};
     }
