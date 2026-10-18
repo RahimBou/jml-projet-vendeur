@@ -1,4 +1,4 @@
-name: DPE recovery tests
+name: DVF and DPE recovery tests
 
 on:
   push:
@@ -18,5 +18,5 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Run DPE mapping and matching tests
-        run: node tests/dpe-recovery.test.js
+      - name: Run DPE and DVF recovery tests
+        run: npm test
