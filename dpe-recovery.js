@@ -181,9 +181,15 @@ function canAutoMatch(best, second, input) {
   const foundSurface = numeric(best?.surface);
   const surfaceMatches = wantedSurface !== null && foundSurface !== null &&
     Math.abs(wantedSurface - foundSurface) / wantedSurface <= 0.15;
-  const validUntil = best?.validUntil ? new Date(best.validUntil) : null;
-  const isNotExpired = !validUntil || Number.isNaN(validUntil.getTime()) ||
-    validUntil.getTime() >= Date.now();
+  const validUntilText = clean(best?.validUntil, 30);
+  const validUntil = validUntilText
+    ? (/^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(validUntilText)
+      ? new Date(validUntilText.split("/").reverse().join("-") + "T23:59:59Z")
+      : new Date(validUntilText))
+    : null;
+  // Sans date de fin valide, il est impossible de confirmer l'actualité du diagnostic.
+  const isNotExpired = Boolean(validUntil && !Number.isNaN(validUntil.getTime()) &&
+    validUntil.getTime() >= Date.now());
   const strongScore = best && best.matchScore >= 85 &&
     (!second || best.matchScore - second.matchScore >= 10);
   return Boolean(strongScore && requiredAddressFields && surfaceMatches &&
