@@ -1,0 +1,15 @@
+"use strict";
+const assert=require("node:assert/strict");
+const {parseCsvLine,norm,date,scoreCandidate,recover}=require("../scripts/dvf-address-recovery-robot");
+assert.deepEqual(parseCsvLine('a,"b,c","d""e",'),["a","b,c",'d"e',""]);
+assert.equal(norm("Charleville-Mézières"),"charleville mezieres");
+assert.equal(date("18/10/2025"),"2025-10-18");
+const target={sourceRecordKey:"key-1",saleDate:"2025-05-02",propertyType:"Maison",price:180000,surface:100,rooms:5,land:300,parcel:"08000AB001"};
+const candidate={saleDate:"2025-05-02",propertyType:"Maison",price:180000,surface:100,rooms:5,land:300,parcel:"08000AB001",address:"12 Rue des Fleurs",postalCode:"08000",communeName:"Charleville-Mézières",mutationId:"m1",year:2025,latitude:49.76,longitude:4.72};
+assert.ok(scoreCandidate(target,candidate).score>=17);
+const matched=recover([target],[candidate]);
+assert.equal(matched[0].status,"unique_match");
+assert.equal(matched[0].recovered.address,"12 Rue des Fleurs");
+assert.equal(recover([target],[candidate,{...candidate,address:"14 Rue des Fleurs",mutationId:"m2"}])[0].status,"ambiguous_or_weak");
+assert.equal(recover([target],[])[0].status,"not_found");
+console.log("OK — rapprochement d'adresses uniquement sur correspondance forte et unique.");

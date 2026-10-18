@@ -1,0 +1,81 @@
+name: DVF staging integration test
+
+on:
+  push:
+    branches:
+      - feature/dvf-free-recovery-robot
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-staging-import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: jmltest
+          POSTGRES_PASSWORD: jmltest
+          POSTGRES_DB: jmltest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U jmltest -d jmltest"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://jmltest:jmltest@127.0.0.1:5432/jmltest
+      DATABASE_SSL: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install --no-package-lock --ignore-scripts --no-audit --no-fund
+      - name: Download official DVF 2025 and stage into disposable PostgreSQL
+        run: node scripts/dvf-reconcile-robot.js --years=2025 --dir=/tmp/jml-dvf-staging
+        timeout-minutes: 15
+      - name: Replay the same DVF publication to verify idempotency
+        run: node scripts/dvf-reconcile-robot.js --years=2025 --dir=/tmp/jml-dvf-staging
+        timeout-minutes: 15
+      - name: Verify row volumes, staging permissions boundary, and idempotent replay
+        run: |
+          node - <<'NODE'
+          const {Pool}=require("pg");
+          const assert=require("node:assert/strict");
+          (async()=>{
+            const pool=new Pool({connectionString:process.env.DATABASE_URL,ssl:false});
+            try {
+              const tables=await pool.query("SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename");
+              const names=tables.rows.map(r=>r.tablename);
+              assert(names.includes("jml_dvf_stage_batches"));
+              assert(names.includes("jml_dvf_stage_rows"));
+              assert(!names.includes("jml_dvf_sales"),"La table du moteur de production ne doit pas être créée/touchée");
+              assert(!names.includes("jml_dvfplus_sales"),"La table DVF+ ne doit pas être créée/touchée");
+              const batches=await pool.query("SELECT id,status,source_rows,summary FROM jml_dvf_stage_batches WHERE source_year=2025 ORDER BY id");
+              assert.equal(batches.rowCount,1);
+              assert.equal(batches.rows[0].status,"complete");
+              const rows=await pool.query("SELECT COUNT(*)::int AS n, COUNT(DISTINCT row_fingerprint)::int AS fingerprints FROM jml_dvf_stage_rows WHERE batch_id=$1",[batches.rows[0].id]);
+              assert.equal(rows.rows[0].n,batches.rows[0].summary.uniqueFingerprintRows,"Le staging doit conserver chaque ligne source distincte par empreinte complète");
+              assert.equal(rows.rows[0].n,rows.rows[0].fingerprints,"Aucun doublon d'empreinte dans le lot");
+              console.log(JSON.stringify({tables:names,sourceRows:batches.rows[0].source_rows,stagedRows:rows.rows[0].n,summary:batches.rows[0].summary,productionTablesUntouched:true},null,2));
+            } finally { await pool.end(); }
+          })().catch(e=>{console.error(e);process.exitCode=1;});
+          NODE
+      - name: Upload staging reconciliation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jml-dvf-staging-report
+          path: /tmp/jml-dvf-staging/reconcile-report.json
+          if-no-files-found: ignore
+          retention-days: 14
