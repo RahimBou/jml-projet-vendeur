@@ -44,6 +44,9 @@ jobs:
       - name: Download official DVF 2025 and stage into disposable PostgreSQL
         run: node scripts/dvf-reconcile-robot.js --years=2025 --dir=/tmp/jml-dvf-staging
         timeout-minutes: 15
+      - name: Replay the same DVF publication to verify idempotency
+        run: node scripts/dvf-reconcile-robot.js --years=2025 --dir=/tmp/jml-dvf-staging
+        timeout-minutes: 15
       - name: Verify row volumes, staging permissions boundary, and idempotent replay
         run: |
           node - <<'NODE'
