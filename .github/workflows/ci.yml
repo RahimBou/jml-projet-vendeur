@@ -39,6 +39,9 @@ jobs:
           node --check scripts/import-dvf.js
           node --check scripts/import-dvfplus.js
           node --check scripts/import-bpe.js
+          node --check scripts/immo-data-inspect.js
+          node --check scripts/immo-data-preview.js
+          node --check scripts/immo-data-import.js
       - name: Tester la création du schéma PostgreSQL
         env:
           PGPASSWORD: postgres
