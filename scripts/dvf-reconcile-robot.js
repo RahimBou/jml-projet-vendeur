@@ -210,13 +210,19 @@ async function insertStaging(client, year, file, parsed) {
     // Snapshots immuables : les publications antérieures ne sont ni supprimées ni écrasées.
     for(let i=0;i<parsed.rows.length;i+=MAX_BATCH) {
       const part=parsed.rows.slice(i,i+MAX_BATCH);
-      for (const r of part) {
-        await client.query(`INSERT INTO jml_dvf_stage_rows
-          (batch_id,source_year,row_fingerprint,mutation_id,sale_date,mutation_type,property_type,price,surface,rooms,land_surface,latitude,longitude,address,postal_code,commune_code,commune_name,parcel_id,residential,rejection_reasons,raw_row)
-          VALUES ($1,$2,$3,$4,$5::date,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20::jsonb,$21::jsonb)
-          ON CONFLICT (batch_id,row_fingerprint) DO NOTHING`,
-          [batchId,year,r.rowFingerprint,r.mutationId,r.saleDate,r.mutationType,r.propertyType,r.value,r.surface,r.rooms,r.landSurface,r.latitude,r.longitude,r.address,r.postalCode,r.communeCode,r.communeName,r.parcelId,r.residential,JSON.stringify(r.rejectionReasons),JSON.stringify(r.raw)]);
-      }
+      const values=[], params=[];
+      part.forEach((r,k) => {
+        const b=k*21;
+        values.push("(" + Array.from({length:21},(_,j)=> {
+          const n=b+j+1;
+          return j===4 ? "$"+n+"::date" : (j===19 || j===20) ? "$"+n+"::jsonb" : "$"+n;
+        }).join(",") + ")");
+        params.push(batchId,year,r.rowFingerprint,r.mutationId,r.saleDate,r.mutationType,r.propertyType,r.value,r.surface,r.rooms,r.landSurface,r.latitude,r.longitude,r.address,r.postalCode,r.communeCode,r.communeName,r.parcelId,r.residential,JSON.stringify(r.rejectionReasons),JSON.stringify(r.raw));
+      });
+      await client.query(`INSERT INTO jml_dvf_stage_rows
+        (batch_id,source_year,row_fingerprint,mutation_id,sale_date,mutation_type,property_type,price,surface,rooms,land_surface,latitude,longitude,address,postal_code,commune_code,commune_name,parcel_id,residential,rejection_reasons,raw_row)
+        VALUES ${values.join(",")}
+        ON CONFLICT (batch_id,row_fingerprint) DO NOTHING`,params);
     }
     await client.query("UPDATE jml_dvf_stage_batches SET status='complete', finished_at=NOW() WHERE id=$1",[batchId]);
     await client.query("COMMIT");
