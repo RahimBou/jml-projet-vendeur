@@ -113,6 +113,14 @@ function buildRow(headers, cells, year) {
   if (row.residential && (!Number.isFinite(row.latitude) || !Number.isFinite(row.longitude))) row.rejectionReasons.push("missing_coordinates");
   return row;
 }
+function compareFingerprints(previous, current) {
+  const before = previous instanceof Set ? previous : new Set(previous || []);
+  const after = current instanceof Set ? current : new Set(current || []);
+  let added = 0, unchanged = 0, removed = 0;
+  for (const fp of after) { if (before.has(fp)) unchanged++; else added++; }
+  for (const fp of before) if (!after.has(fp)) removed++;
+  return { previousRows: before.size, currentRows: after.size, added, unchanged, removed };
+}
 function summarize(rows) {
   const counts = { rows:0, sales:0, residential:0, validResidential:0, rejectedResidential:0, missingMutationId:0 };
   for (const r of rows) {
@@ -179,18 +187,27 @@ async function readYear(year, filePath) {
 async function insertStaging(client, year, file, parsed) {
   await client.query("BEGIN");
   try {
-    const prior = await client.query("SELECT id, source_sha256 FROM jml_dvf_stage_batches WHERE source_year=$1 ORDER BY created_at DESC LIMIT 1",[year]);
+    const prior = await client.query(
+      "SELECT id, source_sha256, status FROM jml_dvf_stage_batches WHERE source_year=$1 AND status IN ('complete','unchanged') ORDER BY created_at DESC LIMIT 1",
+      [year]
+    );
     if (prior.rowCount && prior.rows[0].source_sha256 === file.sha256) {
       await client.query("UPDATE jml_dvf_stage_batches SET status='unchanged', finished_at=NOW() WHERE id=$1",[prior.rows[0].id]);
       await client.query("COMMIT");
-      return {batchId:prior.rows[0].id,unchanged:true,stagedRows:0};
+      return {batchId:prior.rows[0].id,unchanged:true,stagedRows:0,reconciliation:null};
     }
+    let reconciliation = {previousRows:0,currentRows:parsed.rows.length,added:parsed.rows.length,unchanged:0,removed:0};
+    if (prior.rowCount) {
+      const oldRows = await client.query("SELECT row_fingerprint FROM jml_dvf_stage_rows WHERE batch_id=$1",[prior.rows[0].id]);
+      reconciliation = compareFingerprints(oldRows.rows.map(row => row.row_fingerprint), parsed.rows.map(row => row.rowFingerprint));
+    }
+    const batchSummary = {...parsed.summary, reconciliation};
     const batch = await client.query(`INSERT INTO jml_dvf_stage_batches
       (source_year,department,source_url,source_sha256,status,source_rows,summary)
       VALUES ($1,$2,$3,$4,'loading',$5,$6::jsonb) RETURNING id`,
-      [year,DEPARTMENT,file.url,file.sha256,parsed.rowCount,JSON.stringify(parsed.summary)]);
+      [year,DEPARTMENT,file.url,file.sha256,parsed.rowCount,JSON.stringify(batchSummary)]);
     const batchId=batch.rows[0].id;
-    // The table is an immutable source snapshot; no deletes/updates of prior source rows.
+    // Snapshots immuables : les publications antérieures ne sont ni supprimées ni écrasées.
     for(let i=0;i<parsed.rows.length;i+=MAX_BATCH) {
       const part=parsed.rows.slice(i,i+MAX_BATCH);
       for (const r of part) {
@@ -203,12 +220,10 @@ async function insertStaging(client, year, file, parsed) {
     }
     await client.query("UPDATE jml_dvf_stage_batches SET status='complete', finished_at=NOW() WHERE id=$1",[batchId]);
     await client.query("COMMIT");
-    return {batchId,unchanged:false,stagedRows:parsed.rowCount};
-  } catch(error) {
-    await client.query("ROLLBACK");
-    throw error;
-  }
+    return {batchId,unchanged:false,stagedRows:parsed.rowCount,reconciliation};
+  } catch(error) { await client.query("ROLLBACK"); throw error; }
 }
+
 async function main() {
   if (!years.length) throw new Error("Aucune année valide demandée.");
   const report={robot:"jml-dvf-reconcile",generatedAt:new Date().toISOString(),department:DEPARTMENT,source:"DGFiP / data.gouv.fr",dryRun,databaseTouched:false,productionTablesTouched:false,years:[]};
@@ -278,4 +293,4 @@ if (require.main === module) {
   main().catch(error=>{console.error("DVF reconcile robot failed:",error);process.exitCode=1;});
 }
 
-module.exports = { parseCsvLine, normalizeDate, buildRow, summarize, fingerprint };
+module.exports = { parseCsvLine, normalizeDate, buildRow, summarize, fingerprint, compareFingerprints };
