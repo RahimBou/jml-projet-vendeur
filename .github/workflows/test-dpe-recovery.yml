@@ -20,3 +20,27 @@ jobs:
           node-version: 20
       - name: Run DPE and DVF recovery tests
         run: npm test
+      - name: Download and audit the official DVF 2025 file (dry-run, no database)
+        run: node scripts/dvf-reconcile-robot.js --years=2025 --dry-run --dir=/tmp/jml-dvf-live
+        timeout-minutes: 15
+      - name: Validate live report and print data-volume metrics
+        run: |
+          node -e '
+          const fs=require("node:fs");
+          const p="/tmp/jml-dvf-live/reconcile-report.json";
+          if(!fs.existsSync(p)) throw new Error("Rapport DVF absent");
+          const r=JSON.parse(fs.readFileSync(p,"utf8"));
+          if(r.databaseTouched!==false || r.productionTablesTouched!==false) throw new Error("Garde-fou dry-run incorrect");
+          const y=r.years.find(x=>x.year===2025);
+          if(!y || y.status!=="audited") throw new Error("Téléchargement/audit DVF 2025 non réussi: "+JSON.stringify(y));
+          if(!(y.bytes>0) || !(y.sourceRows>0)) throw new Error("Fichier DVF vide ou sans lignes");
+          console.log(JSON.stringify({year:y.year,status:y.status,bytes:y.bytes,sourceRows:y.sourceRows,summary:y.summary,databaseTouched:r.databaseTouched,productionTablesTouched:r.productionTablesTouched},null,2));
+          '
+      - name: Upload live DVF audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jml-dvf-live-audit
+          path: /tmp/jml-dvf-live/reconcile-report.json
+          if-no-files-found: ignore
+          retention-days: 14
